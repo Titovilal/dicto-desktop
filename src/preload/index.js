@@ -21,7 +21,8 @@ if (process.contextIsolated) {
             'set-always-on-top',
             'set-sound-enabled',
             'start-shortcut-recording',
-            'stop-shortcut-recording'
+            'stop-shortcut-recording',
+            'get-current-shortcut'
           ]
           if (validChannels.includes(channel)) {
             ipcRenderer.send(channel, ...args)

@@ -16,11 +16,15 @@ const {
   isLoading,
   errorMessage,
   editableText,
-  currentShortcut: audioCurrentShortcut,
   toggleRecording
 } = useAudioRecorder()
 
-const { isRecording: shortcutIsRecording, startRecording, stopRecording } = useShortcutEditor()
+const {
+  isRecording: shortcutIsRecording,
+  currentShortcut,
+  startRecording,
+  stopRecording
+} = useShortcutEditor()
 </script>
 
 <template>
@@ -34,7 +38,7 @@ const { isRecording: shortcutIsRecording, startRecording, stopRecording } = useS
       <main class="flex flex-col flex-grow mt-8">
         <SettingsPanel
           v-if="showSettings"
-          :audio-current-shortcut="audioCurrentShortcut"
+          :audio-current-shortcut="currentShortcut"
           :shortcut-is-recording="shortcutIsRecording"
           @startRecording="startRecording"
           @stopRecording="stopRecording"
@@ -57,7 +61,7 @@ const { isRecording: shortcutIsRecording, startRecording, stopRecording } = useS
 
           <TranscriptionBox v-model="editableText" />
 
-          <ShortcutInfo :shortcut="audioCurrentShortcut" :is-recording="audioIsRecording" />
+          <ShortcutInfo :shortcut="currentShortcut" :is-recording="audioIsRecording" />
         </div>
       </main>
     </div>

@@ -4,7 +4,8 @@ import {
   startShortcutRecording,
   stopShortcutRecording,
   registerGlobalShortcuts,
-  handleKeyboardEvent
+  handleKeyboardEvent,
+  getCurrentShortcut
 } from './shortcuts'
 
 export function setupIPC(mainWindow) {
@@ -54,5 +55,13 @@ export function setupIPC(mainWindow) {
   // Always on top sync
   mainWindow.on('always-on-top-changed', (event, isOnTop) => {
     mainWindow.webContents.send('always-on-top-changed', isOnTop)
+  })
+
+  // Get current shortcut
+  ipcMain.on('get-current-shortcut', () => {
+    if (mainWindow) {
+      const currentShortcut = getCurrentShortcut()
+      mainWindow.webContents.send('current-shortcut', currentShortcut)
+    }
   })
 }

@@ -15,10 +15,8 @@ let mainWindow = null
 function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 650,
-    minWidth: 800,
-    minHeight: 650,
+    width: 900,
+    height: 670,
     show: false,
     autoHideMenuBar: true,
     alwaysOnTop: false,
@@ -123,3 +121,4 @@ app.on('will-quit', () => {
 })
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.
+

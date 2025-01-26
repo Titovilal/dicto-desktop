@@ -1,7 +1,15 @@
 import { globalShortcut } from 'electron'
+import { saveShortcut, loadShortcut } from './store'
 
 let currentShortcut = 'CommandOrControl+Space'
 let isRecordingShortcut = false
+
+// Cargar el shortcut guardado al inicio
+loadShortcut().then(savedShortcut => {
+  if (savedShortcut) {
+    currentShortcut = savedShortcut
+  }
+})
 
 export function registerGlobalShortcuts(mainWindow) {
   // Unregister any existing shortcuts first
@@ -96,6 +104,7 @@ export function handleKeyboardEvent(input) {
       (newShortcut.length === 1 && !['CommandOrControl', 'Alt', 'Shift'].includes(newShortcut[0]))
     ) {
       currentShortcut = newShortcut.join('+')
+      saveShortcut(currentShortcut).catch(console.error)
       console.log('New shortcut recorded:', currentShortcut)
       return currentShortcut
     }

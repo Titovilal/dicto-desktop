@@ -15,14 +15,19 @@ export function useShortcutEditor() {
   }
 
   onMounted(() => {
+    // Listen for shortcut changes
     window.electron.ipcRenderer.on('shortcut-recorded', (shortcut) => {
       currentShortcut.value = shortcut
       isRecording.value = false
     })
 
+    // Get initial shortcut value
     window.electron.ipcRenderer.on('current-shortcut', (shortcut) => {
       currentShortcut.value = shortcut
     })
+
+    // Request current shortcut from main process
+    window.electron.ipcRenderer.send('get-current-shortcut')
   })
 
   onUnmounted(() => {
