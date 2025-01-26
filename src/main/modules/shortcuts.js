@@ -5,7 +5,7 @@ let currentShortcut = 'CommandOrControl+Space'
 let isRecordingShortcut = false
 
 // Cargar el shortcut guardado al inicio
-loadShortcut().then(savedShortcut => {
+loadShortcut().then((savedShortcut) => {
   if (savedShortcut) {
     currentShortcut = savedShortcut
   }

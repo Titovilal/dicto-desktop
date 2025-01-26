@@ -21,4 +21,4 @@ export async function loadShortcut() {
 }
 
 // Inicializar store inmediatamente
-initStore() 
+initStore()
