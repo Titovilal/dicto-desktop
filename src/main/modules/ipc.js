@@ -7,6 +7,14 @@ import {
   handleKeyboardEvent,
   getCurrentShortcut
 } from './shortcuts'
+import {
+  saveShortcut,
+  loadShortcut,
+  getProfiles,
+  createProfile,
+  updateProfile,
+  deleteProfile
+} from './store'
 
 export function setupIPC(mainWindow) {
   // Test IPC
@@ -63,5 +71,29 @@ export function setupIPC(mainWindow) {
       const currentShortcut = getCurrentShortcut()
       mainWindow.webContents.send('current-shortcut', currentShortcut)
     }
+  })
+
+  ipcMain.handle('save-shortcut', async (event, shortcut) => {
+    await saveShortcut(shortcut)
+  })
+
+  ipcMain.handle('load-shortcut', async () => {
+    return await loadShortcut()
+  })
+
+  ipcMain.handle('get-profiles', async () => {
+    return await getProfiles()
+  })
+
+  ipcMain.handle('create-profile', async (event, profile) => {
+    await createProfile(profile)
+  })
+
+  ipcMain.handle('update-profile', async (event, profile) => {
+    await updateProfile(profile)
+  })
+
+  ipcMain.handle('delete-profile', async (event, name) => {
+    await deleteProfile(name)
   })
 }

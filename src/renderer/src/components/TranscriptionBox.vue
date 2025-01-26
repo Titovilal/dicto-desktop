@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { Copy, Check } from 'lucide-vue-next'
 
-defineProps({
+const props = defineProps({
   modelValue: {
     type: String,
     required: true
@@ -36,9 +36,9 @@ const copyToClipboard = async () => {
       </button>
     </div>
     <textarea
+      class="w-full flex-grow p-4 rounded-xl bg-[#f5f5f7] border-0 transition-colors duration-200 resize-none text-[#1d1d1f] placeholder-[#86868b]"
       :value="modelValue"
       @input="$emit('update:modelValue', $event.target.value)"
-      class="w-full flex-grow p-4 rounded-xl bg-[#f5f5f7] border-0 transition-colors duration-200 resize-none text-[#1d1d1f] placeholder-[#86868b]"
       placeholder="Start recording or type here..."
     ></textarea>
   </div>

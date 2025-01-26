@@ -5,7 +5,15 @@ async function initStore() {
   Store = (await import('electron-store')).default
   store = new Store({
     defaults: {
-      globalShortcut: 'CommandOrControl+Space'
+      globalShortcut: 'CommandOrControl+Space',
+      profiles: [
+        {
+          name: 'Default',
+          prompt: 'Transcribe the following audio:',
+          useAI: true,
+          copyToClipboard: false
+        }
+      ]
     }
   })
 }
@@ -20,5 +28,42 @@ export async function loadShortcut() {
   return store.get('globalShortcut')
 }
 
-// Inicializar store inmediatamente
+export async function getProfiles() {
+  if (!store) await initStore()
+  return store.get('profiles')
+}
+
+export async function createProfile(profile) {
+  if (!store) await initStore()
+  const profiles = await getProfiles()
+  if (profiles.some((p) => p.name === profile.name)) {
+    throw new Error('Profile with this name already exists')
+  }
+  profiles.push(profile)
+  store.set('profiles', profiles)
+}
+
+export async function updateProfile(profile) {
+  if (!store) await initStore()
+  const profiles = await getProfiles()
+  const index = profiles.findIndex((p) => p.name === profile.originalName)
+  if (index === -1) {
+    throw new Error('Profile not found')
+  }
+  const { originalName, ...profileData } = profile
+  profiles[index] = profileData
+  store.set('profiles', profiles)
+}
+
+export async function deleteProfile(name) {
+  if (!store) await initStore()
+  const profiles = await getProfiles()
+  if (profiles.length === 1) {
+    throw new Error('Cannot delete the last profile')
+  }
+  const filteredProfiles = profiles.filter((p) => p.name !== name)
+  store.set('profiles', filteredProfiles)
+}
+
+// Initialize store immediately
 initStore()

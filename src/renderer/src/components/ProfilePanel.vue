@@ -1,0 +1,216 @@
+<template>
+  <div class="w-full">
+    <div class="bg-white rounded-2xl p-6 shadow-sm space-y-6">
+      <h3 class="text-base font-medium text-[#1d1d1f]">Profile Management</h3>
+
+      <!-- Profile List -->
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <h4 class="text-sm font-medium text-[#86868b]">Profiles</h4>
+          <button
+            @click="addNewProfile"
+            class="px-4 py-1.5 rounded-full text-sm font-medium bg-[#f5f5f7] hover:bg-[#e5e5e7] text-[#1d1d1f] transition-all duration-200"
+          >
+            Add Profile
+          </button>
+        </div>
+
+        <!-- Profile List -->
+        <div class="space-y-4">
+          <!-- New Profile Form -->
+          <div v-if="newProfile" class="bg-white border-2 border-[#1d1d1f] p-4 rounded-lg">
+            <div class="space-y-4">
+              <div>
+                <input
+                  v-model="newProfile.name"
+                  type="text"
+                  required
+                  placeholder="Profile Name"
+                  class="w-full px-3 py-2 bg-[#f5f5f7] rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1d1d1f]"
+                />
+              </div>
+              <div>
+                <textarea
+                  v-model="newProfile.prompt"
+                  required
+                  placeholder="Enter prompt"
+                  rows="2"
+                  class="w-full px-3 py-2 bg-[#f5f5f7] rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1d1d1f]"
+                ></textarea>
+              </div>
+              <div class="flex gap-4">
+                <label class="flex items-center">
+                  <input
+                    v-model="newProfile.useAI"
+                    type="checkbox"
+                    class="form-checkbox h-4 w-4 text-[#1d1d1f]"
+                  />
+                  <span class="ml-2 text-sm">Use AI</span>
+                </label>
+                <label class="flex items-center">
+                  <input
+                    v-model="newProfile.copyToClipboard"
+                    type="checkbox"
+                    class="form-checkbox h-4 w-4 text-[#1d1d1f]"
+                  />
+                  <span class="ml-2 text-sm">Copy to Clipboard</span>
+                </label>
+              </div>
+              <div class="flex justify-end gap-2">
+                <button
+                  type="button"
+                  @click="cancelNewProfile"
+                  class="px-3 py-1.5 text-sm font-medium text-[#86868b] hover:text-[#1d1d1f]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  @click="saveNewProfile"
+                  class="px-3 py-1.5 text-sm font-medium bg-[#1d1d1f] text-white rounded-lg hover:bg-[#2d2d2f]"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile Items -->
+          <div
+            v-for="profile in profiles"
+            :key="profile.name"
+            class="bg-[#f5f5f7] p-4 rounded-lg"
+            :class="{ 'border-2 border-[#1d1d1f] bg-white': editingId === profile.name }"
+          >
+            <div v-if="editingId === profile.name">
+              <div class="space-y-4">
+                <div>
+                  <input
+                    v-model="editingProfile.name"
+                    type="text"
+                    required
+                    class="w-full px-3 py-2 bg-[#f5f5f7] rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1d1d1f]"
+                  />
+                </div>
+                <div>
+                  <textarea
+                    v-model="editingProfile.prompt"
+                    required
+                    rows="2"
+                    class="w-full px-3 py-2 bg-[#f5f5f7] rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1d1d1f]"
+                  ></textarea>
+                </div>
+                <div class="flex gap-4">
+                  <label class="flex items-center">
+                    <input
+                      v-model="editingProfile.useAI"
+                      type="checkbox"
+                      class="form-checkbox h-4 w-4 text-[#1d1d1f]"
+                    />
+                    <span class="ml-2 text-sm">Use AI</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      v-model="editingProfile.copyToClipboard"
+                      type="checkbox"
+                      class="form-checkbox h-4 w-4 text-[#1d1d1f]"
+                    />
+                    <span class="ml-2 text-sm">Copy to Clipboard</span>
+                  </label>
+                </div>
+                <div class="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    @click="cancelEdit"
+                    class="px-3 py-1.5 text-sm font-medium text-[#86868b] hover:text-[#1d1d1f]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    @click="saveEditingProfile"
+                    class="px-3 py-1.5 text-sm font-medium bg-[#1d1d1f] text-white rounded-lg hover:bg-[#2d2d2f]"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="flex justify-between items-start">
+              <div>
+                <h5 class="font-medium">{{ profile.name }}</h5>
+                <p class="text-sm text-[#86868b] mt-1">{{ profile.prompt }}</p>
+                <div class="flex gap-2 mt-2">
+                  <span class="text-xs bg-[#e5e5e7] px-2 py-1 rounded-full">
+                    {{ profile.useAI ? 'AI Enabled' : 'AI Disabled' }}
+                  </span>
+                  <span class="text-xs bg-[#e5e5e7] px-2 py-1 rounded-full">
+                    {{ profile.copyToClipboard ? 'Auto Copy' : 'Manual Copy' }}
+                  </span>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  @click="startEdit(profile)"
+                  class="p-2 rounded-full hover:bg-[#e5e5e7] text-[#1d1d1f]"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  @click="deleteProfile(profile.name)"
+                  class="p-2 rounded-full hover:bg-red-100 text-red-600"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { onMounted } from 'vue'
+import { useProfiles } from '../composables/useProfiles'
+
+const {
+  profiles,
+  newProfile,
+  editingProfile,
+  editingId,
+  loadProfiles,
+  addNewProfile,
+  cancelNewProfile,
+  saveNewProfile,
+  startEdit,
+  cancelEdit,
+  saveEditingProfile,
+  deleteProfile
+} = useProfiles()
+
+onMounted(async () => {
+  await loadProfiles()
+})
+</script>

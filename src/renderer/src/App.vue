@@ -4,11 +4,13 @@ import { useAudioRecorder } from './composables/useAudioRecorder'
 import { useShortcutEditor } from './composables/useShortcutEditor'
 import Header from './components/Header.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
+import ProfilePanel from './components/ProfilePanel.vue'
 import RecordingButton from './components/RecordingButton.vue'
 import TranscriptionBox from './components/TranscriptionBox.vue'
 import ShortcutInfo from './components/ShortcutInfo.vue'
 
 const showSettings = ref(false)
+const showProfiles = ref(false)
 const selectedProfile = ref('Default')
 
 const {
@@ -33,6 +35,7 @@ const {
       <Header
         v-model:selectedProfile="selectedProfile"
         @toggleSettings="showSettings = !showSettings"
+        @toggleProfiles="showProfiles = !showProfiles"
       />
 
       <main class="flex flex-col flex-grow mt-8">
@@ -43,6 +46,8 @@ const {
           @startRecording="startRecording"
           @stopRecording="stopRecording"
         />
+
+        <ProfilePanel v-else-if="showProfiles" v-model:selectedProfile="selectedProfile" />
 
         <div v-else class="flex flex-col flex-grow">
           <RecordingButton
