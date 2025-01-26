@@ -1,16 +1,64 @@
 <script setup>
-import AudioRecorder from './components/AudioRecorder.vue'
+import { ref } from 'vue'
+import { useAudioRecorder } from './composables/useAudioRecorder'
+import { useShortcutEditor } from './composables/useShortcutEditor'
+import Header from './components/Header.vue'
+import SettingsPanel from './components/SettingsPanel.vue'
+import RecordingButton from './components/RecordingButton.vue'
+import TranscriptionBox from './components/TranscriptionBox.vue'
+import ShortcutInfo from './components/ShortcutInfo.vue'
+
+const showSettings = ref(false)
+const selectedProfile = ref('Default')
+
+const {
+  isRecording: audioIsRecording,
+  isLoading,
+  errorMessage,
+  editableText,
+  currentShortcut: audioCurrentShortcut,
+  toggleRecording
+} = useAudioRecorder()
+
+const { isRecording: shortcutIsRecording, startRecording, stopRecording } = useShortcutEditor()
 </script>
 
 <template>
-  <div class="min-h-screen bg-white">
-    <div class="max-w-3xl mx-auto px-6 py-12">
-      <header class="text-center mb-12">
-        <h1 class="text-4xl font-bold text-gray-900">Dicto</h1>
-        <p class="mt-3 text-lg text-gray-500">Instantly convert your voice to text</p>
-      </header>
-      <main>
-        <AudioRecorder />
+  <div class="h-screen flex flex-col bg-[#f5f5f7] text-[#1d1d1f]">
+    <div class="flex flex-col flex-grow px-6 py-6">
+      <Header
+        v-model:selectedProfile="selectedProfile"
+        @toggleSettings="showSettings = !showSettings"
+      />
+
+      <main class="flex flex-col flex-grow mt-8">
+        <SettingsPanel
+          v-if="showSettings"
+          :audio-current-shortcut="audioCurrentShortcut"
+          :shortcut-is-recording="shortcutIsRecording"
+          @startRecording="startRecording"
+          @stopRecording="stopRecording"
+        />
+
+        <div v-else class="flex flex-col flex-grow">
+          <RecordingButton
+            :is-loading="isLoading"
+            :is-recording="audioIsRecording"
+            @toggleRecording="toggleRecording"
+          />
+
+          <div
+            v-if="errorMessage"
+            class="w-full p-4 rounded-2xl bg-red-50 text-red-600 text-sm mb-6"
+            role="alert"
+          >
+            {{ errorMessage }}
+          </div>
+
+          <TranscriptionBox v-model="editableText" />
+
+          <ShortcutInfo :shortcut="audioCurrentShortcut" :is-recording="audioIsRecording" />
+        </div>
       </main>
     </div>
   </div>

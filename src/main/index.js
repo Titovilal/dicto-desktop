@@ -15,8 +15,10 @@ let mainWindow = null
 function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 800,
+    height: 650,
+    minWidth: 800,
+    minHeight: 650,
     show: false,
     autoHideMenuBar: true,
     alwaysOnTop: false,
@@ -116,7 +118,6 @@ app.on('window-all-closed', (event) => {
     event.preventDefault()
   }
 })
-
 app.on('will-quit', () => {
   unregisterGlobalShortcuts()
 })
