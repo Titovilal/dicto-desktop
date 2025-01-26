@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import ShortcutEditor from './ShortcutEditor.vue'
+import RecordingStatus from './RecordingStatus.vue'
+import TranscriptionBox from './TranscriptionBox.vue'
+import { Loader2 } from 'lucide-vue-next'
 
 const isRecording = ref(false)
 const mediaRecorder = ref(null)
@@ -26,6 +29,12 @@ const playSound = (sound) => {
   }
 }
 
+const handleRecordingError = (error, context) => {
+  errorMessage.value = `Error ${context}: ${error.message}`
+  console.error(`Error ${context}:`, error)
+  isLoading.value = false
+}
+
 const startRecording = async () => {
   try {
     errorMessage.value = ''
@@ -33,25 +42,7 @@ const startRecording = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
     mediaRecorder.value = new MediaRecorder(stream)
-
-    mediaRecorder.value.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunks.value.push(event.data)
-      }
-    }
-
-    mediaRecorder.value.onstop = async () => {
-      try {
-        isLoading.value = true
-        const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' })
-        await sendToWhisper(audioBlob)
-      } catch (error) {
-        errorMessage.value = 'Error al procesar el audio: ' + error.message
-        console.error('Error processing audio:', error)
-      } finally {
-        isLoading.value = false
-      }
-    }
+    setupMediaRecorderEvents()
 
     mediaRecorder.value.start(1000)
     isRecording.value = true
@@ -59,8 +50,25 @@ const startRecording = async () => {
     // Notificar al proceso principal
     window.electron.ipcRenderer.send('recording-status-changed', true)
   } catch (error) {
-    errorMessage.value = 'Error al acceder al micrófono: ' + error.message
-    console.error('Error accessing microphone:', error)
+    handleRecordingError(error, 'al acceder al micrófono')
+  }
+}
+
+const setupMediaRecorderEvents = () => {
+  mediaRecorder.value.ondataavailable = (event) => {
+    if (event.data.size > 0) {
+      audioChunks.value.push(event.data)
+    }
+  }
+
+  mediaRecorder.value.onstop = async () => {
+    try {
+      isLoading.value = true
+      const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' })
+      await sendToWhisper(audioBlob)
+    } catch (error) {
+      handleRecordingError(error, 'al procesar el audio')
+    }
   }
 }
 
@@ -82,7 +90,6 @@ const sendToWhisper = async (audioBlob) => {
   formData.append('response_format', 'json')
 
   try {
-    errorMessage.value = ''
     const response = await fetch('https://api.lemonfox.ai/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
@@ -100,8 +107,9 @@ const sendToWhisper = async (audioBlob) => {
     transcription.value = data.text
     editableText.value = data.text
   } catch (error) {
-    errorMessage.value = 'Error en la transcripción: ' + error.message
-    console.error('Error en la transcripción:', error)
+    handleRecordingError(error, 'en la transcripción')
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -128,25 +136,29 @@ watch(soundEnabled, (newValue) => {
 // Escuchar el evento desde el proceso principal
 onMounted(() => {
   console.log('Component mounted, setting up listeners')
-  window.electron.ipcRenderer.on('toggle-recording', () => {
-    console.log('Toggle recording event received')
-    if (!isLoading.value) {
+  const setupEventListeners = () => {
+    window.electron.ipcRenderer.on('toggle-recording', () => {
+      console.log('Toggle recording event received')
+      if (!isLoading.value) {
+        toggleRecording()
+      }
+    })
+
+    window.electron.ipcRenderer.on('start-recording-hotkey', () => {
+      console.log('Hotkey event received') // Debug log
       toggleRecording()
-    }
-  })
+    })
 
-  window.electron.ipcRenderer.on('start-recording-hotkey', () => {
-    console.log('Hotkey event received') // Debug log
-    toggleRecording()
-  })
+    window.electron.ipcRenderer.on('sound-enabled-changed', (value) => {
+      soundEnabled.value = value
+    })
 
-  window.electron.ipcRenderer.on('sound-enabled-changed', (value) => {
-    soundEnabled.value = value
-  })
+    window.electron.ipcRenderer.on('current-shortcut', (shortcut) => {
+      currentShortcut.value = shortcut
+    })
+  }
 
-  window.electron.ipcRenderer.on('current-shortcut', (shortcut) => {
-    currentShortcut.value = shortcut
-  })
+  setupEventListeners()
 
   // Enviar estado inicial de sonidos
   window.electron.ipcRenderer.send('set-sound-enabled', soundEnabled.value)
@@ -164,146 +176,34 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="audio-recorder">
-    <div class="status-indicator" :class="{ recording: isRecording }">
-      {{ isRecording ? 'Grabando...' : 'Listo para grabar' }}
+  <div class="flex flex-col items-center space-y-6">
+    <RecordingStatus :is-recording="isRecording" @toggle="toggleRecording" />
+
+    <div v-if="isLoading" class="flex items-center justify-center space-x-2 text-gray-600">
+      <Loader2 class="animate-spin h-5 w-5" />
+      <span>Processing audio...</span>
     </div>
 
-    <div class="controls">
-      <button :class="{ recording: isRecording }" @click="toggleRecording">
-        {{ isRecording ? 'Detener Grabación' : 'Iniciar Grabación' }}
-      </button>
-    </div>
-
-    <div v-if="isLoading" class="loading">Procesando audio...</div>
-
-    <div v-if="errorMessage" class="error">
+    <div
+      v-if="errorMessage"
+      class="w-full p-4 rounded-lg bg-red-50 text-red-600 text-sm"
+      role="alert"
+    >
       {{ errorMessage }}
     </div>
 
-    <div v-if="transcription" class="transcription-container">
-      <h3>Transcripción:</h3>
-      <textarea
-        v-model="editableText"
-        class="transcription-input"
-        rows="5"
-        placeholder="La transcripción aparecerá aquí..."
-      ></textarea>
+    <TranscriptionBox v-if="transcription" v-model="editableText" />
+
+    <div class="text-sm text-gray-500">
+      Press
+      <kbd
+        class="px-2 py-1 text-xs font-sans font-medium bg-gray-50 border border-gray-200 rounded-md shadow-sm text-gray-800 inline-flex items-center"
+      >
+        {{ currentShortcut }}
+      </kbd>
+      to {{ isRecording ? 'stop' : 'start' }} recording
     </div>
 
-    <div class="shortcut-hint">
-      Presiona <kbd>{{ currentShortcut }}</kbd> para {{ isRecording ? 'detener' : 'iniciar' }} la
-      grabación
-    </div>
     <ShortcutEditor />
   </div>
 </template>
-
-<style scoped>
-.audio-recorder {
-  padding: 20px;
-  text-align: center;
-}
-
-.status-indicator {
-  margin-bottom: 20px;
-  padding: 10px;
-  border-radius: 5px;
-  background-color: #f0f0f0;
-}
-
-.status-indicator.recording {
-  background-color: #ff4444;
-  color: white;
-  animation: pulse 2s infinite;
-}
-
-.controls button {
-  padding: 10px 20px;
-  font-size: 16px;
-  border: none;
-  border-radius: 5px;
-  background-color: #4caf50;
-  color: white;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.controls button:hover {
-  background-color: #45a049;
-}
-
-.controls button.recording {
-  background-color: #ff4444;
-}
-
-.controls button.recording:hover {
-  background-color: #ff3333;
-}
-
-.loading {
-  margin-top: 20px;
-  color: #666;
-}
-
-.error {
-  margin-top: 20px;
-  color: #ff4444;
-}
-
-.shortcut-hint {
-  margin-top: 20px;
-  color: #666;
-  font-size: 0.9em;
-}
-
-kbd {
-  background-color: #f7f7f7;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
-  color: #333;
-  display: inline-block;
-  font-size: 0.85em;
-  padding: 2px 4px;
-  margin: 0 2px;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.8;
-  }
-
-  100% {
-    opacity: 1;
-  }
-}
-
-.transcription-container {
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #f5f5f5;
-  border-radius: 5px;
-}
-
-.transcription-input {
-  width: 90%;
-  max-width: 600px;
-  margin: 10px auto;
-  padding: 15px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 16px;
-  line-height: 1.5;
-  resize: vertical;
-}
-
-h3 {
-  margin-bottom: 10px;
-  color: #2c3e50;
-}
-</style>

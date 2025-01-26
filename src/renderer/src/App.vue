@@ -3,22 +3,15 @@ import AudioRecorder from './components/AudioRecorder.vue'
 </script>
 
 <template>
-  <div class="container">
-    <h1>Grabador de Audio</h1>
-    <AudioRecorder />
+  <div class="min-h-screen bg-white">
+    <div class="max-w-3xl mx-auto px-6 py-12">
+      <header class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-gray-900">Dicto</h1>
+        <p class="mt-3 text-lg text-gray-500">Instantly convert your voice to text</p>
+      </header>
+      <main>
+        <AudioRecorder />
+      </main>
+    </div>
   </div>
 </template>
-
-<style>
-.container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  text-align: center;
-}
-
-h1 {
-  color: #2c3e50;
-  margin-bottom: 30px;
-}
-</style>

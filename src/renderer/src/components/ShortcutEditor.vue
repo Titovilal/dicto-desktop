@@ -32,73 +32,24 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="shortcut-editor">
+  <div class="flex flex-col items-center space-y-4 py-6">
     <button
-      :class="{ recording: isRecording }"
+      :class="{
+        'px-6 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 focus:outline-none': true,
+        'bg-gray-50 hover:bg-gray-100 text-gray-700 ': !isRecording,
+        'bg-red-50 text-red-500 animate-pulse': isRecording
+      }"
       @click="isRecording ? stopRecording() : startRecording()"
     >
-      {{ isRecording ? 'Presiona las teclas deseadas...' : 'Cambiar atajo' }}
+      {{ isRecording ? 'Press desired keys...' : 'Change Shortcut' }}
     </button>
-    <div class="current-shortcut">
-      Atajo actual: <kbd>{{ currentShortcut }}</kbd>
+    <div class="text-sm text-gray-500">
+      Current shortcut:
+      <kbd
+        class="px-2 py-1 text-xs font-medium bg-white border border-gray-200 rounded-lg shadow-sm text-gray-700 inline-flex items-center ml-1"
+      >
+        {{ currentShortcut }}
+      </kbd>
     </div>
   </div>
 </template>
-
-<style scoped>
-.shortcut-editor {
-  margin: 20px 0;
-  text-align: center;
-}
-
-button {
-  padding: 10px 20px;
-  font-size: 14px;
-  border: none;
-  border-radius: 5px;
-  background-color: #4caf50;
-  color: white;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-button:hover {
-  background-color: #45a049;
-}
-
-button.recording {
-  background-color: #ff4444;
-  animation: pulse 2s infinite;
-}
-
-.current-shortcut {
-  margin-top: 10px;
-  color: #666;
-}
-
-kbd {
-  background-color: #f7f7f7;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
-  color: #333;
-  display: inline-block;
-  font-size: 0.85em;
-  padding: 2px 4px;
-  margin: 0 2px;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.8;
-  }
-
-  100% {
-    opacity: 1;
-  }
-}
-</style>
