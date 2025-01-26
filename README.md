@@ -43,3 +43,4 @@ TODO:
 - [ ] A la hora de hacer autenticacion, generar un token y que se tenga que poner en la aplicación
 - [ ] Añadir configuración de que modelo se elige para reescritura
 - [ ] Añadir configuración de que se hace cuando llega el resultado (e.g. poner en portapapeles)
+- [ ] Crear nextjs app para el frontend con DB Neon y generación de API Keys
