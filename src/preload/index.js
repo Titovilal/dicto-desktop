@@ -13,19 +13,39 @@ if (process.contextIsolated) {
       ...electronAPI,
       ipcRenderer: {
         send: (channel, ...args) => {
-          const validChannels = ['recording-status-changed', 'ping', 'toggle-recording', 'start-recording-hotkey', 'set-always-on-top', 'set-sound-enabled', 'start-shortcut-recording', 'stop-shortcut-recording']
+          const validChannels = [
+            'recording-status-changed',
+            'ping',
+            'toggle-recording',
+            'start-recording-hotkey',
+            'set-always-on-top',
+            'set-sound-enabled',
+            'start-shortcut-recording',
+            'stop-shortcut-recording'
+          ]
           if (validChannels.includes(channel)) {
             ipcRenderer.send(channel, ...args)
           }
         },
         on: (channel, func) => {
-          const validChannels = ['toggle-recording', 'always-on-top-changed', 'sound-enabled-changed', 'shortcut-recorded', 'current-shortcut']
+          const validChannels = [
+            'toggle-recording',
+            'always-on-top-changed',
+            'sound-enabled-changed',
+            'shortcut-recorded',
+            'current-shortcut'
+          ]
           if (validChannels.includes(channel)) {
             ipcRenderer.on(channel, (event, ...args) => func(...args))
           }
         },
         removeAllListeners: (channel) => {
-          const validChannels = ['toggle-recording', 'sound-enabled-changed', 'shortcut-recorded', 'current-shortcut']
+          const validChannels = [
+            'toggle-recording',
+            'sound-enabled-changed',
+            'shortcut-recorded',
+            'current-shortcut'
+          ]
           if (validChannels.includes(channel)) {
             ipcRenderer.removeAllListeners(channel)
           }

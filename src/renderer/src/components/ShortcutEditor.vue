@@ -33,9 +33,9 @@ onUnmounted(() => {
 
 <template>
   <div class="shortcut-editor">
-    <button 
+    <button
       @click="isRecording ? stopRecording() : startRecording()"
-      :class="{ 'recording': isRecording }"
+      :class="{ recording: isRecording }"
     >
       {{ isRecording ? 'Presiona las teclas deseadas...' : 'Cambiar atajo' }}
     </button>
@@ -56,7 +56,7 @@ button {
   font-size: 14px;
   border: none;
   border-radius: 5px;
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   cursor: pointer;
   transition: background-color 0.3s;
@@ -80,7 +80,7 @@ kbd {
   background-color: #f7f7f7;
   border: 1px solid #ccc;
   border-radius: 3px;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
   color: #333;
   display: inline-block;
   font-size: 0.85em;
@@ -89,8 +89,14 @@ kbd {
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.8; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 1;
+  }
 }
-</style> 
+</style>

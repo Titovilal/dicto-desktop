@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
 import { updateTrayTooltip, updateSoundMenuItem } from './tray'
-import { 
-  startShortcutRecording, 
-  stopShortcutRecording, 
+import {
+  startShortcutRecording,
+  stopShortcutRecording,
   registerGlobalShortcuts,
   handleKeyboardEvent
 } from './shortcuts'
@@ -55,4 +55,4 @@ export function setupIPC(mainWindow) {
   mainWindow.on('always-on-top-changed', (event, isOnTop) => {
     mainWindow.webContents.send('always-on-top-changed', isOnTop)
   })
-} 
+}

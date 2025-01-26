@@ -2,17 +2,17 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import ShortcutEditor from './ShortcutEditor.vue'
 
-const isRecording = ref(false);
-const mediaRecorder = ref(null);
-const audioChunks = ref([]);
-const transcription = ref('');
-const editableText = ref('');
-const apiKey = 'UmZq7RrONiR8gkPj8PPVeUKvfdx4Vs51'; // Asegúrate de tener tu API key aquí
-const errorMessage = ref('');
-const isLoading = ref(false);
-const soundEnabled = ref(true); // Nueva ref para controlar el sonido
-const alwaysOnTop = ref(false); // Nueva ref para el estado de siempre visible
-const currentShortcut = ref('CommandOrControl+Space');
+const isRecording = ref(false)
+const mediaRecorder = ref(null)
+const audioChunks = ref([])
+const transcription = ref('')
+const editableText = ref('')
+const apiKey = 'UmZq7RrONiR8gkPj8PPVeUKvfdx4Vs51' // Asegúrate de tener tu API key aquí
+const errorMessage = ref('')
+const isLoading = ref(false)
+const soundEnabled = ref(true) // Nueva ref para controlar el sonido
+const alwaysOnTop = ref(false) // Nueva ref para el estado de siempre visible
+const currentShortcut = ref('CommandOrControl+Space')
 
 // Crear elementos de audio
 const startSound = new Audio('/src/assets/start-recording.mp3')
@@ -20,7 +20,7 @@ const stopSound = new Audio('/src/assets/stop-recording.mp3')
 
 const playSound = (sound) => {
   if (soundEnabled.value) {
-    sound.play().catch(error => {
+    sound.play().catch((error) => {
       console.error('Error playing sound:', error)
     })
   }
@@ -31,9 +31,9 @@ const startRecording = async () => {
     errorMessage.value = ''
     audioChunks.value = []
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    
+
     mediaRecorder.value = new MediaRecorder(stream)
-    
+
     mediaRecorder.value.ondataavailable = (event) => {
       if (event.data.size > 0) {
         audioChunks.value.push(event.data)
@@ -67,7 +67,7 @@ const startRecording = async () => {
 const stopRecording = () => {
   if (mediaRecorder.value && isRecording.value) {
     mediaRecorder.value.stop()
-    mediaRecorder.value.stream.getTracks().forEach(track => track.stop())
+    mediaRecorder.value.stream.getTracks().forEach((track) => track.stop())
     isRecording.value = false
     playSound(stopSound)
     // Notificar al proceso principal
@@ -86,7 +86,7 @@ const sendToWhisper = async (audioBlob) => {
     const response = await fetch('https://api.lemonfox.ai/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`
       },
       body: formData
     })
@@ -134,7 +134,7 @@ onMounted(() => {
       toggleRecording()
     }
   })
-  
+
   window.electron.ipcRenderer.on('start-recording-hotkey', () => {
     console.log('Hotkey event received') // Debug log
     toggleRecording()
@@ -165,22 +165,17 @@ onUnmounted(() => {
 
 <template>
   <div class="audio-recorder">
-    <div class="status-indicator" :class="{ 'recording': isRecording }">
+    <div class="status-indicator" :class="{ recording: isRecording }">
       {{ isRecording ? 'Grabando...' : 'Listo para grabar' }}
     </div>
 
     <div class="controls">
-      <button 
-        @click="toggleRecording"
-        :class="{ 'recording': isRecording }"
-      >
+      <button @click="toggleRecording" :class="{ recording: isRecording }">
         {{ isRecording ? 'Detener Grabación' : 'Iniciar Grabación' }}
       </button>
     </div>
 
-    <div v-if="isLoading" class="loading">
-      Procesando audio...
-    </div>
+    <div v-if="isLoading" class="loading">Procesando audio...</div>
 
     <div v-if="errorMessage" class="error">
       {{ errorMessage }}
@@ -188,7 +183,7 @@ onUnmounted(() => {
 
     <div v-if="transcription" class="transcription-container">
       <h3>Transcripción:</h3>
-      <textarea 
+      <textarea
         v-model="editableText"
         class="transcription-input"
         rows="5"
@@ -197,7 +192,8 @@ onUnmounted(() => {
     </div>
 
     <div class="shortcut-hint">
-      Presiona <kbd>{{ currentShortcut }}</kbd> para {{ isRecording ? 'detener' : 'iniciar' }} la grabación
+      Presiona <kbd>{{ currentShortcut }}</kbd> para {{ isRecording ? 'detener' : 'iniciar' }} la
+      grabación
     </div>
     <ShortcutEditor />
   </div>
@@ -227,7 +223,7 @@ onUnmounted(() => {
   font-size: 16px;
   border: none;
   border-radius: 5px;
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   cursor: pointer;
   transition: background-color 0.3s;
@@ -265,7 +261,7 @@ kbd {
   background-color: #f7f7f7;
   border: 1px solid #ccc;
   border-radius: 3px;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
   color: #333;
   display: inline-block;
   font-size: 0.85em;
@@ -308,4 +304,4 @@ h3 {
   margin-bottom: 10px;
   color: #2c3e50;
 }
-</style> 
+</style>

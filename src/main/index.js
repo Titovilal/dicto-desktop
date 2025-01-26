@@ -1,10 +1,10 @@
 import { app, shell, BrowserWindow } from 'electron'
-import { join } from 'path';
+import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createTray } from './modules/tray'
-import { 
-  registerGlobalShortcuts, 
+import {
+  registerGlobalShortcuts,
   getCurrentShortcut,
   unregisterGlobalShortcuts
 } from './modules/shortcuts'
@@ -89,7 +89,7 @@ app.whenReady().then(() => {
 
   createWindow()
   createTray({ mainWindow, app })
-  
+
   // Pequeño retraso para asegurar que todo esté inicializado
   setTimeout(() => {
     registerGlobalShortcuts(mainWindow)
@@ -122,4 +122,3 @@ app.on('will-quit', () => {
 })
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.
-

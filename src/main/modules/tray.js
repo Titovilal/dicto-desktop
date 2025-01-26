@@ -62,10 +62,10 @@ export function updateTrayTooltip(isRecording) {
 
 export function updateSoundMenuItem(value) {
   if (tray && trayContextMenu) {
-    const soundMenuItem = trayContextMenu.items.find(item => item.label === 'Sonidos')
+    const soundMenuItem = trayContextMenu.items.find((item) => item.label === 'Sonidos')
     if (soundMenuItem) {
       soundMenuItem.checked = value
       tray.setContextMenu(trayContextMenu)
     }
   }
-} 
+}
