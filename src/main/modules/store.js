@@ -6,6 +6,7 @@ async function initStore() {
   store = new Store({
     defaults: {
       globalShortcut: 'CommandOrControl+Space',
+      selectedProfile: 'Default',
       profiles: [
         {
           name: 'Default',
@@ -63,6 +64,22 @@ export async function deleteProfile(name) {
   }
   const filteredProfiles = profiles.filter((p) => p.name !== name)
   store.set('profiles', filteredProfiles)
+
+  // If we're deleting the currently selected profile, switch to the first available one
+  const selectedProfile = await getSelectedProfile()
+  if (selectedProfile === name) {
+    store.set('selectedProfile', filteredProfiles[0].name)
+  }
+}
+
+export async function saveSelectedProfile(profileName) {
+  if (!store) await initStore()
+  store.set('selectedProfile', profileName)
+}
+
+export async function getSelectedProfile() {
+  if (!store) await initStore()
+  return store.get('selectedProfile')
 }
 
 // Initialize store immediately

@@ -13,7 +13,9 @@ import {
   getProfiles,
   createProfile,
   updateProfile,
-  deleteProfile
+  deleteProfile,
+  saveSelectedProfile,
+  getSelectedProfile
 } from './store'
 
 export function setupIPC(mainWindow) {
@@ -95,5 +97,13 @@ export function setupIPC(mainWindow) {
 
   ipcMain.handle('delete-profile', async (event, name) => {
     await deleteProfile(name)
+  })
+
+  ipcMain.handle('save-selected-profile', async (event, profileName) => {
+    await saveSelectedProfile(profileName)
+  })
+
+  ipcMain.handle('get-selected-profile', async () => {
+    return await getSelectedProfile()
   })
 }

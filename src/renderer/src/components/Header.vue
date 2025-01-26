@@ -1,5 +1,7 @@
 <script setup>
-import { Settings } from 'lucide-vue-next'
+import { useProfiles } from '../composables/useProfiles'
+import { useSelectedProfile } from '../composables/useSelectedProfile'
+import { onMounted, watch } from 'vue'
 
 defineProps({
   selectedProfile: {
@@ -8,14 +10,54 @@ defineProps({
   }
 })
 
-defineEmits(['update:selectedProfile', 'toggleSettings', 'toggleProfiles'])
+const emit = defineEmits(['update:selectedProfile', 'toggleSettings', 'toggleProfiles'])
+
+const { profiles, loadProfiles } = useProfiles()
+const { selectedProfile: currentProfile, setSelectedProfile } = useSelectedProfile()
+
+// Load initial data
+onMounted(async () => {
+  await loadProfiles()
+  if (profiles.value.length > 0) {
+    emit('update:selectedProfile', currentProfile.value)
+  }
+})
+
+// Watch for profile changes to ensure select is updated
+watch(
+  profiles,
+  async (newProfiles) => {
+    if (newProfiles.length > 0) {
+      await loadProfiles()
+    }
+  },
+  { deep: true }
+)
+
+// Watch for selected profile changes
+watch(currentProfile, (newProfile) => {
+  emit('update:selectedProfile', newProfile)
+})
+
+async function handleProfileChange(event) {
+  const newProfile = event.target.value
+  await setSelectedProfile(newProfile)
+}
 </script>
 
 <template>
   <header class="flex items-center justify-between">
     <div class="flex items-center space-x-4">
       <h1 class="text-2xl font-bold">Dicto</h1>
-      <div class="text-sm text-[#86868b]">{{ selectedProfile }}</div>
+      <select
+        :value="selectedProfile"
+        @change="handleProfileChange"
+        class="px-3 py-1.5 rounded-lg bg-[#e5e5e7] text-sm focus:outline-none focus:ring-2 focus:ring-[#1d1d1f]"
+      >
+        <option v-for="profile in profiles" :key="profile.name" :value="profile.name">
+          {{ profile.name }}
+        </option>
+      </select>
     </div>
     <div class="flex items-center space-x-2">
       <button

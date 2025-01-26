@@ -8,8 +8,8 @@
         <div class="flex justify-between items-center">
           <h4 class="text-sm font-medium text-[#86868b]">Profiles</h4>
           <button
-            @click="addNewProfile"
             class="px-4 py-1.5 rounded-full text-sm font-medium bg-[#f5f5f7] hover:bg-[#e5e5e7] text-[#1d1d1f] transition-all duration-200"
+            @click="addNewProfile"
           >
             Add Profile
           </button>
@@ -58,16 +58,16 @@
               </div>
               <div class="flex justify-end gap-2">
                 <button
+                  class="px-3 py-1.5 text-sm font-medium text-[#86868b] hover:text-[#1d1d1f]"
                   type="button"
                   @click="cancelNewProfile"
-                  class="px-3 py-1.5 text-sm font-medium text-[#86868b] hover:text-[#1d1d1f]"
                 >
                   Cancel
                 </button>
                 <button
+                  class="px-3 py-1.5 text-sm font-medium bg-[#1d1d1f] text-white rounded-lg hover:bg-[#2d2d2f]"
                   type="button"
                   @click="saveNewProfile"
-                  class="px-3 py-1.5 text-sm font-medium bg-[#1d1d1f] text-white rounded-lg hover:bg-[#2d2d2f]"
                 >
                   Save
                 </button>
@@ -120,16 +120,16 @@
                 </div>
                 <div class="flex justify-end gap-2">
                   <button
+                    class="px-3 py-1.5 text-sm font-medium text-[#86868b] hover:text-[#1d1d1f]"
                     type="button"
                     @click="cancelEdit"
-                    class="px-3 py-1.5 text-sm font-medium text-[#86868b] hover:text-[#1d1d1f]"
                   >
                     Cancel
                   </button>
                   <button
+                    class="px-3 py-1.5 text-sm font-medium bg-[#1d1d1f] text-white rounded-lg hover:bg-[#2d2d2f]"
                     type="button"
                     @click="saveEditingProfile"
-                    class="px-3 py-1.5 text-sm font-medium bg-[#1d1d1f] text-white rounded-lg hover:bg-[#2d2d2f]"
                   >
                     Save
                   </button>
@@ -151,8 +151,8 @@
               </div>
               <div class="flex gap-2">
                 <button
-                  @click="startEdit(profile)"
                   class="p-2 rounded-full hover:bg-[#e5e5e7] text-[#1d1d1f]"
+                  @click="startEdit(profile)"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -166,8 +166,8 @@
                   </svg>
                 </button>
                 <button
-                  @click="deleteProfile(profile.name)"
                   class="p-2 rounded-full hover:bg-red-100 text-red-600"
+                  @click="deleteProfile(profile.name)"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"

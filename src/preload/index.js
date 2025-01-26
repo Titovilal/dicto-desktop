@@ -52,7 +52,9 @@ const api = {
         'get-profiles',
         'create-profile',
         'update-profile',
-        'delete-profile'
+        'delete-profile',
+        'save-selected-profile',
+        'get-selected-profile'
       ]
       if (validChannels.includes(channel)) {
         return ipcRenderer.invoke(channel, ...args)

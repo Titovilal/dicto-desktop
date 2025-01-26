@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAudioRecorder } from './composables/useAudioRecorder'
 import { useShortcutEditor } from './composables/useShortcutEditor'
 import Header from './components/Header.vue'
@@ -12,6 +12,12 @@ import ShortcutInfo from './components/ShortcutInfo.vue'
 const showSettings = ref(false)
 const showProfiles = ref(false)
 const selectedProfile = ref('Default')
+
+// Initialize selected profile
+onMounted(async () => {
+  const savedProfile = await window.electron.ipcRenderer.invoke('get-selected-profile')
+  selectedProfile.value = savedProfile
+})
 
 const {
   isRecording: audioIsRecording,
