@@ -170,7 +170,7 @@ onUnmounted(() => {
     </div>
 
     <div class="controls">
-      <button @click="toggleRecording" :class="{ recording: isRecording }">
+      <button :class="{ recording: isRecording }" @click="toggleRecording">
         {{ isRecording ? 'Detener Grabación' : 'Iniciar Grabación' }}
       </button>
     </div>
@@ -273,9 +273,11 @@ kbd {
   0% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.8;
   }
+
   100% {
     opacity: 1;
   }

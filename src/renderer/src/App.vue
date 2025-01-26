@@ -1,8 +1,5 @@
 <script setup>
-import Versions from './components/Versions.vue'
 import AudioRecorder from './components/AudioRecorder.vue'
-
-const ipcHandle = () => window.electron.ipcRenderer.send('ping')
 </script>
 
 <template>

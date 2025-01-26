@@ -34,8 +34,8 @@ onUnmounted(() => {
 <template>
   <div class="shortcut-editor">
     <button
-      @click="isRecording ? stopRecording() : startRecording()"
       :class="{ recording: isRecording }"
+      @click="isRecording ? stopRecording() : startRecording()"
     >
       {{ isRecording ? 'Presiona las teclas deseadas...' : 'Cambiar atajo' }}
     </button>
@@ -92,9 +92,11 @@ kbd {
   0% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.8;
   }
+
   100% {
     opacity: 1;
   }
