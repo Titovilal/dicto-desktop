@@ -33,4 +33,13 @@ $ npm run build:mac
 $ npm run build:linux
 ```
 
-&f61L9E6cb!lgLrz
+TODO:
+- [ ] Añadir sonido de terminado
+- [ ] Añadir sonido de error
+- [ ] Crear modo compacto con solo indicadores visuales de lo que está pasando
+- [ ] Añadir reescritura con ChatGPT o DeepSeek
+- [ ] Añadir perfiles de prompt para reescritura
+- [ ] Añadir configuración de idioma
+- [ ] A la hora de hacer autenticacion, generar un token y que se tenga que poner en la aplicación
+- [ ] Añadir configuración de que modelo se elige para reescritura
+- [ ] Añadir configuración de que se hace cuando llega el resultado (e.g. poner en portapapeles)
