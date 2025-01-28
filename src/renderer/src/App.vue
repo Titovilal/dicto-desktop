@@ -13,16 +13,19 @@ import ShortcutInfo from './components/ShortcutInfo.vue'
 
 const showSettings = ref(false)
 const showProfiles = ref(false)
-const selectedProfile = ref('Default')
 
-// Initialize composables first
+// Initialize composables
+const { profiles, selectedProfile, loadProfiles, setSelectedProfile } = useProfiles()
+
 const {
   isRecording: audioIsRecording,
   isLoading: audioIsLoading,
   errorMessage,
   editableText,
   currentShortcut: audioCurrentShortcut,
-  toggleRecording: toggleAudioRecording
+  toggleRecording: toggleAudioRecording,
+  playSound,
+  finishSound
 } = useAudioRecorder()
 
 const {
@@ -32,9 +35,6 @@ const {
   stopRecording: stopShortcutRecording
 } = useShortcutEditor()
 
-// Profiles setup
-const { profiles, loadProfiles } = useProfiles()
-
 // AI setup
 const { processWithAI } = useAI()
 const aiProcessedText = ref('')
@@ -42,9 +42,9 @@ const aiProcessedText = ref('')
 // Add the currentProfile computed property
 const currentProfile = computed(() => profiles.value.find((p) => p.name === selectedProfile.value))
 
-// Initialize selected profile and load profiles
+// Initialize profiles
 onMounted(async () => {
-  await loadProfiles() // Make sure profiles are loaded first
+  await loadProfiles()
   const savedProfile = await window.electron.ipcRenderer.invoke('get-selected-profile')
   selectedProfile.value = savedProfile
 })
@@ -60,6 +60,16 @@ watch(
   { deep: true }
 )
 
+const copyToClipboard = async (text) => {
+  try {
+    console.log('Copying to clipboard...')
+    await navigator.clipboard.writeText(text)
+    console.log('Copied to clipboard!')
+  } catch (err) {
+    console.error('Clipboard Copy Error:', err)
+  }
+}
+
 // Watch for editableText changes
 watch(editableText, async (newText) => {
   if (!newText) return
@@ -74,12 +84,33 @@ watch(editableText, async (newText) => {
       const processedText = await processWithAI(newText, profile.prompt)
       if (processedText) {
         aiProcessedText.value = processedText
+        if (profile.copyToClipboard) {
+          await copyToClipboard(processedText)
+        }
+        playSound(finishSound)
       }
     } catch (error) {
       console.error('Error processing with AI:', error)
     }
   } else {
     aiProcessedText.value = ''
+    if (profile.copyToClipboard) {
+      await copyToClipboard(newText)
+    }
+    playSound(finishSound)
+  }
+})
+
+// Handle profile change
+async function handleProfileChange(newProfile) {
+  await setSelectedProfile(newProfile)
+  selectedProfile.value = newProfile
+}
+
+// Watch for selected profile changes
+watch(selectedProfile, async (newProfile) => {
+  if (newProfile) {
+    await window.electron.ipcRenderer.invoke('set-selected-profile', newProfile)
   }
 })
 </script>
@@ -88,7 +119,9 @@ watch(editableText, async (newText) => {
   <div class="h-screen flex flex-col bg-[#f5f5f7] text-[#1d1d1f]">
     <div class="flex flex-col flex-grow px-6 py-6">
       <Header
-        v-model:selected-profile="selectedProfile"
+        :profiles="profiles"
+        :selected-profile="selectedProfile"
+        @profile-change="handleProfileChange"
         @toggle-settings="showSettings = !showSettings"
         @toggle-profiles="showProfiles = !showProfiles"
       />

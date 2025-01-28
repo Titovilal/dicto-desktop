@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { Copy, Check } from 'lucide-vue-next'
 
-const props = defineProps({
+defineProps({
   modelValue: {
     type: String,
     required: true

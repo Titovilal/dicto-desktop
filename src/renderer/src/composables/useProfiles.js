@@ -2,6 +2,7 @@ import { ref } from 'vue'
 
 export function useProfiles() {
   const profiles = ref([])
+  const selectedProfile = ref('Default')
   const newProfile = ref(null)
   const editingProfile = ref(null)
   const editingId = ref(null)
@@ -9,6 +10,16 @@ export function useProfiles() {
 
   async function loadProfiles() {
     profiles.value = await window.electron.ipcRenderer.invoke('get-profiles')
+    // Load selected profile
+    const savedProfile = await window.electron.ipcRenderer.invoke('get-selected-profile')
+    if (savedProfile) {
+      selectedProfile.value = savedProfile
+    }
+  }
+
+  async function setSelectedProfile(profileName) {
+    await window.electron.ipcRenderer.invoke('save-selected-profile', profileName)
+    selectedProfile.value = profileName
   }
 
   function addNewProfile() {
@@ -72,10 +83,12 @@ export function useProfiles() {
 
   return {
     profiles,
+    selectedProfile,
     newProfile,
     editingProfile,
     editingId,
     loadProfiles,
+    setSelectedProfile,
     addNewProfile,
     cancelNewProfile,
     saveNewProfile,

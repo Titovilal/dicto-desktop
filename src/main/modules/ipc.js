@@ -109,10 +109,6 @@ export function setupIPC(mainWindow) {
   })
 
   ipcMain.handle('process-with-ai', async (event, { text, prompt }) => {
-    try {
-      return await processWithAI(text, prompt)
-    } catch (error) {
-      throw error
-    }
+    return await processWithAI(text, prompt)
   })
 }

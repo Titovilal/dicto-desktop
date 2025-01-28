@@ -17,6 +17,7 @@ export function useAudioRecorder() {
   // Crear elementos de audio
   const startSound = new Audio('/src/assets/start-recording.mp3')
   const stopSound = new Audio('/src/assets/stop-recording.mp3')
+  const finishSound = new Audio('/src/assets/finish-processing.mp3')
 
   const playSound = (sound) => {
     if (soundEnabled.value) {
@@ -171,6 +172,8 @@ export function useAudioRecorder() {
     currentShortcut,
     soundEnabled,
     toggleRecording,
-    aiProcessedText
+    aiProcessedText,
+    playSound,
+    finishSound
   }
 }
