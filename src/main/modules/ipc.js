@@ -17,6 +17,7 @@ import {
   saveSelectedProfile,
   getSelectedProfile
 } from './store'
+import { processWithAI } from './ai.js'
 
 export function setupIPC(mainWindow) {
   // Test IPC
@@ -105,5 +106,13 @@ export function setupIPC(mainWindow) {
 
   ipcMain.handle('get-selected-profile', async () => {
     return await getSelectedProfile()
+  })
+
+  ipcMain.handle('process-with-ai', async (event, { text, prompt }) => {
+    try {
+      return await processWithAI(text, prompt)
+    } catch (error) {
+      throw error
+    }
   })
 }

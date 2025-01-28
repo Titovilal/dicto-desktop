@@ -12,6 +12,7 @@ export function useAudioRecorder() {
   const soundEnabled = ref(true)
   const alwaysOnTop = ref(false)
   const currentShortcut = ref('CommandOrControl+Space')
+  const aiProcessedText = ref('')
 
   // Crear elementos de audio
   const startSound = new Audio('/src/assets/start-recording.mp3')
@@ -100,6 +101,7 @@ export function useAudioRecorder() {
       console.log('Transcripción:', data)
       transcription.value = data.text
       editableText.value = data.text
+      aiProcessedText.value = data.text
     } catch (error) {
       handleRecordingError(error, 'en la transcripción')
     } finally {
@@ -168,6 +170,7 @@ export function useAudioRecorder() {
     editableText,
     currentShortcut,
     soundEnabled,
-    toggleRecording
+    toggleRecording,
+    aiProcessedText
   }
 }

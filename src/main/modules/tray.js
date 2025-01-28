@@ -14,7 +14,7 @@ export function createTray({ mainWindow, app }) {
       }
     },
     {
-      label: 'Sonidos',
+      label: 'Sounds',
       type: 'checkbox',
       checked: true,
       click: (menuItem) => {
@@ -22,7 +22,7 @@ export function createTray({ mainWindow, app }) {
       }
     },
     {
-      label: 'Siempre Visible',
+      label: 'Always Visible',
       type: 'checkbox',
       checked: false,
       click: (menuItem) => {
@@ -33,7 +33,7 @@ export function createTray({ mainWindow, app }) {
       type: 'separator'
     },
     {
-      label: 'Salir',
+      label: 'Exit',
       click: () => {
         app.isQuitting = true
         app.quit()
@@ -54,7 +54,7 @@ export function createTray({ mainWindow, app }) {
 
 export function updateTrayTooltip(isRecording) {
   if (isRecording) {
-    tray?.setToolTip('Dicto Desktop - Grabando...')
+    tray?.setToolTip('Dicto Desktop - Recording...')
   } else {
     tray?.setToolTip('Dicto Desktop')
   }
@@ -62,7 +62,7 @@ export function updateTrayTooltip(isRecording) {
 
 export function updateSoundMenuItem(value) {
   if (tray && trayContextMenu) {
-    const soundMenuItem = trayContextMenu.items.find((item) => item.label === 'Sonidos')
+    const soundMenuItem = trayContextMenu.items.find((item) => item.label === 'Sounds')
     if (soundMenuItem) {
       soundMenuItem.checked = value
       tray.setContextMenu(trayContextMenu)
