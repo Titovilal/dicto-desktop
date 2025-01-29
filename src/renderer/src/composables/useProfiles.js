@@ -27,7 +27,8 @@ export function useProfiles() {
       name: '',
       prompt: '',
       useAI: false,
-      copyToClipboard: false
+      copyToClipboard: false,
+      language: 'english' // Update default language
     }
   }
 
@@ -40,7 +41,8 @@ export function useProfiles() {
       name: newProfile.value.name,
       prompt: newProfile.value.prompt,
       useAI: newProfile.value.useAI,
-      copyToClipboard: newProfile.value.copyToClipboard
+      copyToClipboard: newProfile.value.copyToClipboard,
+      language: newProfile.value.language
     }
     await window.electron.ipcRenderer.invoke('create-profile', profileData)
     await loadProfiles()
@@ -65,7 +67,8 @@ export function useProfiles() {
       name: editingProfile.value.name,
       prompt: editingProfile.value.prompt,
       useAI: editingProfile.value.useAI,
-      copyToClipboard: editingProfile.value.copyToClipboard
+      copyToClipboard: editingProfile.value.copyToClipboard,
+      language: editingProfile.value.language
     }
     await window.electron.ipcRenderer.invoke('update-profile', profileData)
     await loadProfiles()

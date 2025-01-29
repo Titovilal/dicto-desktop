@@ -1,8 +1,8 @@
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { usePlaySound } from './usePlaySound'
 import { useShortcutEditor } from './useShortcutEditor'
 
-export function useAudioRecorder() {
+export function useAudioRecorder(selectedProfile, profiles) {
   const isRecording = ref(false)
   const mediaRecorder = ref(null)
   const audioChunks = ref([])
@@ -16,6 +16,10 @@ export function useAudioRecorder() {
 
   const { playStartSound, playStopSound, playFinishSound, soundEnabled } = usePlaySound()
   const { currentShortcut } = useShortcutEditor() // Remove setToggleCallback
+
+  const currentProfile = computed(() => {
+    return profiles.value.find((p) => p.name === selectedProfile.value) || { language: 'english' }
+  })
 
   const toggleRecording = () => {
     console.log('Toggle recording called, current state:', isRecording.value)
@@ -78,7 +82,8 @@ export function useAudioRecorder() {
   const sendToWhisper = async (audioBlob) => {
     const formData = new FormData()
     formData.append('file', audioBlob, 'recording.webm')
-    formData.append('language', 'spanish')
+    console.log('Selected profile:', selectedProfile.value)
+    formData.append('language', currentProfile.value.language)
     formData.append('response_format', 'json')
 
     try {

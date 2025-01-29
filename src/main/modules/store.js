@@ -12,7 +12,8 @@ async function initStore() {
           name: 'Default',
           prompt: 'Transcribe the following audio:',
           useAI: true,
-          copyToClipboard: false
+          copyToClipboard: false,
+          language: 'english'
         }
       ]
     }

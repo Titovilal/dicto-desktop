@@ -1,3 +1,30 @@
+<script setup>
+import { onMounted } from 'vue'
+import { useProfiles } from '../composables/useProfiles'
+import { Pencil, Trash2 } from 'lucide-vue-next'
+import ProfileForm from './ProfileForm.vue'
+import { LANGUAGES } from '../composables/languages'
+
+const {
+  profiles,
+  newProfile,
+  editingProfile,
+  editingId,
+  loadProfiles,
+  addNewProfile,
+  cancelNewProfile,
+  saveNewProfile,
+  startEdit,
+  cancelEdit,
+  saveEditingProfile,
+  deleteProfile
+} = useProfiles()
+
+onMounted(async () => {
+  await loadProfiles()
+})
+</script>
+
 <template>
   <div class="bg-white rounded-2xl p-6 shadow-sm space-y-6">
     <h3 class="text-2xl font-medium text-[#1d1d1f]">Profile Management</h3>
@@ -18,60 +45,7 @@
       <div class="space-y-4">
         <!-- New Profile Form -->
         <div v-if="newProfile" class="bg-white border-2 border-[#1d1d1f] p-4 rounded-lg">
-          <div class="space-y-4">
-            <div>
-              <input
-                v-model="newProfile.name"
-                type="text"
-                required
-                placeholder="Profile Name"
-                class="w-full px-3 py-2 bg-[#f5f5f7] rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1d1d1f]"
-              />
-            </div>
-            <div>
-              <textarea
-                v-model="newProfile.prompt"
-                required
-                placeholder="Enter prompt"
-                rows="2"
-                class="w-full px-3 py-2 bg-[#f5f5f7] rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1d1d1f]"
-              ></textarea>
-            </div>
-            <div class="flex gap-4">
-              <label class="flex items-center">
-                <input
-                  v-model="newProfile.useAI"
-                  type="checkbox"
-                  class="form-checkbox h-4 w-4 text-[#1d1d1f]"
-                />
-                <span class="ml-2 text-sm">Use AI</span>
-              </label>
-              <label class="flex items-center">
-                <input
-                  v-model="newProfile.copyToClipboard"
-                  type="checkbox"
-                  class="form-checkbox h-4 w-4 text-[#1d1d1f]"
-                />
-                <span class="ml-2 text-sm">Copy to Clipboard</span>
-              </label>
-            </div>
-            <div class="flex justify-end gap-2">
-              <button
-                class="px-3 py-1.5 text-sm font-medium text-[#86868b] hover:text-[#1d1d1f]"
-                type="button"
-                @click="cancelNewProfile"
-              >
-                Cancel
-              </button>
-              <button
-                class="px-3 py-1.5 text-sm font-medium bg-[#1d1d1f] text-white rounded-lg hover:bg-[#2d2d2f]"
-                type="button"
-                @click="saveNewProfile"
-              >
-                Save
-              </button>
-            </div>
-          </div>
+          <ProfileForm v-model="newProfile" @save="saveNewProfile" @cancel="cancelNewProfile" />
         </div>
 
         <!-- Profile Items -->
@@ -82,58 +56,7 @@
           :class="{ 'border-2 border-[#1d1d1f] bg-white': editingId === profile.name }"
         >
           <div v-if="editingId === profile.name">
-            <div class="space-y-4">
-              <div>
-                <input
-                  v-model="editingProfile.name"
-                  type="text"
-                  required
-                  class="w-full px-3 py-2 bg-[#f5f5f7] rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1d1d1f]"
-                />
-              </div>
-              <div>
-                <textarea
-                  v-model="editingProfile.prompt"
-                  required
-                  rows="2"
-                  class="w-full px-3 py-2 bg-[#f5f5f7] rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1d1d1f]"
-                ></textarea>
-              </div>
-              <div class="flex gap-4">
-                <label class="flex items-center">
-                  <input
-                    v-model="editingProfile.useAI"
-                    type="checkbox"
-                    class="form-checkbox h-4 w-4 text-[#1d1d1f]"
-                  />
-                  <span class="ml-2 text-sm">Use AI</span>
-                </label>
-                <label class="flex items-center">
-                  <input
-                    v-model="editingProfile.copyToClipboard"
-                    type="checkbox"
-                    class="form-checkbox h-4 w-4 text-[#1d1d1f]"
-                  />
-                  <span class="ml-2 text-sm">Copy to Clipboard</span>
-                </label>
-              </div>
-              <div class="flex justify-end gap-2">
-                <button
-                  class="px-3 py-1.5 text-sm font-medium text-[#86868b] hover:text-[#1d1d1f]"
-                  type="button"
-                  @click="cancelEdit"
-                >
-                  Cancel
-                </button>
-                <button
-                  class="px-3 py-1.5 text-sm font-medium bg-[#1d1d1f] text-white rounded-lg hover:bg-[#2d2d2f]"
-                  type="button"
-                  @click="saveEditingProfile"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
+            <ProfileForm v-model="editingProfile" @save="saveEditingProfile" @cancel="cancelEdit" />
           </div>
           <div v-else class="flex justify-between items-start">
             <div>
@@ -145,6 +68,9 @@
                 </span>
                 <span class="text-xs bg-[#e5e5e7] px-2 py-1 rounded-full">
                   {{ profile.copyToClipboard ? 'Auto Copy' : 'Manual Copy' }}
+                </span>
+                <span class="text-xs bg-[#e5e5e7] px-2 py-1 rounded-full">
+                  {{ LANGUAGES[profile.language] }}
                 </span>
               </div>
             </div>
@@ -168,28 +94,3 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { onMounted } from 'vue'
-import { useProfiles } from '../composables/useProfiles'
-import { Pencil, Trash2 } from 'lucide-vue-next'
-
-const {
-  profiles,
-  newProfile,
-  editingProfile,
-  editingId,
-  loadProfiles,
-  addNewProfile,
-  cancelNewProfile,
-  saveNewProfile,
-  startEdit,
-  cancelEdit,
-  saveEditingProfile,
-  deleteProfile
-} = useProfiles()
-
-onMounted(async () => {
-  await loadProfiles()
-})
-</script>

@@ -23,7 +23,7 @@ const {
   toggleRecording: toggleAudioRecording,
   aiProcessedText,
   playFinishSound
-} = useAudioRecorder()
+} = useAudioRecorder(selectedProfile, profiles)
 
 const {
   isRecording: shortcutIsRecording,
@@ -55,7 +55,7 @@ watch(
 const copyToClipboard = async (text) => {
   try {
     console.log('Copying to clipboard...')
-    await navigator.clipboard.writeText(text)
+    await window.electron.ipcRenderer.invoke('write-to-clipboard', text)
     console.log('Copied to clipboard!')
   } catch (err) {
     console.error('Clipboard Copy Error:', err)

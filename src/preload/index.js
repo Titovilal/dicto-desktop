@@ -54,7 +54,8 @@ const api = {
         'delete-profile',
         'save-selected-profile',
         'get-selected-profile',
-        'process-with-ai'
+        'process-with-ai',
+        'write-to-clipboard' // Añadido este canal
       ]
       if (validChannels.includes(channel)) {
         return ipcRenderer.invoke(channel, ...args)

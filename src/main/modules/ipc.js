@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, clipboard } from 'electron'
 import { updateSoundMenuItem } from './tray'
 import {
   startShortcutRecording,
@@ -105,5 +105,10 @@ export function setupIPC(mainWindow) {
 
   ipcMain.handle('process-with-ai', async (event, { text, prompt }) => {
     return await processWithAI(text, prompt)
+  })
+
+  ipcMain.handle('write-to-clipboard', async (event, text) => {
+    clipboard.writeText(text)
+    return true
   })
 }
