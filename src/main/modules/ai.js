@@ -1,9 +1,10 @@
-import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
+
 export async function processWithAI(text, prompt) {
   try {
-    const openai = new OpenAI({
-      baseURL: 'https://api.deepseek.com',
-      apiKey: 'sk-da6f9635b42248118ecdbe813d7461d4'
+    const anthropic = new Anthropic({
+      apiKey:
+        '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'
     })
 
     const systemPrompt = `Your task is to rewrite the provided text following these strict rules:
@@ -31,22 +32,18 @@ OUTPUT FORMAT:
 
 If the original text is empty or invalid, return an empty string "".`
 
-    const completion = await openai.chat.completions.create({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: text }
-      ],
-      model: 'deepseek-chat',
-      temperature: 0.3, // Reduced for better consistency
-      max_tokens: 2000,
-      presence_penalty: -0.5, // Discourages deviations from original content
-      frequency_penalty: 0.3 // Prevents excessive repetition
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-haiku-latest',
+      max_tokens: 4000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: text }],
+      temperature: 0.3
     })
 
     // Extract only the content between <output> tags
-    const response = completion.choices[0].message.content
-    const outputMatch = response.match(/<output>([\s\S]*)<\/output>/)
-    return outputMatch ? outputMatch[1].trim() : response.trim()
+    const content = response.content[0].text
+    const outputMatch = content.match(/<output>([\s\S]*)<\/output>/)
+    return outputMatch ? outputMatch[1].trim() : content.trim()
   } catch (error) {
     console.error('AI Processing Error:', error)
     throw error

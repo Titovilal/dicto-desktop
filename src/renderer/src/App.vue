@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useAudioRecorder } from './composables/useAudioRecorder'
 import { useShortcutEditor } from './composables/useShortcutEditor'
 import { useProfiles } from './composables/useProfiles'
@@ -7,9 +7,7 @@ import { useAI } from './composables/useAI'
 import Header from './components/Header.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import ProfilePanel from './components/ProfilePanel.vue'
-import RecordingButton from './components/RecordingButton.vue'
-import TranscriptionBox from './components/TranscriptionBox.vue'
-import ShortcutInfo from './components/ShortcutInfo.vue'
+import HomePanel from './components/HomePanel.vue'
 
 const showSettings = ref(false)
 const showProfiles = ref(false)
@@ -20,7 +18,6 @@ const { profiles, selectedProfile, loadProfiles, setSelectedProfile } = useProfi
 const {
   isRecording: audioIsRecording,
   isLoading: audioIsLoading,
-  errorMessage,
   editableText,
   currentShortcut: audioCurrentShortcut,
   toggleRecording: toggleAudioRecording,
@@ -38,9 +35,6 @@ const {
 // AI setup
 const { processWithAI } = useAI()
 const aiProcessedText = ref('')
-
-// Add the currentProfile computed property
-const currentProfile = computed(() => profiles.value.find((p) => p.name === selectedProfile.value))
 
 // Initialize profiles
 onMounted(async () => {
@@ -88,6 +82,7 @@ watch(editableText, async (newText) => {
           await copyToClipboard(processedText)
         }
         playSound(finishSound)
+        console.log('AI processed text:', aiProcessedText.value)
       }
     } catch (error) {
       console.error('Error processing with AI:', error)
@@ -113,54 +108,60 @@ watch(selectedProfile, async (newProfile) => {
     await window.electron.ipcRenderer.invoke('set-selected-profile', newProfile)
   }
 })
+
+function handleCloseAll() {
+  showSettings.value = false
+  showProfiles.value = false
+}
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-[#f5f5f7] text-[#1d1d1f]">
-    <div class="flex flex-col flex-grow px-6 py-6">
-      <Header
-        :profiles="profiles"
-        :selected-profile="selectedProfile"
-        @profile-change="handleProfileChange"
-        @toggle-settings="showSettings = !showSettings"
-        @toggle-profiles="showProfiles = !showProfiles"
-      />
+  <div class="h-screen p-6 bg-gray-100 space-y-3">
+    <Header
+      :profiles="profiles"
+      :selected-profile="selectedProfile"
+      @profile-change="handleProfileChange"
+      @toggle-settings="showSettings = !showSettings"
+      @toggle-profiles="showProfiles = !showProfiles"
+      @close-all="handleCloseAll"
+    />
 
-      <main class="flex flex-col flex-grow mt-8">
-        <SettingsPanel
-          v-if="showSettings"
-          :audio-current-shortcut="audioCurrentShortcut"
-          :shortcut-is-recording="shortcutIsRecording"
-          @start-recording="startShortcutRecording"
-          @stop-recording="stopShortcutRecording"
+    <SettingsPanel
+      v-if="showSettings"
+      :audio-current-shortcut="audioCurrentShortcut"
+      :shortcut-is-recording="shortcutIsRecording"
+      @start-recording="startShortcutRecording"
+      @stop-recording="stopShortcutRecording"
+    />
+
+    <ProfilePanel v-if="showProfiles" v-model:selected-profile="selectedProfile" />
+
+    <HomePanel
+      v-if="!showProfiles && !showSettings"
+      :shortcut="currentShortcut"
+      :is-recording="audioIsRecording"
+      :is-loading="audioIsLoading"
+      :model-value="editableText"
+      :ai-processed-text="aiProcessedText"
+      @toggle-recording="toggleAudioRecording"
+    />
+
+    <!-- <div v-if="!showProfiles && !showSettings" class="space-y-3">
+      <div class="flex gap-4">
+        <RecordingButton
+          :is-loading="audioIsLoading"
+          :is-recording="audioIsRecording"
+          class="flex-shrink-0"
+          @toggle-recording="toggleAudioRecording"
         />
 
-        <ProfilePanel v-else-if="showProfiles" v-model:selected-profile="selectedProfile" />
-
-        <div v-else class="flex flex-col flex-grow">
-          <RecordingButton
-            :is-loading="audioIsLoading"
-            :is-recording="audioIsRecording"
-            @toggle-recording="toggleAudioRecording"
-          />
-
-          <div
-            v-if="errorMessage"
-            class="w-full p-4 rounded-2xl bg-red-50 text-red-600 text-sm mb-6"
-            role="alert"
-          >
-            {{ errorMessage }}
-          </div>
-
-          <TranscriptionBox
-            v-model="editableText"
-            :ai-processed-text="aiProcessedText"
-            :show-ai-box="!!currentProfile?.useAI"
-          />
-
-          <ShortcutInfo :shortcut="currentShortcut" :is-recording="audioIsRecording" />
-        </div>
-      </main>
-    </div>
+        <TranscriptionBox
+          v-model="editableText"
+          :ai-processed-text="aiProcessedText"
+          class="flex-1"
+        />
+      </div>
+      <ShortcutInfo :shortcut="currentShortcut" />
+    </div> -->
   </div>
 </template>

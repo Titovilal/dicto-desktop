@@ -1,5 +1,5 @@
 <script setup>
-import { Settings, UserPen, ChevronDown } from 'lucide-vue-next'
+import { Settings, UserPen, ChevronDown, Home } from 'lucide-vue-next'
 import { ref } from 'vue'
 
 defineProps({
@@ -13,7 +13,7 @@ defineProps({
   }
 })
 
-const emit = defineEmits(['profileChange', 'toggleSettings', 'toggleProfiles'])
+const emit = defineEmits(['profileChange', 'toggleSettings', 'toggleProfiles', 'closeAll'])
 
 const isDropdownOpen = ref(false)
 
@@ -29,11 +29,11 @@ function selectProfile(profileName) {
 
 <template>
   <header class="flex items-center justify-between">
-    <h1 class="text-3xl font-bold">Dicto</h1>
-    <div class="flex items-center space-x-2">
+    <h1 class="text-2xl font-bold">Dicto</h1>
+    <div class="flex items-center gap-3">
       <div class="relative">
         <button
-          class="flex items-center w-32 justify-between space-x-2 px-3 py-1.5 rounded-lg bg-[#e5e5e7] text-sm hover:bg-[#d5d5d7] focus:outline-none"
+          class="flex items-center w-32 justify-between space-x-3 px-3 py-1.5 rounded-lg bg-[#e5e5e7] text-sm hover:bg-[#d5d5d7] focus:outline-none"
           @click="toggleDropdown"
         >
           <span>{{ selectedProfile }}</span>
@@ -57,6 +57,13 @@ function selectProfile(profileName) {
           </button>
         </div>
       </div>
+      <button
+        class="p-2 rounded-full hover:bg-[#e5e5e7] text-[#1d1d1f]"
+        title="Home"
+        @click="emit('closeAll')"
+      >
+        <Home class="h-5 w-5" />
+      </button>
       <button
         class="p-2 rounded-full hover:bg-[#e5e5e7] text-[#1d1d1f]"
         title="Manage Profiles"

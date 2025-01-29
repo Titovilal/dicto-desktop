@@ -15,11 +15,13 @@ let mainWindow = null
 function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    minWidth: 380,
+    width: 380,
+    minHeight: 244,
+    height: 244,
     show: false,
     autoHideMenuBar: true,
-    alwaysOnTop: false,
+    alwaysOnTop: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
