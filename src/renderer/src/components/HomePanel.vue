@@ -76,10 +76,10 @@ defineEmits(['toggle-recording'])
     <!-- Recording button -->
     <div class="flex items-center">
       <button
-        class="relative transition-all duration-200 focus:outline-none shrink-0 flex items-center justify-center w-16 h-16 rounded-full"
+        class="relative transition-all duration-200 shdow cursor-pointer focus:outline-none shrink-0 flex items-center justify-center w-16 h-16 rounded-full"
         :class="{
-          'bg-red-500': isRecording,
-          'bg-[#007AFF]': !isRecording,
+          'bg-red-600': isRecording,
+          'bg-blue-500 hover:bg-blue-600 hover:shadow-xl': !isRecording,
           'opacity-70': isLoading
         }"
         :disabled="isLoading"
@@ -91,8 +91,8 @@ defineEmits(['toggle-recording'])
             class="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"
           ></div>
           <template v-else>
-            <Mic v-if="!isRecording" class="w-8 h-8 text-white" />
-            <Square v-else class="w-6 h-6 text-white" />
+            <Mic v-if="!isRecording" class="w-7 h-7 text-white" />
+            <Square v-else class="w-7 h-7 text-white" />
           </template>
         </div>
       </button>
@@ -102,7 +102,7 @@ defineEmits(['toggle-recording'])
     <div class="flex flex-col gap-3 w-full">
       <!-- Transcription box -->
       <div
-        class="flex items-center justify-between p-2 rounded-lg"
+        class="flex items-center justify-between shadow p-2 rounded-lg"
         :class="{
           'bg-white': !isLoading,
           'bg-blue-50': isLoading
@@ -120,7 +120,7 @@ defineEmits(['toggle-recording'])
             </span>
           </template>
           <button
-            class="w-8 h-8 flex items-center justify-center text-[#1d1d1f] hover:bg-[#e5e5e7] rounded-lg"
+            class="w-8 h-8 flex cursor-pointer items-center justify-center text-[#1d1d1f] hover:bg-[#e5e5e7] rounded-lg"
             @click="copyToClipboard(modelValue, 'transcription')"
           >
             <Check v-if="copiedStates.transcription" class="w-4 h-4 text-green-500" />
@@ -131,7 +131,7 @@ defineEmits(['toggle-recording'])
 
       <!-- AI Process box -->
       <div
-        class="flex items-center justify-between p-2 rounded-lg"
+        class="flex items-center justify-between shadow p-2 rounded-lg"
         :class="{
           'bg-white': !isProcessing,
           'bg-purple-50': isProcessing
@@ -148,7 +148,7 @@ defineEmits(['toggle-recording'])
             </span>
           </template>
           <button
-            class="w-8 h-8 flex items-center justify-center text-[#1d1d1f] hover:bg-[#e5e5e7] rounded-lg"
+            class="w-8 h-8 flex cursor-pointer items-center justify-center text-[#1d1d1f] hover:bg-[#e5e5e7] rounded-lg"
             @click="copyToClipboard(aiProcessedText, 'ai')"
           >
             <Check v-if="copiedStates.ai" class="w-4 h-4 text-green-500" />

@@ -33,7 +33,7 @@ function selectProfile(profileName) {
     <div class="flex items-center gap-3">
       <div class="relative">
         <button
-          class="flex items-center w-32 justify-between space-x-3 px-3 py-1.5 rounded-lg bg-[#e5e5e7] text-sm hover:bg-[#d5d5d7] focus:outline-none"
+          class="flex items-center w-32 cursor-pointer justify-between space-x-3 px-3 py-1.5 rounded-lg bg-[#e5e5e7] text-sm hover:bg-[#d5d5d7] focus:outline-none"
           @click="toggleDropdown"
         >
           <span>{{ selectedProfile }}</span>
@@ -49,7 +49,7 @@ function selectProfile(profileName) {
           <button
             v-for="profile in profiles"
             :key="profile.name"
-            class="w-full px-4 py-2 rounded-lg text-left text-sm hover:bg-[#e5e5e7]"
+            class="w-full px-4 py-2 cursor-pointer rounded-lg text-left text-sm hover:bg-[#e5e5e7]"
             :class="{ 'bg-[#e5e5e7]': profile.name === selectedProfile }"
             @click="selectProfile(profile.name)"
           >
@@ -58,21 +58,21 @@ function selectProfile(profileName) {
         </div>
       </div>
       <button
-        class="p-2 rounded-full hover:bg-[#e5e5e7] text-[#1d1d1f]"
+        class="p-2 rounded-full cursor-pointer hover:bg-[#e5e5e7] text-[#1d1d1f]"
         title="Home"
         @click="emit('closeAll')"
       >
         <Home class="h-5 w-5" />
       </button>
       <button
-        class="p-2 rounded-full hover:bg-[#e5e5e7] text-[#1d1d1f]"
+        class="p-2 rounded-full cursor-pointer hover:bg-[#e5e5e7] text-[#1d1d1f]"
         title="Manage Profiles"
         @click="$emit('toggleProfiles')"
       >
         <UserPen class="h-5 w-5" />
       </button>
       <button
-        class="p-2 rounded-full hover:bg-[#e5e5e7] text-[#1d1d1f]"
+        class="p-2 rounded-full cursor-pointer hover:bg-[#e5e5e7] text-[#1d1d1f]"
         title="Settings"
         @click="$emit('toggleSettings')"
       >
