@@ -16,7 +16,7 @@ defineEmits(['startRecording', 'stopRecording'])
 <template>
   <div class="w-full">
     <div class="bg-white rounded-2xl p-6 shadow-sm space-y-6">
-      <h3 class="text-base font-medium text-[#1d1d1f]">Settings</h3>
+      <h3 class="text-2xl font-medium text-[#1d1d1f]">Settings</h3>
 
       <div class="space-y-4">
         <h4 class="text-sm font-medium text-[#86868b]">Keyboard Shortcuts</h4>

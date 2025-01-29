@@ -34,13 +34,16 @@ $ npm run build:linux
 ```
 
 TODO:
-- [ ] Añadir sonido de terminado
-- [ ] Añadir sonido de error
+- [ ] Añadir forma de ir hacía atras en settings o profiles.
 - [ ] Crear modo compacto con solo indicadores visuales de lo que está pasando
-- [ ] Añadir reescritura con ChatGPT o DeepSeek
-- [ ] Añadir perfiles de prompt para reescritura
 - [ ] Añadir configuración de idioma
+- [ ] Refactorizar creando hook para audio, otro para whisper y otro para play sound
+- [ ] Mover whisper a module en backend
+
+- [ ] Añadir sonido de error
+- [x] Añadir sonido de terminado
+- [x] Añadir reescritura con ChatGPT o DeepSeek
+- [x] Añadir perfiles de prompt para reescritura
 - [ ] A la hora de hacer autenticacion, generar un token y que se tenga que poner en la aplicación
-- [ ] Añadir configuración de que modelo se elige para reescritura
-- [ ] Añadir configuración de que se hace cuando llega el resultado (e.g. poner en portapapeles)
+- [x] Añadir configuración de que se hace cuando llega el resultado (e.g. poner en portapapeles)
 - [ ] Crear nextjs app para el frontend con DB Neon y generación de API Keys
