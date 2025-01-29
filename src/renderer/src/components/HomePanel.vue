@@ -1,8 +1,8 @@
 <script setup>
-import { Mic, Square } from 'lucide-vue-next'
-import { ref, defineEmits } from 'vue'
+import { Mic, Square, Loader, Check, Copy } from 'lucide-vue-next'
+import { ref, watch } from 'vue'
 
-defineProps({
+const props = defineProps({
   shortcut: {
     type: String,
     required: true
@@ -22,8 +22,36 @@ defineProps({
   aiProcessedText: {
     type: String,
     required: true
+  },
+  isProcessing: {
+    type: Boolean,
+    required: true
   }
 })
+
+const timestamps = ref({
+  transcription: '',
+  ai: ''
+})
+
+// Actualizar timestamps automáticamente cuando cambian los valores
+watch(
+  () => props.modelValue,
+  (newValue) => {
+    if (newValue) {
+      timestamps.value.transcription = new Date().toLocaleTimeString('en-US', { hour12: false })
+    }
+  }
+)
+
+watch(
+  () => props.aiProcessedText,
+  (newValue) => {
+    if (newValue) {
+      timestamps.value.ai = new Date().toLocaleTimeString('en-US', { hour12: false })
+    }
+  }
+)
 
 const copiedStates = ref({
   transcription: false,
@@ -34,9 +62,7 @@ async function copyToClipboard(text, type) {
   try {
     await navigator.clipboard.writeText(text)
     copiedStates.value[type] = true
-    setTimeout(() => {
-      copiedStates.value[type] = false
-    }, 2000)
+    setTimeout(() => (copiedStates.value[type] = false), 2000)
   } catch (err) {
     console.error('Failed to copy:', err)
   }
@@ -75,27 +101,60 @@ defineEmits(['toggle-recording'])
     <!-- Text area -->
     <div class="flex flex-col gap-3 w-full">
       <!-- Transcription box -->
-      <div class="flex items-center justify-between p-2 bg-white rounded-lg">
+      <div
+        class="flex items-center justify-between p-2 rounded-lg"
+        :class="{
+          'bg-white': !isLoading,
+          'bg-blue-50': isLoading
+        }"
+      >
         <span class="text-sm font-medium">Transcription</span>
-        <button
-          class="text-sm text-[#1d1d1f] hover:bg-[#e5e5e7] px-2 py-1 rounded-lg flex items-center gap-1"
-          @click="copyToClipboard(modelValue, 'transcription')"
-        >
-          <span v-if="!copiedStates.transcription">Copy</span>
-          <span v-else class="text-green-600">✓ Copied</span>
-        </button>
+
+        <div class="flex items-center gap-2">
+          <template v-if="isLoading">
+            <Loader class="w-4 h-4 animate-spin text-blue-500" />
+          </template>
+          <template v-else>
+            <span v-if="timestamps.transcription" class="text-xs text-gray-500">
+              {{ timestamps.transcription }}
+            </span>
+          </template>
+          <button
+            class="w-8 h-8 flex items-center justify-center text-[#1d1d1f] hover:bg-[#e5e5e7] rounded-lg"
+            @click="copyToClipboard(modelValue, 'transcription')"
+          >
+            <Check v-if="copiedStates.transcription" class="w-4 h-4 text-green-500" />
+            <Copy v-else class="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       <!-- AI Process box -->
-      <div class="flex items-center justify-between p-2 bg-white rounded-lg">
+      <div
+        class="flex items-center justify-between p-2 rounded-lg"
+        :class="{
+          'bg-white': !isProcessing,
+          'bg-purple-50': isProcessing
+        }"
+      >
         <span class="text-sm font-medium">Processed</span>
-        <button
-          class="text-sm text-[#1d1d1f] hover:bg-[#e5e5e7] px-2 py-1 rounded-lg flex items-center gap-1"
-          @click="copyToClipboard(aiProcessedText, 'ai')"
-        >
-          <span v-if="!copiedStates.ai">Copy</span>
-          <span v-else class="text-green-600">✓ Copied</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <template v-if="isProcessing">
+            <Loader class="w-4 h-4 animate-spin text-purple-500" />
+          </template>
+          <template v-else>
+            <span v-if="timestamps.ai" class="text-xs text-gray-500">
+              {{ timestamps.ai }}
+            </span>
+          </template>
+          <button
+            class="w-8 h-8 flex items-center justify-center text-[#1d1d1f] hover:bg-[#e5e5e7] rounded-lg"
+            @click="copyToClipboard(aiProcessedText, 'ai')"
+          >
+            <Check v-if="copiedStates.ai" class="w-4 h-4 text-green-500" />
+            <Copy v-else class="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   </div>

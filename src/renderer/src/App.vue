@@ -32,7 +32,7 @@ const {
 } = useShortcutEditor()
 
 // AI setup
-const { processWithAI } = useAIProcess()
+const { processWithAI, isProcessing: audioIsProcessing } = useAIProcess()
 
 // Initialize profiles
 onMounted(async () => {
@@ -66,24 +66,17 @@ const copyToClipboard = async (text) => {
 watch(editableText, async (newText) => {
   if (!newText) return
 
-  // Get fresh profile data directly from profiles ref
   const profile = profiles.value.find((p) => p.name === selectedProfile.value)
   if (!profile) return
 
   if (profile.useAI) {
-    console.log('Processing with AI...')
-    try {
-      const processedText = await processWithAI(newText, profile.prompt)
-      if (processedText) {
-        aiProcessedText.value = processedText
-        if (profile.copyToClipboard) {
-          await copyToClipboard(processedText)
-        }
-        playFinishSound
-        console.log('AI processed text:', aiProcessedText.value)
+    const processedText = await processWithAI(newText, profile.prompt)
+    if (processedText) {
+      aiProcessedText.value = processedText
+      if (profile.copyToClipboard) {
+        await copyToClipboard(processedText)
       }
-    } catch (error) {
-      console.error('Error processing with AI:', error)
+      playFinishSound()
     }
   } else {
     aiProcessedText.value = ''
@@ -111,6 +104,16 @@ function handleCloseAll() {
   showSettings.value = false
   showProfiles.value = false
 }
+
+function toggleProfiles() {
+  showProfiles.value = !showProfiles.value
+  showSettings.value = false
+}
+
+function toggleSettings() {
+  showSettings.value = !showSettings.value
+  showProfiles.value = false
+}
 </script>
 
 <template>
@@ -119,8 +122,8 @@ function handleCloseAll() {
       :profiles="profiles"
       :selected-profile="selectedProfile"
       @profile-change="handleProfileChange"
-      @toggle-settings="showSettings = !showSettings"
-      @toggle-profiles="showProfiles = !showProfiles"
+      @toggle-settings="toggleSettings"
+      @toggle-profiles="toggleProfiles"
       @close-all="handleCloseAll"
     />
 
@@ -139,6 +142,7 @@ function handleCloseAll() {
       :shortcut="currentShortcut"
       :is-recording="audioIsRecording"
       :is-loading="audioIsLoading"
+      :is-processing="audioIsProcessing"
       :model-value="editableText"
       :ai-processed-text="aiProcessedText"
       @toggle-recording="toggleAudioRecording"

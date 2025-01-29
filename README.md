@@ -34,13 +34,14 @@ $ npm run build:linux
 ```
 
 TODO:
-- [ ] Añadir forma de ir hacía atras en settings o profiles.
 - [ ] Crear modo compacto con solo indicadores visuales de lo que está pasando
-- [ ] Añadir configuración de idioma
-- [ ] Refactorizar creando hook para audio, otro para whisper y otro para play sound
 - [ ] Mover whisper a module en backend
-
 - [ ] Añadir sonido de error
+- [X] Hacer que se vea bien lo que esta pasando
+
+- [x] Añadir forma de ir hacía atras en settings o profiles.
+- [x] Añadir configuración de idioma
+- [x] Refactorizar creando hook para audio, otro para whisper y otro para play sound
 - [x] Añadir sonido de terminado
 - [x] Añadir reescritura con ChatGPT o DeepSeek
 - [x] Añadir perfiles de prompt para reescritura
