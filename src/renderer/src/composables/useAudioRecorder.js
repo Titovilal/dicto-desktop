@@ -1,4 +1,6 @@
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
+import { usePlaySound } from './usePlaySound'
+import { useShortcutEditor } from './useShortcutEditor'
 
 export function useAudioRecorder() {
   const isRecording = ref(false)
@@ -9,28 +11,19 @@ export function useAudioRecorder() {
   const apiKey = 'UmZq7RrONiR8gkPj8PPVeUKvfdx4Vs51'
   const errorMessage = ref('')
   const isLoading = ref(false)
-  const soundEnabled = ref(true)
   const alwaysOnTop = ref(false)
-  const currentShortcut = ref('CommandOrControl+Space')
   const aiProcessedText = ref('')
 
-  // Crear elementos de audio
-  const startSound = new Audio('/src/assets/start-recording.mp3')
-  const stopSound = new Audio('/src/assets/stop-recording.mp3')
-  const finishSound = new Audio('/src/assets/finish-processing.mp3')
+  const { playStartSound, playStopSound, playFinishSound, soundEnabled } = usePlaySound()
+  const { currentShortcut } = useShortcutEditor() // Remove setToggleCallback
 
-  const playSound = (sound) => {
-    if (soundEnabled.value) {
-      sound.play().catch((error) => {
-        console.error('Error playing sound:', error)
-      })
+  const toggleRecording = () => {
+    console.log('Toggle recording called, current state:', isRecording.value)
+    if (isRecording.value) {
+      stopRecording()
+    } else {
+      startRecording()
     }
-  }
-
-  const handleRecordingError = (error, context) => {
-    errorMessage.value = `Error ${context}: ${error.message}`
-    console.error(`Error ${context}:`, error)
-    isLoading.value = false
   }
 
   const startRecording = async () => {
@@ -44,10 +37,17 @@ export function useAudioRecorder() {
 
       mediaRecorder.value.start(1000)
       isRecording.value = true
-      playSound(startSound)
-      window.electron.ipcRenderer.send('recording-status-changed', true)
+      playStartSound()
     } catch (error) {
-      handleRecordingError(error, 'al acceder al micrófono')
+      handleRecordingError(error, 'accessing the microphone')
+    }
+  }
+  const stopRecording = () => {
+    if (mediaRecorder.value && isRecording.value) {
+      mediaRecorder.value.stop()
+      mediaRecorder.value.stream.getTracks().forEach((track) => track.stop())
+      isRecording.value = false
+      playStopSound()
     }
   }
 
@@ -64,19 +64,15 @@ export function useAudioRecorder() {
         const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' })
         await sendToWhisper(audioBlob)
       } catch (error) {
-        handleRecordingError(error, 'al procesar el audio')
+        handleRecordingError(error, 'proccessing the audio')
       }
     }
   }
 
-  const stopRecording = () => {
-    if (mediaRecorder.value && isRecording.value) {
-      mediaRecorder.value.stop()
-      mediaRecorder.value.stream.getTracks().forEach((track) => track.stop())
-      isRecording.value = false
-      playSound(stopSound)
-      window.electron.ipcRenderer.send('recording-status-changed', false)
-    }
+  const handleRecordingError = (error, context) => {
+    errorMessage.value = `Error ${context}: ${error.message}`
+    console.error(`Error ${context}:`, error)
+    isLoading.value = false
   }
 
   const sendToWhisper = async (audioBlob) => {
@@ -110,57 +106,23 @@ export function useAudioRecorder() {
     }
   }
 
-  const toggleRecording = () => {
-    console.log('Toggle recording called, current state:', isRecording.value)
-    if (isRecording.value) {
-      stopRecording()
-    } else {
-      startRecording()
-    }
-  }
-
-  // Watchers y event listeners
-  watch(isRecording, (newValue) => {
-    window.electron.ipcRenderer.send('recording-status-changed', newValue)
-  })
-
-  watch(soundEnabled, (newValue) => {
-    window.electron.ipcRenderer.send('set-sound-enabled', newValue)
-  })
-
   onMounted(() => {
     console.log('Component mounted, setting up listeners')
-    const setupEventListeners = () => {
-      window.electron.ipcRenderer.on('toggle-recording', () => {
-        console.log('Toggle recording event received')
-        if (!isLoading.value) {
-          toggleRecording()
-        }
-      })
 
-      window.electron.ipcRenderer.on('start-recording-hotkey', () => {
-        console.log('Hotkey event received')
+    // Setup direct listeners for shortcut events
+    window.electron.ipcRenderer.on('toggle-recording', () => {
+      if (!isLoading.value) {
         toggleRecording()
-      })
+      }
+    })
 
-      window.electron.ipcRenderer.on('sound-enabled-changed', (value) => {
-        soundEnabled.value = value
-      })
+    window.electron.ipcRenderer.on('start-recording-hotkey', () => {
+      if (!isLoading.value) {
+        toggleRecording()
+      }
+    })
 
-      window.electron.ipcRenderer.on('current-shortcut', (shortcut) => {
-        currentShortcut.value = shortcut
-      })
-    }
-
-    setupEventListeners()
-    window.electron.ipcRenderer.send('set-sound-enabled', soundEnabled.value)
     window.electron.ipcRenderer.send('set-always-on-top', alwaysOnTop.value)
-  })
-
-  onUnmounted(() => {
-    window.electron.ipcRenderer.removeAllListeners('toggle-recording')
-    window.electron.ipcRenderer.removeAllListeners('start-recording-hotkey')
-    window.electron.ipcRenderer.removeAllListeners('sound-enabled-changed')
   })
 
   return {
@@ -173,7 +135,6 @@ export function useAudioRecorder() {
     soundEnabled,
     toggleRecording,
     aiProcessedText,
-    playSound,
-    finishSound
+    playFinishSound
   }
 }

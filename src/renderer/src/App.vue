@@ -3,7 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useAudioRecorder } from './composables/useAudioRecorder'
 import { useShortcutEditor } from './composables/useShortcutEditor'
 import { useProfiles } from './composables/useProfiles'
-import { useAI } from './composables/useAI'
+import { useAIProcess } from './composables/useAIProcess'
 import Header from './components/Header.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import ProfilePanel from './components/ProfilePanel.vue'
@@ -19,22 +19,20 @@ const {
   isRecording: audioIsRecording,
   isLoading: audioIsLoading,
   editableText,
-  currentShortcut: audioCurrentShortcut,
+  currentShortcut,
   toggleRecording: toggleAudioRecording,
-  playSound,
-  finishSound
+  aiProcessedText,
+  playFinishSound
 } = useAudioRecorder()
 
 const {
   isRecording: shortcutIsRecording,
-  currentShortcut,
   startRecording: startShortcutRecording,
   stopRecording: stopShortcutRecording
 } = useShortcutEditor()
 
 // AI setup
-const { processWithAI } = useAI()
-const aiProcessedText = ref('')
+const { processWithAI } = useAIProcess()
 
 // Initialize profiles
 onMounted(async () => {
@@ -81,7 +79,7 @@ watch(editableText, async (newText) => {
         if (profile.copyToClipboard) {
           await copyToClipboard(processedText)
         }
-        playSound(finishSound)
+        playFinishSound
         console.log('AI processed text:', aiProcessedText.value)
       }
     } catch (error) {
@@ -92,7 +90,7 @@ watch(editableText, async (newText) => {
     if (profile.copyToClipboard) {
       await copyToClipboard(newText)
     }
-    playSound(finishSound)
+    playFinishSound()
   }
 })
 
@@ -128,7 +126,7 @@ function handleCloseAll() {
 
     <SettingsPanel
       v-if="showSettings"
-      :audio-current-shortcut="audioCurrentShortcut"
+      :current-shortcut="currentShortcut"
       :shortcut-is-recording="shortcutIsRecording"
       @start-recording="startShortcutRecording"
       @stop-recording="stopShortcutRecording"
@@ -145,23 +143,5 @@ function handleCloseAll() {
       :ai-processed-text="aiProcessedText"
       @toggle-recording="toggleAudioRecording"
     />
-
-    <!-- <div v-if="!showProfiles && !showSettings" class="space-y-3">
-      <div class="flex gap-4">
-        <RecordingButton
-          :is-loading="audioIsLoading"
-          :is-recording="audioIsRecording"
-          class="flex-shrink-0"
-          @toggle-recording="toggleAudioRecording"
-        />
-
-        <TranscriptionBox
-          v-model="editableText"
-          :ai-processed-text="aiProcessedText"
-          class="flex-1"
-        />
-      </div>
-      <ShortcutInfo :shortcut="currentShortcut" />
-    </div> -->
   </div>
 </template>

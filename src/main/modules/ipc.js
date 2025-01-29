@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { updateTrayTooltip, updateSoundMenuItem } from './tray'
+import { updateSoundMenuItem } from './tray'
 import {
   startShortcutRecording,
   stopShortcutRecording,
@@ -22,11 +22,6 @@ import { processWithAI } from './ai.js'
 export function setupIPC(mainWindow) {
   // Test IPC
   ipcMain.on('ping', () => console.log('pong'))
-
-  // Recording status
-  ipcMain.on('recording-status-changed', (_, isRecording) => {
-    updateTrayTooltip(isRecording)
-  })
 
   // Always on top
   ipcMain.on('set-always-on-top', (_, value) => {

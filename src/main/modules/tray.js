@@ -52,14 +52,6 @@ export function createTray({ mainWindow, app }) {
   return { tray, trayContextMenu }
 }
 
-export function updateTrayTooltip(isRecording) {
-  if (isRecording) {
-    tray?.setToolTip('Dicto Desktop - Recording...')
-  } else {
-    tray?.setToolTip('Dicto Desktop')
-  }
-}
-
 export function updateSoundMenuItem(value) {
   if (tray && trayContextMenu) {
     const soundMenuItem = trayContextMenu.items.find((item) => item.label === 'Sounds')

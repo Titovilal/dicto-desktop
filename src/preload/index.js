@@ -6,7 +6,6 @@ const api = {
   ipcRenderer: {
     send: (channel, ...args) => {
       const validChannels = [
-        'recording-status-changed',
         'ping',
         'toggle-recording',
         'start-recording-hotkey',

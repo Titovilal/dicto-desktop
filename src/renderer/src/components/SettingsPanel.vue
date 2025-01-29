@@ -1,6 +1,6 @@
 <script setup>
 defineProps({
-  audioCurrentShortcut: {
+  currentShortcut: {
     type: String,
     required: true
   },
@@ -26,7 +26,7 @@ defineEmits(['startRecording', 'stopRecording'])
             <kbd
               class="px-2 py-1 text-xs font-medium bg-[#f5f5f7] rounded-lg shadow-sm text-[#1d1d1f] ml-1"
             >
-              {{ audioCurrentShortcut }}
+              {{ currentShortcut }}
             </kbd>
           </div>
           <button

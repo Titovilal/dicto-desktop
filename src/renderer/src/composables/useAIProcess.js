@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-export function useAI() {
+export function useAIProcess() {
   const isProcessing = ref(false)
   const error = ref('')
 
