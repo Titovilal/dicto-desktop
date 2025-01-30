@@ -14,7 +14,24 @@
     "**/.hg": true,
     "**/CVS": true,
     "**/.DS_Store": true,
-    "**/Thumbs.db": true
+    "**/Thumbs.db": true,
+    "**/package.json": true,
+    "**/electron.vite.config.mjs": true,
+    "**/package-lock.json": true,
+    "**/electron.vite.config.1737930295432.mjs": true,
+    "**/electron-builder.yml": true,
+    "**/dev-app-update.yml": true,
+    "**/.prettierrc.yaml": true,
+    "**/.prettierignore": true,
+    "**/.gitignore": true,
+    "**/.eslintrc.cjs": true,
+    "**/.eslintignore": true,
+    "**/.editorconfig": true,
+    "**/out": true,
+    "**/build": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.vscode": true
   },
   "explorerExclude.backup": {}
 }
