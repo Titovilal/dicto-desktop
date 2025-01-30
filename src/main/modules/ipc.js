@@ -1,6 +1,5 @@
 import { ipcMain, clipboard } from 'electron'
 import { updateSoundMenuItem } from './tray'
-import { playSound } from './sound'
 import {
 	startShortcutRecording,
 	stopShortcutRecording,
@@ -111,9 +110,5 @@ export function setupIPC(mainWindow) {
 	ipcMain.handle('write-to-clipboard', async (event, text) => {
 		clipboard.writeText(text)
 		return true
-	})
-
-	ipcMain.handle('play-sound', async (event, soundName) => {
-		await playSound(soundName)
 	})
 }

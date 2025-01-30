@@ -15,10 +15,10 @@ let mainWindow = null
 function createWindow() {
 	// Create the browser window.
 	mainWindow = new BrowserWindow({
-		minWidth: 380,
-		width: 380,
-		minHeight: 244,
-		height: 244,
+		minWidth: 420,
+		width: 420,
+		minHeight: 260,
+		height: 260,
 		show: false,
 		autoHideMenuBar: true,
 		alwaysOnTop: true,

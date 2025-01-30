@@ -162,7 +162,7 @@ defineEmits(['toggle-recording'])
 	</div>
 
 	<!-- Shortcut info -->
-	<div class="text-sm text-gray-500 text-center">
+	<div class="text-sm pt-1 text-gray-500 text-center">
 		<kbd class="px-2 py-1 mr-1 bg-white rounded-lg shadow-sm">
 			{{ shortcut }}
 		</kbd>

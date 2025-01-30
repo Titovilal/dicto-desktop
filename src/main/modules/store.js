@@ -54,6 +54,13 @@ export async function updateProfile(profile) {
 	}
 	const { originalName, ...profileData } = profile
 	profiles[index] = profileData
+
+	// Update selected profile if it matches the renamed profile
+	const selectedProfile = await getSelectedProfile()
+	if (selectedProfile === originalName) {
+		store.set('selectedProfile', profileData.name)
+	}
+
 	store.set('profiles', profiles)
 }
 
