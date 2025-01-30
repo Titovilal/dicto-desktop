@@ -26,6 +26,7 @@
     "electron-store": "^10.0.0",
     "electron-updater": "^6.1.7",
     "lucide-vue-next": "^0.474.0",
+    "sound-play": "^1.1.0",
     "tailwindcss": "^4.0.0"
   },
   "devDependencies": {
@@ -41,5 +42,31 @@
     "prettier": "^3.3.2",
     "vite": "^5.3.1",
     "vue": "^3.4.30"
+  },
+  "build": {
+    "appId": "com.dicto.desktop",
+    "productName": "Dicto Desktop",
+    "asar": true,
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "files": [
+      "out/**/*",
+      "resources/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/sounds",
+        "to": "sounds"
+      }
+    ],
+    "win": {
+      "target": ["portable", "nsis"],
+      "sign": null,
+      "signingHashAlgorithms": null,
+      "certificateFile": null,
+      "certificatePassword": null
+    }
   }
 }
