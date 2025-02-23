@@ -1,6 +1,6 @@
 import { StoreSchema } from '@/types/types'
 import { useState, useEffect } from 'react'
-import { CaseLower, Volume2, VolumeX, Play } from 'lucide-react'
+import { CaseLower, Volume2, VolumeX, Play, InfoIcon } from 'lucide-react'
 import { invokeIPC } from '@/lib/ipc-renderer'
 import { useSound } from '@/hooks/useSound'
 
@@ -9,6 +9,36 @@ interface SettingsSectionProps {
   updateSettings: (settings: StoreSchema['settings']) => void
   user: StoreSchema['user'] | null
   updateUser?: (user: StoreSchema['user']) => void
+}
+
+function CharactersInfoCard() {
+  return (
+    <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/10">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <InfoIcon className="w-4 h-4 text-blue-400" />
+          <h4 className="text-sm font-medium text-blue-400">About Character Usage</h4>
+        </div>
+        <div className="space-y-2 text-sm text-zinc-400">
+          <p>Characters are counted in two ways:</p>
+          <ol className="list-decimal list-inside space-y-1 ml-1">
+            <li>When transcribing audio to text</li>
+            <li>When processing text with AI models</li>
+          </ol>
+          <p className="text-xs border-l-2 border-blue-500/20 pl-3 mt-3">
+            <span className="text-blue-400">Important:</span> Character count is based on the input
+            text, not the AI's response. For example, transcribing a 30-second audio might use 100
+            characters, and if you process that text with AI, it will count those same 100
+            characters, regardless of how long the AI's response is.
+          </p>
+          <p className="text-xs text-zinc-500 mt-2">
+            Currently, AI processing is free. We plan to add more powerful models in the future
+            which may use your available characters.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function SettingsSection({
@@ -330,6 +360,9 @@ export function SettingsSection({
                 {user.has_subscription ? 'Premium' : 'Free'}
               </div>
             </div>
+
+            <CharactersInfoCard />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Personal Information */}
               <div className="space-y-3 p-4 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
