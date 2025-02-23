@@ -50,11 +50,11 @@ function App(): JSX.Element {
   useEffect(() => {
     const iconInterval = setInterval(() => {
       setLoadingIconIndex((prev) => (prev + 1) % loadingIcons.length)
-    }, 1000)
+    }, 500)
 
     setTimeout(() => {
       setIsStartingApp(false)
-    }, 4000)
+    }, 2000)
 
     return () => {
       clearInterval(iconInterval)

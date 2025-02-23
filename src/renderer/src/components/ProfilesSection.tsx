@@ -4,7 +4,7 @@ import { DeleteDialog } from './DeleteProfileDialog'
 import { LANGUAGES } from '@/lib/languages'
 import { ProfileForm } from './ProfileForm'
 import { Settings, Check, Trash2, Plus } from 'lucide-react'
-import { AI_MODELS, getModelName } from '@/lib/models'
+import { AI_MODELS } from '@/lib/models'
 
 interface ProfilesSectionProps {
   profiles: Profile[]
@@ -13,6 +13,16 @@ interface ProfilesSectionProps {
   onDeleteProfile: (profile: Profile) => Promise<void>
   onSelectProfile: (profile: Profile) => Promise<void>
   settings: StoreSchema['settings'] | null
+}
+
+// Añade este componente para los indicadores
+function FeatureIndicator({ enabled, label }: { enabled: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className={`w-1.5 h-1.5 rounded-full ${enabled ? 'bg-emerald-500' : 'bg-zinc-600'}`} />
+      <span className="text-xs text-zinc-400">{label}</span>
+    </div>
+  )
 }
 
 export function ProfilesSection({
@@ -121,24 +131,36 @@ export function ProfilesSection({
             {profiles.map((profile) => (
               <div
                 key={profile.name}
-                className="p-6 rounded-xl bg-gradient-to-br from-zinc-800/50 to-zinc-800/30 border border-zinc-700/30 backdrop-blur-sm hover:from-zinc-800/60 hover:to-zinc-800/40 transition-all duration-200"
+                className="p-4 rounded-xl bg-gradient-to-br from-zinc-800/50 to-zinc-800/30 border border-zinc-700/30 backdrop-blur-sm hover:from-zinc-800/60 hover:to-zinc-800/40 transition-all duration-200"
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-medium text-zinc-100">{profile.name}</h3>
-                      {settings?.selectedProfile === profile.name && (
-                        <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-medium">
-                          Active
-                        </div>
-                      )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-medium text-zinc-100">{profile.name}</h3>
+                        {settings?.selectedProfile === profile.name && (
+                          <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-xs">
+                            Active
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-zinc-400">
+                          {LANGUAGES[profile.language as keyof typeof LANGUAGES]}
+                        </span>
+                        <span className="text-xs text-zinc-500">•</span>
+                        <span className="text-xs text-zinc-400">
+                          {AI_MODELS[profile.modelName as keyof typeof AI_MODELS]}
+                        </span>
+                      </div>
                     </div>
-                    <p className="text-xs text-zinc-400">
-                      {LANGUAGES[profile.language as keyof typeof LANGUAGES]}
-                    </p>
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3 mr-2">
+                      <FeatureIndicator enabled={profile.copyToClipboard} label="Copy" />
+                      <FeatureIndicator enabled={profile.autoPaste} label="Paste" />
+                    </div>
                     {settings?.selectedProfile !== profile.name && (
                       <button
                         onClick={() => handleSelectProfile(profile)}
@@ -161,74 +183,6 @@ export function ProfilesSection({
                     </button>
                   </div>
                 </div>
-
-                {/* Profile Features Grid */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="p-3 rounded-lg bg-zinc-800/30 border border-zinc-700/30">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400">AI Processing</span>
-                      <div
-                        className={`w-2 h-2 rounded-full ${profile.useAI ? 'bg-emerald-500' : 'bg-zinc-600'}`}
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-zinc-800/30 border border-zinc-700/30">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400">Auto Copy</span>
-                      <div
-                        className={`w-2 h-2 rounded-full ${profile.copyToClipboard ? 'bg-emerald-500' : 'bg-zinc-600'}`}
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-zinc-800/30 border border-zinc-700/30">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400">Auto Paste</span>
-                      <div
-                        className={`w-2 h-2 rounded-full ${profile.autoPaste ? 'bg-emerald-500' : 'bg-zinc-600'}`}
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-zinc-800/30 border border-zinc-700/30">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400">Return Both</span>
-                      <div
-                        className={`w-2 h-2 rounded-full ${profile.returnBoth ? 'bg-emerald-500' : 'bg-zinc-600'}`}
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-zinc-800/30 border border-zinc-700/30">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400">Model</span>
-                      <span className="text-xs text-zinc-300">
-                        {getModelName(profile.modelName as keyof typeof AI_MODELS)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-zinc-800/30 border border-zinc-700/30">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400">Temperature</span>
-                      <span className="text-xs text-zinc-300">
-                        {profile.temperature.toFixed(1)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {profile.transcriptionPrompt && (
-                  <div className="p-3 rounded-lg bg-zinc-800/30 border border-zinc-700/30">
-                    <span className="block text-xs text-zinc-400 mb-1">Transcription Prompt</span>
-                    <p className="text-sm text-zinc-300 line-clamp-2">
-                      {profile.transcriptionPrompt}
-                    </p>
-                  </div>
-                )}
-
-                {profile.prompt && (
-                  <div className="p-3 rounded-lg bg-zinc-800/30 border border-zinc-700/30">
-                    <span className="block text-xs text-zinc-400 mb-1">Prompt</span>
-                    <p className="text-sm text-zinc-300 line-clamp-2">{profile.prompt}</p>
-                  </div>
-                )}
               </div>
             ))}
           </div>

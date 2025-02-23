@@ -47,8 +47,6 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
     const formData = new FormData()
     const audioBlob = new Blob([audioData], { type: 'audio/webm' })
 
-    console.log("params", { profile, apiKey })
-
     // Añadir los parámetros según el perfil seleccionado
     formData.append('file', audioBlob, 'recording.webm')
     formData.append('language', profile.language)
@@ -66,6 +64,8 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
       formData.append('prompt', profile.prompt.trim())
     }
 
+    console.log("[API CALLS V1] Form data:", formData)
+
     const response = await fetch('https://dicto-vercel.vercel.app/api/v1/get-transcription', {
       method: 'POST',
       headers: {
@@ -80,7 +80,7 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
 
     const result = await response.json();
 
-    console.log("result", result)
+    console.log("[API CALLS V1] Result:", result)
 
     return {
       transcription: result.data.text ?? '',
