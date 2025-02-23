@@ -1,10 +1,10 @@
 # dicto-desktop
 
-An Electron application with Vue
+An Electron application with React and TypeScript
 
 ## Recommended IDE Setup
 
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar)
+- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
 
 ## Project Setup
 
@@ -33,18 +33,84 @@ $ npm run build:mac
 $ npm run build:linux
 ```
 
-TODO:
-- [ ] Mover whisper a module en backend
-- [ ] Hacer que cuando se reescriba o se modifique el nombre de un perfil y es el perfil seleccionado, que se modifique el perfil seleccionado porque si no se buguea.
+---
 
-- [x] Hacer que se vea bien lo que esta pasando
-- [x] Crear modo compacto con solo indicadores visuales de lo que está pasando
-- [x] Añadir forma de ir hacía atras en settings o profiles.
-- [x] Añadir configuración de idioma
-- [x] Refactorizar creando hook para audio, otro para whisper y otro para play sound
-- [x] Añadir sonido de terminado
-- [x] Añadir reescritura con ChatGPT o DeepSeek
-- [x] Añadir perfiles de prompt para reescritura
-- [ ] A la hora de hacer autenticacion, generar un token y que se tenga que poner en la aplicación
-- [x] Añadir configuración de que se hace cuando llega el resultado (e.g. poner en portapapeles)
-- [ ] Crear nextjs app para el frontend con DB Neon y generación de API Keys
+## TESTS
+
+- Abrir la app y grabar con botón
+
+- Abrir la app y grabar con shortcut
+
+- CRUD perfil
+
+- Cambiar de perfil
+
+- Borrar perfil seleccionado
+
+- Poner api key valida
+
+Poner api key inválida
+
+---
+
+- crear electron store DONE
+
+- establecer crud de perfiles DONE
+
+- establecer selección de perfiles DONE
+
+- establecer shortcut y cambio de shortcut DONE
+
+- establecer botones para grabar y parar de grabar DONE
+
+- grabar audio DONE
+
+- api call para transcribir DONE
+
+- api call para recibir info del usuario DONE
+
+- poner sonidos de grabacion DONE
+
+- hacer api call DONE
+
+- que no se pueda apretar el boton de grabar mientras se este procesando DONE
+
+- mirar lo de copiar al portapapeles automatico DONE
+
+- mirar lo de hacer ctrl+v automatico DONE
+
+- mejorar interfaz DONE
+
+- manejar error de falta de creditos o api key no existe DONE
+
+- mirar porque la primera ejecucion la tengo que hacer apretando el boton y no desde el shortcut, sino da error y dice que no hay profile DONE
+
+- mejorar efectos de sonido DONE
+
+- controlar volumen desde settings DONE
+
+- poner modo siempre visible DONE
+
+- crear icono de la app DONE
+
+- crear modo compacto DONE
+
+- poner opcion siempre visible DONE
+
+---
+
+- comprobar que funciona el transcription prompt bien
+
+- comprobar que funciona el temperature correctamente
+
+- mejorar explicaciones del profile form
+
+- simplificar visual de perfil en profile section
+
+- subir un poco el precio
+
+- crear playground como excalidraw
+
+- usar openrouter y permitir elegir diferentes modelos (haiku, 4o-mini) **NO MVP**
+
+- crear funcionalidad reescribir con IA **NO MVP**
