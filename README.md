@@ -97,20 +97,20 @@ Poner api key inválida
 
 - poner opcion siempre visible DONE
 
+- comprobar que funciona el transcription prompt bien DONE -> NO DE FORMA EXHAUSTIVA
+
+- comprobar que funciona el temperature correctamente DONE -> NO DE FORMA EXHAUSTIVA
+
+- mejorar explicaciones del profile form DONE
+
+- simplificar visual de perfil en profile section DONE
+
+- usar openrouter y permitir elegir diferentes modelos (haiku, 4o-mini) DONE
+
 ---
-
-- comprobar que funciona el transcription prompt bien
-
-- comprobar que funciona el temperature correctamente
-
-- mejorar explicaciones del profile form
-
-- simplificar visual de perfil en profile section
 
 - subir un poco el precio
 
 - crear playground como excalidraw
-
-- usar openrouter y permitir elegir diferentes modelos (haiku, 4o-mini) **NO MVP**
 
 - crear funcionalidad reescribir con IA **NO MVP**

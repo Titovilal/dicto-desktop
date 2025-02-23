@@ -290,9 +290,9 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps) {
                       <SelectItem key={id} value={id}>
                         <div className="flex flex-col">
                           <span>{name}</span>
-                          <span className="text-xs text-zinc-400">
+                          {/* <span className="text-xs text-zinc-400">
                             {AI_MODELS_INFO[id as keyof typeof AI_MODELS].description}
-                          </span>
+                          </span> */}
                         </div>
                       </SelectItem>
                     ))}

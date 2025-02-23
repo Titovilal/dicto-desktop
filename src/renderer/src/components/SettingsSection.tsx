@@ -357,7 +357,7 @@ export function SettingsSection({
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium text-zinc-100">Account Information</h2>
               <div className="px-3 py-1 rounded-full bg-zinc-700/30 text-xs text-zinc-400">
-                {user.has_subscription ? 'Premium' : 'Free'}
+                Information
               </div>
             </div>
 
