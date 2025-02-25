@@ -31,29 +31,34 @@ export function useRecord() {
             }
 
             mediaRecorderRef.current.onstop = async () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-                const arrayBuffer = await audioBlob.arrayBuffer()
-                const audioData = new Uint8Array(arrayBuffer)
-                const selectedProfile = profiles.find((p) => p.name === settings.selectedProfile)
+                try {
+                    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+                    const arrayBuffer = await audioBlob.arrayBuffer()
+                    const audioData = new Uint8Array(arrayBuffer)
+                    const selectedProfile = profiles.find((p) => p.name === settings.selectedProfile)
 
-                const result = await invokeIPC('process-recording', {
-                    audioData,
-                    profile: selectedProfile,
-                    apiKey: settings?.apiKey
-                })
+                    const result = await invokeIPC('process-recording', {
+                        audioData,
+                        profile: selectedProfile,
+                        apiKey: settings?.apiKey
+                    })
 
-                playFinishSound(settings.soundVolume)  // Add volume parameter here
-                setIsProcessing(false)
-                setTranscription(result.transcription)
-                setProcessedText(result.processedText)
+                    playFinishSound(settings.soundVolume)
+                    setIsProcessing(false)
+                    setTranscription(result.transcription)
+                    setProcessedText(result.processedText)
 
-                if (selectedProfile?.copyToClipboard) {
-                    const textToCopy = selectedProfile.useAI ? result.processedText : result.transcription
-                    await sendIPC('copy-to-clipboard', textToCopy)
+                    if (selectedProfile?.copyToClipboard) {
+                        const textToCopy = selectedProfile.useAI ? result.processedText : result.transcription
+                        await sendIPC('copy-to-clipboard', textToCopy)
 
-                    if (selectedProfile.autoPaste) {
-                        await sendIPC('simulate-paste')
+                        if (selectedProfile.autoPaste) {
+                            await sendIPC('simulate-paste')
+                        }
                     }
+                } catch (error) {
+                    console.error('Error processing recording:', error)
+                    setIsProcessing(false)
                 }
             }
 
