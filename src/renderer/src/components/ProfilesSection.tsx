@@ -158,17 +158,22 @@ export function ProfilesSection({
 
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-3 mr-2">
+                      <FeatureIndicator enabled={profile.useAI} label="Use AI" />
                       <FeatureIndicator enabled={profile.copyToClipboard} label="Copy" />
                       <FeatureIndicator enabled={profile.autoPaste} label="Paste" />
                     </div>
-                    {settings?.selectedProfile !== profile.name && (
-                      <button
-                        onClick={() => handleSelectProfile(profile)}
-                        className="p-2 rounded-lg bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 transition-all duration-200"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                    )}
+
+                    <button
+                      onClick={() => handleSelectProfile(profile)}
+                      className={`p-2 rounded-lg ${
+                        settings?.selectedProfile !== profile.name
+                          ? 'text-zinc-300 hover:bg-zinc-700/70 transition-all duration-200'
+                          : 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 transition-all duration-200'
+                      }`}
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+
                     <button
                       onClick={() => setEditingProfile(profile)}
                       className="p-2 rounded-lg bg-zinc-700/50 text-zinc-300 hover:bg-zinc-700/70 transition-all duration-200"

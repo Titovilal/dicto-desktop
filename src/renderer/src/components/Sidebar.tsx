@@ -32,7 +32,7 @@ interface SidebarProps {
 
 export function Sidebar({ currentSection, onSectionChange, onToggleCompactMode }: SidebarProps) {
   const openDashboard = () => {
-    invokeIPC('open-external', 'https://dicto-vercel.vercel.app/dashboard')
+    invokeIPC('open-external', 'https://dicto.io/dashboard')
   }
 
   return (

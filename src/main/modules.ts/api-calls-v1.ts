@@ -66,7 +66,7 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
 
     console.log("[API CALLS V1] Form data:", formData)
 
-    const response = await fetch('https://dicto-vercel.vercel.app/api/v1/get-transcription', {
+    const response = await fetch('https://www.dicto.io/api/v1/get-transcription', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`
@@ -94,7 +94,7 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
 
 async function getUserData(apiKey: string) {
   try {
-    const response = await fetch('https://dicto-vercel.vercel.app/api/v1/get-user-data', {
+    const response = await fetch('https://www.dicto.io/api/v1/get-user-data', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,

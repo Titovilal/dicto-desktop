@@ -107,6 +107,8 @@ Poner api key inválida
 
 - usar openrouter y permitir elegir diferentes modelos (haiku, 4o-mini) DONE
 
+- Revisar system prompt
+
 ---
 
 - subir un poco el precio

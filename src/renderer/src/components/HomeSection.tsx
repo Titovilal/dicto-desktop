@@ -272,6 +272,7 @@ export function HomeSection({
                 className="w-full flex-1 p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-600 transition-all duration-200 resize-none"
                 value={transcription}
                 readOnly
+                rows={1}
               />
             </div>
           )}
@@ -296,6 +297,7 @@ export function HomeSection({
                 className="w-full flex-1 p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-600 transition-all duration-200 resize-none"
                 value={processedText}
                 readOnly
+                rows={1}
               />
             </div>
           )}
