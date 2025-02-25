@@ -6,6 +6,7 @@ import { SettingsSection } from './components/SettingsSection'
 import { useStore } from './hooks/useStore'
 import { Paintbrush2, Mic, Bot, Keyboard } from 'lucide-react'
 import { useRecord } from './hooks/useRecord'
+import { sendIPC } from './lib/ipc-renderer'
 
 function App(): JSX.Element {
   const [currentSection, setCurrentSection] = useState('home')
@@ -16,10 +17,10 @@ function App(): JSX.Element {
     if (!isCompactMode) {
       setCurrentSection('home')
       setIsCompactMode(true)
-      window.electron.ipcRenderer.invoke('toggle-compact-mode', true)
+      sendIPC('toggle-compact-mode', true)
     } else {
       setIsCompactMode(false)
-      window.electron.ipcRenderer.invoke('toggle-compact-mode', false)
+      sendIPC('toggle-compact-mode', false)
     }
   }
 

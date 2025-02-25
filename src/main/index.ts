@@ -51,17 +51,17 @@ function createWindow(): void {
   }
 
   // Open Website
-  ipcMain.handle('open-external', async (_event, url) => {
+  ipcMain.on('open-external', async (_event, url) => {
     await shell.openExternal(url)
   })
 
   // Copy to clipboard
-  ipcMain.handle('copy-to-clipboard', async (_event, text) => {
+  ipcMain.on('copy-to-clipboard', async (_event, text) => {
     clipboard.writeText(text)
   })
 
   // Simulate paste
-  ipcMain.handle('simulate-paste', async () => {
+  ipcMain.on('simulate-paste', async () => {
     try {
       await keyboard.pressKey(Key.LeftControl);
       await keyboard.pressKey(Key.V);
@@ -72,10 +72,7 @@ function createWindow(): void {
     }
   });
 
-  // Add IPC handler for compact mode
-  ipcMain.handle('toggle-compact-mode', (_event, isCompact) => {
-    mainWindow.setAlwaysOnTop(isCompact);
-  });
+
 }
 
 // This method will be called when Electron has finished

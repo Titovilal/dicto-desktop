@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { invokeIPC } from '@/lib/ipc-renderer'
+import { invokeIPC, sendIPC } from '@/lib/ipc-renderer'
 import { Profile, StoreSchema } from '@/types/types'
 import { useSound } from './useSound'
 
@@ -42,17 +42,17 @@ export function useRecord() {
                     apiKey: settings?.apiKey
                 })
 
-                playFinishSound()
+                playFinishSound(settings.soundVolume)  // Add volume parameter here
                 setIsProcessing(false)
                 setTranscription(result.transcription)
                 setProcessedText(result.processedText)
 
                 if (selectedProfile?.copyToClipboard) {
                     const textToCopy = selectedProfile.useAI ? result.processedText : result.transcription
-                    await invokeIPC('copy-to-clipboard', textToCopy)
+                    await sendIPC('copy-to-clipboard', textToCopy)
 
                     if (selectedProfile.autoPaste) {
-                        await invokeIPC('simulate-paste')
+                        await sendIPC('simulate-paste')
                     }
                 }
             }
@@ -94,4 +94,4 @@ export function useRecord() {
         setTranscription,
         setProcessedText
     }
-} 
+}

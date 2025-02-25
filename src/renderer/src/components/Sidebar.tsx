@@ -1,4 +1,4 @@
-import { invokeIPC } from '@/lib/ipc-renderer'
+import { sendIPC } from '@/lib/ipc-renderer'
 import { Home, Users, Settings, LineChart, Minimize2, LucideIcon } from 'lucide-react' // Add Minimize2
 
 interface SidebarButtonProps {
@@ -32,7 +32,7 @@ interface SidebarProps {
 
 export function Sidebar({ currentSection, onSectionChange, onToggleCompactMode }: SidebarProps) {
   const openDashboard = () => {
-    invokeIPC('open-external', 'https://dicto.io/dashboard')
+    sendIPC('open-external', 'https://dicto.io/dashboard')
   }
 
   return (

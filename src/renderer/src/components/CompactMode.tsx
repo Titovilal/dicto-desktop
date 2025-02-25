@@ -7,8 +7,8 @@ import {
   Maximize2,
   Mic
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { invokeIPC } from '@/lib/ipc-renderer'
+import { useState } from 'react'
+import { sendIPC } from '@/lib/ipc-renderer'
 
 // Mini version of RecordingButton
 function CompactRecordingButton({
@@ -114,27 +114,17 @@ export function CompactMode({
   processedText,
   onExitCompactMode
 }: CompactModeProps) {
-  useEffect(() => {
-    // Adjust height for larger buttons
-    invokeIPC('resize-window', 400, 150)
-
-    // Restore window size when unmounting
-    return () => {
-      invokeIPC('resize-window', 900, 670)
-    }
-  }, [])
-
   const [isTranscriptionCopied, setIsTranscriptionCopied] = useState(false)
   const [isProcessedCopied, setIsProcessedCopied] = useState(false)
 
   const handleCopyTranscription = () => {
-    invokeIPC('copy-to-clipboard', transcription)
+    sendIPC('copy-to-clipboard', transcription)
     setIsTranscriptionCopied(true)
     setTimeout(() => setIsTranscriptionCopied(false), 2000)
   }
 
   const handleCopyProcessed = () => {
-    invokeIPC('copy-to-clipboard', processedText)
+    sendIPC('copy-to-clipboard', processedText)
     setIsProcessedCopied(true)
     setTimeout(() => setIsProcessedCopied(false), 2000)
   }
