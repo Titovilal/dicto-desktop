@@ -16,10 +16,13 @@ export interface User {
     name: string;
     sub_credits: number;
     otp_credits: number;
+    has_access: boolean;
     sub_date_time: string | null;
     otp_date_time: string | null;
     has_subscription: boolean;
     cancel_next_month: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface StoreSchema {

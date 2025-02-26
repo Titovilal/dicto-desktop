@@ -111,6 +111,12 @@ Poner api key inválida
 
 ---
 
+- opción AUTO-ENTER
+
+- opción texto copiado como contexto adicional (y mirar prompt para que devuelva el texto )
+
+-cobrar por tokens de output de ia, 
+
 - subir un poco el precio
 
 - crear playground como excalidraw

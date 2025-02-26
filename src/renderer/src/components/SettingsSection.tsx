@@ -147,7 +147,10 @@ export function SettingsSection({
         has_subscription: false,
         sub_credits: 0,
         sub_date_time: '',
-        cancel_next_month: false
+        cancel_next_month: false,
+        has_access: false,
+        created_at: '',
+        updated_at: ''
       }
       updateUser(emptyUser)
       // Usar undefined para limpiar el valor en lugar de cadena vacía
