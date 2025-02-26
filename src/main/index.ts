@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, clipboard } from "electron";
+import { app, shell, BrowserWindow, ipcMain } from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import iconPath from "../../resources/icon.png?asset";
@@ -6,7 +6,6 @@ import { initStore } from "./modules.ts/electron-store";
 import { initApiCallsV1 } from "./modules.ts/api-calls-v1";
 import { createTray, destroyTray } from "./modules.ts/tray";
 import { initResize } from "./modules.ts/resize";
-import { keyboard, Key } from '@nut-tree-fork/nut-js';
 
 // Remove the tray variable since it's now managed in the tray module
 function createWindow(): void {
@@ -54,25 +53,6 @@ function createWindow(): void {
   ipcMain.on('open-external', async (_event, url) => {
     await shell.openExternal(url)
   })
-
-  // Copy to clipboard
-  ipcMain.on('copy-to-clipboard', async (_event, text) => {
-    clipboard.writeText(text)
-  })
-
-  // Simulate paste
-  ipcMain.on('simulate-paste', async () => {
-    try {
-      await keyboard.pressKey(Key.LeftControl);
-      await keyboard.pressKey(Key.V);
-      await keyboard.releaseKey(Key.V);
-      await keyboard.releaseKey(Key.LeftControl);
-    } catch (error) {
-      console.error('Error simulating paste:', error);
-    }
-  });
-
-
 }
 
 // This method will be called when Electron has finished

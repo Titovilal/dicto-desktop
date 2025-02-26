@@ -1,6 +1,7 @@
 import { App, globalShortcut, ipcMain, BrowserWindow, protocol } from "electron";
 import path from 'path';
 import { Profile } from '../../renderer/src/types/types';
+import { getClipboardText, setClipboardText, simulateCopy, simulateEnter, simulatePaste } from "./clipboard-and-keys";
 
 let currentRegisteredShortcut: string;
 
@@ -64,7 +65,13 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
       formData.append('prompt', profile.prompt.trim())
     }
 
-    console.log("[API CALLS V1] Form data:", formData)
+    if (profile.useSelectedText) {
+      await simulateCopy()
+      const selectedText = getClipboardText()
+      formData.append('selectedText', selectedText)
+    }
+
+    console.log("[API CALLS V1] Data sent to Dicto API:", formData)
 
     const response = await fetch('https://www.dicto.io/api/v1/get-transcription', {
       method: 'POST',
@@ -79,6 +86,22 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
     }
 
     const result = await response.json();
+
+    // Copy to clipboard
+    if (profile.copyToClipboard) {
+      const textToCopy = profile.useAI ? result.data.processed ?? '' : result.data.text ?? ''
+      setClipboardText(textToCopy)
+    }
+
+    // Auto paste
+    if (profile.autoPaste) {
+      await simulatePaste()
+    }
+
+    // Auto enter
+    if (profile.autoEnter) {
+      await simulateEnter()
+    }
 
     console.log("[API CALLS V1] Result:", result)
 

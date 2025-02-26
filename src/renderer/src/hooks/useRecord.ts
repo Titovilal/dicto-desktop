@@ -48,14 +48,6 @@ export function useRecord() {
                     setTranscription(result.transcription)
                     setProcessedText(result.processedText)
 
-                    if (selectedProfile?.copyToClipboard) {
-                        const textToCopy = selectedProfile.useAI ? result.processedText : result.transcription
-                        await sendIPC('copy-to-clipboard', textToCopy)
-
-                        if (selectedProfile.autoPaste) {
-                            await sendIPC('simulate-paste')
-                        }
-                    }
                 } catch (error) {
                     console.error('Error processing recording:', error)
                     setIsProcessing(false)

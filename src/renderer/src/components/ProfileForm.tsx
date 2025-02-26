@@ -232,6 +232,15 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps) {
                 checked={editingProfile.useAI}
                 onChange={(checked) => setEditingProfile({ ...editingProfile, useAI: checked })}
               />
+              {/* Use selected text */}
+              <ToggleOption
+                label="Use Selected Text"
+                description="Use the selected text as context for the AI model. It can be used to rewrite content or just to have more context. Depends on the prompt."
+                checked={editingProfile.useSelectedText}
+                onChange={(checked) =>
+                  setEditingProfile({ ...editingProfile, useSelectedText: checked })
+                }
+              />
 
               {/* Model Selection */}
               <div>
@@ -358,8 +367,9 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps) {
                   setEditingProfile({
                     ...editingProfile,
                     copyToClipboard: checked,
-                    // Si se desactiva Copy to Clipboard, también desactivamos Auto Paste
-                    autoPaste: checked ? editingProfile.autoPaste : false
+                    // If copy to clipboard is disabled, auto paste should be disabled too
+                    autoPaste: checked ? editingProfile.autoPaste : false,
+                    autoEnter: checked ? editingProfile.autoEnter : false
                   })
                 }
                 badge="Recommended"
@@ -369,8 +379,23 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps) {
                 label="Auto Paste"
                 description="Automatically paste the transcripted or processed text into the input field when ready. Only available if Copy to Clipboard is enabled."
                 checked={editingProfile.autoPaste}
-                onChange={(checked) => setEditingProfile({ ...editingProfile, autoPaste: checked })}
+                onChange={(checked) =>
+                  setEditingProfile({
+                    ...editingProfile,
+                    autoPaste: checked,
+                    // If auto paste is disabled, auto enter should be disabled too
+                    autoEnter: checked ? editingProfile.autoEnter : false
+                  })
+                }
                 disabled={!editingProfile.copyToClipboard}
+              />
+
+              <ToggleOption
+                label="Auto Enter"
+                description="Automatically press enter after the AI processed the text. Only available if Copy to Clipboard and Auto Paste are enabled."
+                checked={editingProfile.autoEnter}
+                onChange={(checked) => setEditingProfile({ ...editingProfile, autoEnter: checked })}
+                disabled={!editingProfile.autoPaste}
               />
 
               <ToggleOption

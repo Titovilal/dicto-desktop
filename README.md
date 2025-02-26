@@ -109,15 +109,21 @@ Poner api key inválida
 
 - Revisar system prompt
 
+- opción AUTO-ENTER DONE
+
+- opción texto copiado como contexto adicional (y mirar prompt para que devuelva el texto ) DONE
+
+- cobrar por tokens de output de ia DONE
+
 ---
 
-- opción AUTO-ENTER
+- implementar parametro slected text en endpoint
 
-- opción texto copiado como contexto adicional (y mirar prompt para que devuelva el texto )
+- comprobar system prompt y ai prompts para que funcione el selected text de forma correcta
 
--cobrar por tokens de output de ia, 
-
-- subir un poco el precio
+  - 1/2 seleccionar texto para reescritura (usando auto paste y auto enter)
+  - 2/2 seleccionar texto para añadir mas contexto (usando solo copy to clipboard)
+  - !!! Crear un blog o página documentando el prompt engineering
 
 - crear playground como excalidraw
 

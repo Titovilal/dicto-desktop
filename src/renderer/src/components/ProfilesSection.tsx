@@ -49,6 +49,8 @@ export function ProfilesSection({
       language: 'english',
       returnBoth: false,
       autoPaste: false,
+      autoEnter: false,
+      useSelectedText: false,
       modelName: 'gemini-flash-2.0',
       temperature: 0.7,
       transcriptionPrompt: 'Transcribe the following audio:'
@@ -137,12 +139,15 @@ export function ProfilesSection({
                   <div className="flex items-center gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-medium text-zinc-100">{profile.name}</h3>
-                        {settings?.selectedProfile === profile.name && (
-                          <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-xs">
-                            Active
-                          </div>
-                        )}
+                        <h3
+                          className={
+                            settings?.selectedProfile !== profile.name
+                              ? 'text-base font-medium text-zinc-100'
+                              : 'text-base font-medium text-emerald-500'
+                          }
+                        >
+                          {profile.name}
+                        </h3>
                       </div>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-xs text-zinc-400">
@@ -157,10 +162,12 @@ export function ProfilesSection({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-3 mr-2">
-                      <FeatureIndicator enabled={profile.useAI} label="Use AI" />
+                    <div className="grid grid-cols-3 gap-x-3 gap-y-1 mr-2">
                       <FeatureIndicator enabled={profile.copyToClipboard} label="Copy" />
                       <FeatureIndicator enabled={profile.autoPaste} label="Paste" />
+                      <FeatureIndicator enabled={profile.autoEnter} label="Enter" />
+                      <FeatureIndicator enabled={profile.useAI} label="Use AI" />
+                      <FeatureIndicator enabled={profile.useSelectedText} label="Selected Text" />
                     </div>
 
                     <button

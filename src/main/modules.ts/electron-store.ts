@@ -23,6 +23,8 @@ export async function initStore() {
                     useAI: true,
                     copyToClipboard: false,
                     autoPaste: false,
+                    autoEnter: false,
+                    useSelectedText: false,
                     language: 'english',
                     returnBoth: false,
                     modelName: 'gemini-flash-2.0',

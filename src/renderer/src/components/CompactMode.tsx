@@ -8,7 +8,6 @@ import {
   Mic
 } from 'lucide-react'
 import { useState } from 'react'
-import { sendIPC } from '@/lib/ipc-renderer'
 
 // Mini version of RecordingButton
 function CompactRecordingButton({
@@ -118,13 +117,13 @@ export function CompactMode({
   const [isProcessedCopied, setIsProcessedCopied] = useState(false)
 
   const handleCopyTranscription = () => {
-    sendIPC('copy-to-clipboard', transcription)
+    navigator.clipboard.writeText(transcription)
     setIsTranscriptionCopied(true)
     setTimeout(() => setIsTranscriptionCopied(false), 2000)
   }
 
   const handleCopyProcessed = () => {
-    sendIPC('copy-to-clipboard', processedText)
+    navigator.clipboard.writeText(processedText)
     setIsProcessedCopied(true)
     setTimeout(() => setIsProcessedCopied(false), 2000)
   }

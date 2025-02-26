@@ -6,6 +6,8 @@ export interface Profile {
     language: string;
     returnBoth: boolean;
     autoPaste: boolean;
+    autoEnter: boolean;
+    useSelectedText: boolean;
     modelName: string;
     temperature: number;
     transcriptionPrompt: string;
