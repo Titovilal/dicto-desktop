@@ -5,6 +5,10 @@ import { getClipboardText, setClipboardText, simulateCopy, simulateEnter, simula
 
 let currentRegisteredShortcut: string;
 
+const dictoWebUrl = 'https://www.dicto.io/api/v1'
+// const dictoWebUrl = 'http://localhost:3000/api/v1'
+
+
 function registerGlobalShortcut(shortcut: string) {
   // Unregister previous shortcut if exists
   if (currentRegisteredShortcut) {
@@ -68,12 +72,14 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
     if (profile.useSelectedText) {
       await simulateCopy()
       const selectedText = getClipboardText()
-      formData.append('selectedText', selectedText)
+      if (selectedText?.trim()) {
+        formData.append('selectedText', selectedText)
+      }
     }
 
     console.log("[API CALLS V1] Data sent to Dicto API:", formData)
 
-    const response = await fetch('https://www.dicto.io/api/v1/get-transcription', {
+    const response = await fetch(`${dictoWebUrl}/get-transcription`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`
@@ -117,7 +123,7 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
 
 async function getUserData(apiKey: string) {
   try {
-    const response = await fetch('https://www.dicto.io/api/v1/get-user-data', {
+    const response = await fetch(`${dictoWebUrl}/get-user-data`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,

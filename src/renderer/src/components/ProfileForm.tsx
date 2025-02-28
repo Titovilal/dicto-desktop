@@ -251,7 +251,7 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps) {
                       <button className="group flex items-center gap-1 px-1.5 py-0.5 rounded-md hover:bg-zinc-800/70 transition-colors">
                         <HelpCircle className="w-4 h-4 text-zinc-500 group-hover:text-zinc-400 transition-colors" />
                         <span className="text-xs text-zinc-500 group-hover:text-zinc-400">
-                          Model info
+                          Model Recommendations
                         </span>
                       </button>
                     </DialogTrigger>

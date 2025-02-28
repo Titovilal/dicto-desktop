@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { invokeIPC, sendIPC } from '@/lib/ipc-renderer'
+import { invokeIPC } from '@/lib/ipc-renderer'
 import { Profile, StoreSchema } from '@/types/types'
 import { useSound } from './useSound'
 

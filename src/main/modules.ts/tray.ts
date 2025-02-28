@@ -17,7 +17,7 @@ export function createTray(icon: string): Tray {
             }
         },
         {
-            label: 'Always Visible',
+            label: 'Always on Top',
             type: 'checkbox',
             checked: false,
             click: (menuItem) => {

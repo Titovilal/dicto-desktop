@@ -115,11 +115,15 @@ Poner api key inválida
 
 - cobrar por tokens de output de ia DONE
 
+- implementar parametro slected text en endpoint DONE
+
+- comprobar system prompt y ai prompts para que funcione el selected text de forma correcta DONE
+
 ---
 
-- implementar parametro slected text en endpoint
+- Crear 3 o 4 perfiles por defecto distintos
 
-- comprobar system prompt y ai prompts para que funcione el selected text de forma correcta
+- Implementar segundo shortcut para un segundo perfil
 
   - 1/2 seleccionar texto para reescritura (usando auto paste y auto enter)
   - 2/2 seleccionar texto para añadir mas contexto (usando solo copy to clipboard)

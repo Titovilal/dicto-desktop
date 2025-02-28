@@ -1,12 +1,12 @@
 export const AI_MODELS = {
+    // Google
     "google/gemini-2.0-flash-001": "Gemini Flash 2.0",
-    "anthropic/claude-3.5-haiku": "Claude 3.5 Haiku",
+    // Deepseek
+    "deepseek/deepseek-chat": "DeepSeek R1",
+    // OpenAI
+    "openai/o3-mini": "o3 Mini",
+    "openai/o3-mini-high": "o3 Mini High",
     "openai/gpt-4o-mini": "GPT-4o Mini",
-    "deepseek/deepseek-chat": "DeepSeek v3",
-    "deepseek/deepseek-r1-distill-llama-70b": "Llama 3.3 70B (DeepSeek as Teacher)",
-    "mistralai/mistral-saba": "Mistral Saba",
-    "mistralai/mistral-nemo": "Mistral Nemo",
-    "deepseek/deepseek-r1-distill-qwen-32b": "Qwen 32B (DeepSeek as Teacher)"
 } as const
 
 export interface ModelInfo {
@@ -18,87 +18,64 @@ export const AI_MODELS_INFO: Record<keyof typeof AI_MODELS, ModelInfo> = {
     "google/gemini-2.0-flash-001": {
         name: "Gemini Flash 2.0",
         description:
-            "A fast and powerful model from Google, designed to provide quick and high-quality responses, balancing speed and performance in generative tasks.",
+            "Superior, fast and efficient model with exceptional capabilities across all tasks. The default choice for most use cases, combining speed with high-quality outputs.",
         bestFor: [
-            "Quick responses",
-            "General tasks",
-            "Code generation"
+            "Very quick responses",
+            "Time-sensitive tasks",
+            "General-purpose use",
+            "Code generation",
+            "Complex reasoning"
         ]
     },
-    "anthropic/claude-3.5-haiku": {
-        name: "Claude 3.5 Haiku",
+
+    "deepseek/deepseek-chat": {
+        name: "DeepSeek V3",
         description:
-            "Excels at understanding complex contexts and following nuanced instructions, making it ideal for in-depth analysis and specialized writing.",
+            "Capable model with good performance but not as strong as Gemini Flash 2.0 across most tasks. Features a warmer communication style and performs adequately for many purposes. Takes slightly longer to respond than Gemini Flash.",
         bestFor: [
-            "Complex analysis",
-            "Detailed explanations",
-            "Technical writing"
+            "Conversational interactions",
+            "Basic problem-solving",
+            "Situations preferring a warmer tone",
+            "Secondary option when results from Gemini aren't satisfactory"
+        ]
+    },
+    "openai/o3-mini": {
+        name: "o3 Mini",
+        description:
+            "Model with strong chain-of-thought reasoning that produces higher quality responses but with longer response times. Particularly strong with mathematical problems. Consider using when Gemini Flash or DeepSeek V3 haven't succeeded.",
+        bestFor: [
+            "Mathematical calculations and proofs",
+            "Difficult reasoning tasks",
+            "High-quality responses",
+            "Situations where response time isn't critical"
+        ]
+    },
+    "openai/o3-mini-high": {
+        name: "o3 Mini High",
+        description:
+            "Premium version of o3 Mini with even more thorough chain-of-thought reasoning, resulting in significantly longer response times but superior response quality. Excellent for complex mathematics and programming tasks, but should only be used when other models haven't delivered satisfactory results.",
+        bestFor: [
+            "Advanced mathematics",
+            "Advanced programming tasks",
+            "Complex logical problems",
+            "Highest quality outputs",
+            "Situations where wait time isn't an issue"
         ]
     },
     "openai/gpt-4o-mini": {
         name: "GPT-4o Mini",
         description:
-            "A lightweight and efficient version of GPT-4o, optimized for everyday tasks, processing text efficiently and generating summaries and translations quickly.",
+            "Similar to Gemini Flash, but with slightly less reasoning capabilities.",
         bestFor: [
             "Basic text processing",
             "Simple summaries",
             "Quick translations"
         ]
     },
-    "deepseek/deepseek-chat": {
-        name: "DeepSeek v3",
-        description:
-            "An advanced model with strong reasoning capabilities, ideal for solving complex problems, technical discussions, and in-depth analysis.",
-        bestFor: [
-            "Complex problem-solving",
-            "Technical discussions",
-            "In-depth analysis"
-        ]
-    },
-    "deepseek/deepseek-r1-distill-llama-70b": {
-        name: "Llama 3.3 70B (DeepSeek as Teacher)",
-        description:
-            "A large-scale model with a broad and diverse knowledge base, perfect for tasks requiring creativity and complex reasoning. Is a distillation of the Llama 3.3 70B model, trained by DeepSeek to improve performance.",
-        bestFor: [
-            "Creative writing",
-            "Complex reasoning",
-            "Detailed responses"
-        ]
-    },
-    "mistralai/mistral-saba": {
-        name: "Mistral Saba",
-        description:
-            "A balanced and versatile model, ideal for a wide range of general tasks, with strong performance in content generation and text analysis.",
-        bestFor: [
-            "General-purpose use",
-            "Content generation",
-            "Text analysis"
-        ]
-    },
-    "mistralai/mistral-nemo": {
-        name: "Mistral Nemo",
-        description:
-            "Specialized in technical and analytical tasks, providing superior performance in technical writing, code analysis, and data interpretation.",
-        bestFor: [
-            "Technical writing",
-            "Code analysis",
-            "Data interpretation"
-        ]
-    },
-    "deepseek/deepseek-r1-distill-qwen-32b": {
-        name: "Qwen 32B (DeepSeek as Teacher)",
-        description:
-            "An efficient model that delivers solid performance across various tasks, making it ideal for content processing and basic analysis. Is a distillation of the Qwen 32B model, trained by DeepSeek to improve performance.",
-        bestFor: [
-            "General tasks",
-            "Content processing",
-            "Basic analysis"
-        ]
-    }
+
+
 } as const;
 
 
 export const getModelId = (key: keyof typeof AI_MODELS) => key
 export const getModelName = (key: keyof typeof AI_MODELS) => AI_MODELS[key]
-
-
