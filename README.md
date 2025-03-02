@@ -107,7 +107,7 @@ Poner api key inválida
 
 - usar openrouter y permitir elegir diferentes modelos (haiku, 4o-mini) DONE
 
-- Revisar system prompt
+- Revisar system prompt DONE
 
 - opción AUTO-ENTER DONE
 
@@ -119,38 +119,40 @@ Poner api key inválida
 
 - comprobar system prompt y ai prompts para que funcione el selected text de forma correcta DONE
 
----
-
-- Crear 3 o 4 perfiles por defecto distintos
-
-- Implementar segundo shortcut para un segundo perfil
-
-  - 1/2 seleccionar texto para reescritura (usando auto paste y auto enter)
-  - 2/2 seleccionar texto para añadir mas contexto (usando solo copy to clipboard)
-  - !!! Crear un blog o página documentando el prompt engineering
-
-- crear playground como excalidraw
-
-- crear funcionalidad reescribir con IA **NO MVP**
+- crear funcionalidad reescribir con IA DONE
 
 - boton de cancelar DONE
 
+- popup para mostrar estado DONE
+
+- icono de dicto web DONE
+
+- solucionar problema de resizing con nuevo popup DONE
+
+- mejorar la UX de la sidebar DONE
+
+- seleccionar por defecto modelo de IA en settings DONE
+
 ---
 
-- mostrar estado de como estado de procesamiento (cambiar cursor)
+- Crear 3 o 4 perfiles por defecto distintos por defecto
 
-- guia de prompting
+- Crear un blog o página documentando el prompt engineering
+
+- crear playground como excalidraw
 
 - regenerar api key cuando te registras no funciona
 
 - cambiar el precio de stripe
 
-- cambiar entre perfiles
-
-- icono de dicto web
-
-- seleccionar por defecto modelo de IA en settings
+- cambiar entre perfiles con shortcut
 
 - desinstalador autimatico (cierra cualquier instancia abierta)
 
 - mostrar en settings una opcion de que cuando se cierre se quede en segundo plano o se cierre totalmente
+
+- hacer que la ventana de pop-up aparezca para cambiar el perfil y que apretar una vez te muestra el perfil en el que estás y apretar una segunda te cambia de perfil.
+
+- si estamos en el estado de grabando y de repente se pulsa el botón de cambiar selección pues se hace se muestra el de cambiar selección sólo durante dos segundos y se vuelve al de grabando pero qué pasa si en estos dos segundos viene un mensaje para cambiar el estado a done entonces ya no se tiene que pasar otra vez a recording sino se pasará a done
+
+- actualizador automatico

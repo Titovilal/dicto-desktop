@@ -1,5 +1,5 @@
 import { sendIPC } from '@/lib/ipc-renderer'
-import { Home, Users, Settings, LineChart, Minimize2, LucideIcon } from 'lucide-react' // Add Minimize2
+import { Home, Users, Settings, AppWindow, Minimize2, LucideIcon } from 'lucide-react' // Add Minimize2
 
 interface SidebarButtonProps {
   icon: LucideIcon
@@ -38,6 +38,7 @@ export function Sidebar({ currentSection, onSectionChange, onToggleCompactMode }
   return (
     <aside className="bg-zinc-900 border-r border-zinc-800 backdrop-blur-lg bg-opacity-80 w-42 h-screen fixed left-0 top-0">
       <div className="flex flex-col h-full p-4">
+        {/* Main Navigation */}
         <nav className="flex flex-col gap-2">
           <SidebarButton
             icon={Home}
@@ -57,9 +58,21 @@ export function Sidebar({ currentSection, onSectionChange, onToggleCompactMode }
             isActive={currentSection === 'settings'}
             onClick={() => onSectionChange('settings')}
           />
-          <SidebarButton icon={Minimize2} label="Compact" onClick={onToggleCompactMode} />
-          <SidebarButton icon={LineChart} label="Dicto Web" onClick={openDashboard} />
         </nav>
+
+        {/* Tools Section */}
+        <div className="mt-6 pt-6 border-t border-zinc-800">
+          <nav className="flex flex-col gap-2">
+            <SidebarButton icon={Minimize2} label="Compact" onClick={onToggleCompactMode} />
+          </nav>
+        </div>
+
+        {/* External Links */}
+        <div className="mt-6 pt-6 border-t border-zinc-800">
+          <nav className="flex flex-col gap-2">
+            <SidebarButton icon={AppWindow} label="Dicto Web" onClick={openDashboard} />
+          </nav>
+        </div>
 
         <div className="mt-auto flex flex-col gap-2">
           <div className="text-zinc-500 text-sm text-center font-medium tracking-wide">

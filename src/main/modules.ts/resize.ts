@@ -5,7 +5,10 @@ export async function initResize() {
 
     ipcMain.on('toggle-compact-mode', (_event, isCompact) => {
         console.log("[RESIZE] Toggling compact mode", isCompact);
-        const window = BrowserWindow.getAllWindows()[0];
+        // Get the main window specifically, excluding the popup window
+        const window = BrowserWindow.getAllWindows().find(window =>
+            !window.webContents.getURL().includes('index-popup.html')
+        );
 
         if (!window) {
             console.error('[RESIZE] No window found');
@@ -18,7 +21,5 @@ export async function initResize() {
         window.setAlwaysOnTop(isCompact);
         window.setMinimumSize(width, height);
         window.setSize(width, height);
-
     });
-
 }

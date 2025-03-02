@@ -11,7 +11,7 @@ export const DEFAULT_PROFILES: Profile[] = [
         autoPaste: false,
         autoEnter: false,
         useSelectedText: false,
-        modelName: 'gemini-flash-2.0',
+        modelName: 'google/gemini-2.0-flash-001',
         temperature: 0.3,
         transcriptionPrompt: 'Transcribe the following audio:'
     },
@@ -25,7 +25,7 @@ export const DEFAULT_PROFILES: Profile[] = [
         autoPaste: false,
         autoEnter: false,
         useSelectedText: false,
-        modelName: 'gemini-flash-2.0',
+        modelName: 'google/gemini-2.0-flash-001',
         temperature: 0.7,
         transcriptionPrompt: 'Transcribe the following audio:'
     },
@@ -39,7 +39,7 @@ export const DEFAULT_PROFILES: Profile[] = [
         autoPaste: true,
         autoEnter: true,
         useSelectedText: false,
-        modelName: 'gemini-flash-2.0',
+        modelName: 'google/gemini-2.0-flash-001',
         temperature: 0.3,
         transcriptionPrompt: 'Transcribe the following audio:'
     }
