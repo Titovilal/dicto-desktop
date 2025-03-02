@@ -5,6 +5,7 @@ import { LANGUAGES } from '@/lib/languages'
 import { ProfileForm } from './ProfileForm'
 import { Settings, Check, Trash2, Plus } from 'lucide-react'
 import { AI_MODELS } from '@/lib/models'
+import { getNewProfileTemplate } from '@/lib/profile-template'
 
 interface ProfilesSectionProps {
   profiles: Profile[]
@@ -40,22 +41,7 @@ export function ProfilesSection({
 
   const handleAddProfile = async () => {
     if (!newProfileName.trim()) return
-
-    const newProfile: Profile = {
-      name: newProfileName,
-      prompt: '',
-      useAI: false,
-      copyToClipboard: true,
-      language: 'english',
-      returnBoth: false,
-      autoPaste: false,
-      autoEnter: false,
-      useSelectedText: false,
-      modelName: 'gemini-flash-2.0',
-      temperature: 0.7,
-      transcriptionPrompt: 'Transcribe the following audio:'
-    }
-
+    const newProfile = getNewProfileTemplate(newProfileName)
     await onAddProfile(newProfile)
     setNewProfileName('')
   }

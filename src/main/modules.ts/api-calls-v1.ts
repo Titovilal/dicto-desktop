@@ -65,11 +65,11 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
       formData.append('transcriptionPrompt', profile.transcriptionPrompt.trim())
     }
 
-    if (profile.prompt?.trim()) {
+    if (profile.prompt?.trim() && profile.useAI) {
       formData.append('prompt', profile.prompt.trim())
     }
 
-    if (profile.useSelectedText) {
+    if (profile.useSelectedText && profile.useAI) {
       await simulateCopy()
       const selectedText = getClipboardText()
       if (selectedText?.trim()) {

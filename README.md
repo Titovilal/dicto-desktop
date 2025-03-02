@@ -132,3 +132,25 @@ Poner api key inválida
 - crear playground como excalidraw
 
 - crear funcionalidad reescribir con IA **NO MVP**
+
+---
+
+- boton de cancelar
+
+- mostrar estado de como estado de procesamiento (cambiar cursor)
+
+- guia de prompting
+
+- regenerar api key cuando te registras no funciona
+
+- cambiar el precio de stripe
+
+- cambiar entre perfiles
+
+- icono de dicto web
+
+- seleccionar por defecto modelo de IA en settings
+
+- desinstalador autimatico (cierra cualquier instancia abierta)
+
+- mostrar en settings una opcion de que cuando se cierre se quede en segundo plano o se cierre totalmente

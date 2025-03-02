@@ -1,9 +1,9 @@
 import { ipcMain } from 'electron';
 import { Profile, StoreSchema } from '../../renderer/src/types/types';
+import { DEFAULT_PROFILES } from './default-profiles';
 
 
 export async function initStore() {
-    // INIT STORE
     const Store = (await import('electron-store')).default
     const store = new Store<StoreSchema>({
         defaults: {
@@ -16,22 +16,7 @@ export async function initStore() {
                 selectedProfile: 'Default',
                 apiKey: ''
             },
-            profiles: [
-                {
-                    name: 'Default',
-                    prompt: 'Transcribe the following audio:',
-                    useAI: true,
-                    copyToClipboard: false,
-                    autoPaste: false,
-                    autoEnter: false,
-                    useSelectedText: false,
-                    language: 'english',
-                    returnBoth: false,
-                    modelName: 'gemini-flash-2.0',
-                    temperature: 0.3,
-                    transcriptionPrompt: 'Transcribe the following audio:'
-                }
-            ],
+            profiles: DEFAULT_PROFILES,
             user: {
                 email: '',
                 name: '',
@@ -81,6 +66,7 @@ async function initUserIPC(store: any) {
     });
 }
 
+// Update the clear-profiles handler
 async function initProfilesIPC(store: any) {
     console.log("[STORE] Initializing profiles IPC")
     ipcMain.handle('get-profiles', async () => {
@@ -126,15 +112,7 @@ async function initProfilesIPC(store: any) {
 
     ipcMain.handle('clear-profiles', async () => {
         console.log("[STORE] Clearing profiles")
-        return await store.set('profiles', [{
-            name: 'Default',
-            prompt: '',
-            useAI: false,
-            copyToClipboard: true,
-            language: 'english',
-            returnBoth: true,
-            autoPaste: false
-        }]);
+        return await store.set('profiles', DEFAULT_PROFILES);
     });
 }
 
