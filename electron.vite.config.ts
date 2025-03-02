@@ -9,6 +9,14 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          'popup-preload': resolve(__dirname, 'src/preload/popup-preload.ts')
+        }
+      }
+    }
   },
   renderer: {
     resolve: {
@@ -17,5 +25,13 @@ export default defineConfig({
       },
     },
     plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/renderer/index.html'),
+          'index-popup': resolve(__dirname, 'src/renderer/index-popup.html')
+        }
+      }
+    }
   },
 });

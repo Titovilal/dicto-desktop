@@ -6,6 +6,7 @@ import { initStore } from "./modules.ts/electron-store";
 import { initApiCallsV1 } from "./modules.ts/api-calls-v1";
 import { createTray, destroyTray } from "./modules.ts/tray";
 import { initResize } from "./modules.ts/resize";
+import { destroyRecordingPopup } from './modules.ts/popup-window';
 
 // Remove the tray variable since it's now managed in the tray module
 function createWindow(): void {
@@ -15,16 +16,17 @@ function createWindow(): void {
     minWidth: 900,
     height: 670,
     minHeight: 420,
-
     show: false,
     autoHideMenuBar: true,
-    // ...(process.platform === "linux" ? { icon: iconPath } : {}),
     icon: iconPath,
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       sandbox: false,
     },
   });
+
+  // Add a name or identifier to the main window
+  mainWindow.setTitle('Dicto Main Window');
 
   // Add this to handle window close button
   mainWindow.on('close', (event) => {
@@ -97,6 +99,7 @@ app.whenReady().then(async () => {
 // Add cleanup in will-quit event
 app.on('will-quit', () => {
   destroyTray();
+  destroyRecordingPopup();
   // Remove IPC handlers
   ipcMain.removeHandler('resize-window');
 });

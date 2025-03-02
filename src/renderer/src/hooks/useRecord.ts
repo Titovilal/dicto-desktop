@@ -20,9 +20,15 @@ export function useRecord() {
         }
 
         try {
+            // Reset states at the start
+            setIsRecording(false)
+            setIsProcessing(false)
             audioChunksRef.current = []
             isCancellingRef.current = false
+
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+            console.log('[RECORD] Starting new recording...')
 
             mediaRecorderRef.current = new MediaRecorder(stream)
 
@@ -39,6 +45,10 @@ export function useRecord() {
                 }
 
                 try {
+                    // Update popup to processing state
+                    console.log('Sending update-popup-state to processing');
+                    invokeIPC('update-popup-state', 'processing')
+
                     const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
                     const arrayBuffer = await audioBlob.arrayBuffer()
                     const audioData = new Uint8Array(arrayBuffer)
@@ -50,6 +60,16 @@ export function useRecord() {
                         apiKey: settings?.apiKey
                     })
 
+                    // Update popup to finished state
+                    console.log('Sending update-popup-state to finished');
+                    invokeIPC('update-popup-state', 'finished')
+
+                    // Hide popup after a short delay
+                    setTimeout(() => {
+                        console.log('Sending hide-popup');
+                        invokeIPC('hide-popup')
+                    }, 2000)
+
                     playFinishSound(settings.soundVolume)
                     setIsProcessing(false)
                     setTranscription(result.transcription)
@@ -58,16 +78,24 @@ export function useRecord() {
                 } catch (error) {
                     console.error('Error processing recording:', error)
                     setIsProcessing(false)
+                    // Hide popup on error
+                    invokeIPC('hide-popup')
                 }
             }
+
+            // Show popup with recording state before starting the recording
+            await invokeIPC('show-popup', 'recording')
 
             mediaRecorderRef.current.start(1000)
             playRecordStartSound(settings.soundVolume)
             setIsRecording(true)
+
         } catch (error) {
-            console.error('Error starting recording:', error)
+            console.error('[RECORD] Error starting recording:', error)
             setIsRecording(false)
             setIsProcessing(false)
+            // Hide popup on error
+            invokeIPC('hide-popup')
         }
     }
 
@@ -80,6 +108,9 @@ export function useRecord() {
             setIsRecording(false)
             setIsProcessing(false)
             audioChunksRef.current = []
+
+            // Hide the popup since we're cancelling
+            invokeIPC('hide-popup')
         }
     }
 

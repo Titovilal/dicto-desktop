@@ -2,6 +2,7 @@ import { App, globalShortcut, ipcMain, BrowserWindow, protocol } from "electron"
 import path from 'path';
 import { Profile } from '../../renderer/src/types/types';
 import { getClipboardText, setClipboardText, simulateCopy, simulateEnter, simulatePaste } from "./clipboard-and-keys";
+import { showRecordingPopup, updatePopupState, hideRecordingPopup, PopupState } from './popup-window';
 
 let currentRegisteredShortcut: string;
 
@@ -10,16 +11,23 @@ const dictoWebUrl = 'https://www.dicto.io/api/v1'
 
 
 function registerGlobalShortcut(shortcut: string) {
-  // Unregister previous shortcut if exists
   if (currentRegisteredShortcut) {
     globalShortcut.unregister(currentRegisteredShortcut);
   }
 
-  // Register new shortcut
   try {
     const success = globalShortcut.register(shortcut, () => {
-      console.log('[API CALLS V1] Shortcut triggered')
-      BrowserWindow.getAllWindows()[0]?.webContents.send('toggle-recording');
+      console.log('[API CALLS V1] Shortcut triggered');
+      // Get the main window specifically
+      const mainWindow = BrowserWindow.getAllWindows().find(window =>
+        !window.webContents.getURL().includes('index-popup.html')
+      );
+
+      if (mainWindow) {
+        mainWindow.webContents.send('toggle-recording');
+      } else {
+        console.error('[API CALLS V1] Main window not found');
+      }
     });
 
     if (success) {
@@ -49,6 +57,9 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
       throw new Error('[API_CALLS_V1] No API key provided')
     }
 
+    // Show the recording popup with processing state
+    showRecordingPopup('processing');
+
     const formData = new FormData()
     const audioBlob = new Blob([audioData], { type: 'audio/webm' })
 
@@ -77,7 +88,7 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
       }
     }
 
-    console.log("[API CALLS V1] Data sent to Dicto API:", formData)
+    // console.log("[API CALLS V1] Data sent to Dicto API:", formData)
 
     const response = await fetch(`${dictoWebUrl}/get-transcription`, {
       method: 'POST',
@@ -109,7 +120,13 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
       await simulateEnter()
     }
 
-    console.log("[API CALLS V1] Result:", result)
+    // When processing is complete, update the popup state to finished
+    updatePopupState('finished');
+
+    // Hide the popup after a short delay
+    setTimeout(() => {
+      hideRecordingPopup();
+    }, 2000);
 
     return {
       transcription: result.data.text ?? '',
@@ -117,6 +134,8 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
     }
   } catch (error) {
     console.error('[API CALLS V1] Error processing recording:', error)
+    // Hide popup on error
+    hideRecordingPopup();
     throw error
   }
 }
@@ -158,6 +177,9 @@ export async function initApiCallsV1(initialShortcut: string, app: App) {
     ipcMain.removeHandler('update-shortcut');
     ipcMain.removeHandler('process-recording');
     ipcMain.removeHandler('get-user-data');
+    ipcMain.removeHandler('show-popup');
+    ipcMain.removeHandler('update-popup-state');
+    ipcMain.removeHandler('hide-popup');
   });
 
 
@@ -172,5 +194,21 @@ export async function initApiCallsV1(initialShortcut: string, app: App) {
 
   ipcMain.handle('get-user-data', async (_, apiKey: string) => {
     return await getUserData(apiKey);
+  });
+
+  ipcMain.handle('show-popup', async (_, state: PopupState) => {
+    showRecordingPopup(state);
+  });
+
+  ipcMain.handle('update-popup-state', async (_, state: PopupState) => {
+    console.log('[API CALLS V1] Updating popup state to:', state);
+    updatePopupState(state);
+    return true;
+  });
+
+  ipcMain.handle('hide-popup', async () => {
+    console.log('[API CALLS V1] Hiding popup');
+    hideRecordingPopup();
+    return true;
   });
 }
