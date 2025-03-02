@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sidebar } from './components/Sidebar'
+import { Sidebar } from './components/ui/Sidebar'
 import { HomeSection } from './components/HomeSection'
 import { ProfilesSection } from './components/ProfilesSection'
 import { SettingsSection } from './components/SettingsSection'
@@ -36,8 +36,14 @@ function App(): JSX.Element {
     updateUser
   } = useStore()
 
-  const { isRecording, isProcessing, transcription, processedText, handleToggleRecording } =
-    useRecord()
+  const {
+    isRecording,
+    isProcessing,
+    transcription,
+    processedText,
+    handleToggleRecording,
+    cancelRecording
+  } = useRecord()
 
   const loadingIcons = [
     { icon: Paintbrush2, color: '#f59e0b', phrase: 'Painting the interface...' },
@@ -114,6 +120,7 @@ function App(): JSX.Element {
           <HomeSection
             isRecording={isRecording}
             onToggleRecording={() => handleToggleRecording(settings!, profiles)}
+            onCancelRecording={() => cancelRecording(settings!)}
             transcription={transcription}
             processedText={processedText}
             profiles={profiles}

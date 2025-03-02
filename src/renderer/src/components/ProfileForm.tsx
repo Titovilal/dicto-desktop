@@ -4,9 +4,10 @@ import { LANGUAGES } from '@/lib/languages'
 import { useEffect } from 'react'
 import { AI_MODELS } from '@/lib/models'
 import { AI_MODELS_INFO } from '@/lib/models'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './Select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/Select'
 import { InfoIcon, HelpCircle } from 'lucide-react'
-import { Dialog, DialogContent, DialogTrigger } from './Dialog'
+import { Dialog, DialogContent, DialogTrigger } from './ui/Dialog'
+
 interface ProfileFormProps {
   profile: Profile
   onCancel: () => void

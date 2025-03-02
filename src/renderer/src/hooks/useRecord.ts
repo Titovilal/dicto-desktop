@@ -10,6 +10,7 @@ export function useRecord() {
     const [processedText, setProcessedText] = useState('')
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const audioChunksRef = useRef<Blob[]>([])
+    const isCancellingRef = useRef<boolean>(false)
     const { playRecordStartSound, playRecordStopSound, playFinishSound } = useSound()
 
     const startRecording = async (settings: StoreSchema['settings'], profiles: Profile[]) => {
@@ -20,6 +21,7 @@ export function useRecord() {
 
         try {
             audioChunksRef.current = []
+            isCancellingRef.current = false
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
             mediaRecorderRef.current = new MediaRecorder(stream)
@@ -31,6 +33,11 @@ export function useRecord() {
             }
 
             mediaRecorderRef.current.onstop = async () => {
+                // Skip processing if this is a cancellation
+                if (isCancellingRef.current) {
+                    return
+                }
+
                 try {
                     const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
                     const arrayBuffer = await audioBlob.arrayBuffer()
@@ -64,8 +71,23 @@ export function useRecord() {
         }
     }
 
+    const cancelRecording = (settings: StoreSchema['settings']) => {
+        if (mediaRecorderRef.current && isRecording) {
+            isCancellingRef.current = true
+            mediaRecorderRef.current.stop()
+            mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop())
+            playRecordStopSound(settings.soundVolume)
+            setIsRecording(false)
+            setIsProcessing(false)
+            audioChunksRef.current = []
+        }
+    }
+
     const stopRecording = (settings: StoreSchema['settings']) => {
         if (mediaRecorderRef.current && isRecording) {
+            // Make sure cancelling flag is false for normal stops
+            isCancellingRef.current = false
+
             mediaRecorderRef.current.stop()
             mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop())
             playRecordStopSound(settings.soundVolume)
@@ -88,6 +110,7 @@ export function useRecord() {
         transcription,
         processedText,
         handleToggleRecording,
+        cancelRecording,
         setTranscription,
         setProcessedText
     }

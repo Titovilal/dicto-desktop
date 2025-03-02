@@ -1,5 +1,5 @@
 import { Profile } from '@/types/types'
-import { ChevronDown, Columns, FileText, FileCheck } from 'lucide-react'
+import { ChevronDown, Columns, FileText, FileCheck, XCircle } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { StoreSchema } from '@/types/types'
 import { CompactMode } from './CompactMode'
@@ -8,37 +8,51 @@ import { CompactMode } from './CompactMode'
 function RecordingButton({
   isRecording,
   isProcessing,
-  onToggleRecording
+  onToggleRecording,
+  onCancelRecording
 }: {
   isRecording: boolean
   isProcessing: boolean
   onToggleRecording: () => void
+  onCancelRecording: () => void
 }) {
   return (
-    <button
-      className={`relative flex w-48 justify-center items-center gap-2 py-3 rounded-xl font-medium transition-all duration-300 ${
-        isRecording
-          ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30'
-          : isProcessing
-            ? 'bg-yellow-500/20 text-yellow-500 cursor-not-allowed opacity-80'
-            : 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30'
-      }`}
-      onClick={onToggleRecording}
-      disabled={isProcessing}
-    >
-      <div
-        className={`w-3 h-3 rounded-full transition-all duration-300 ${
+    <div className="flex items-center gap-2">
+      <button
+        className={`relative flex w-48 justify-center items-center gap-2 py-3 rounded-xl font-medium transition-all duration-300 ${
           isRecording
-            ? 'bg-red-500 animate-pulse'
+            ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30'
             : isProcessing
-              ? 'bg-yellow-500 animate-pulse'
-              : 'bg-emerald-500'
+              ? 'bg-yellow-500/20 text-yellow-500 cursor-not-allowed opacity-80'
+              : 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30'
         }`}
-      />
-      <span className="text-sm">
-        {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : 'Start Recording'}
-      </span>
-    </button>
+        onClick={onToggleRecording}
+        disabled={isProcessing}
+      >
+        <div
+          className={`w-3 h-3 rounded-full transition-all duration-300 ${
+            isRecording
+              ? 'bg-red-500 animate-pulse'
+              : isProcessing
+                ? 'bg-yellow-500 animate-pulse'
+                : 'bg-emerald-500'
+          }`}
+        />
+        <span className="text-sm">
+          {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : 'Start Recording'}
+        </span>
+      </button>
+
+      {isRecording && (
+        <button
+          className="flex items-center justify-center p-2.5 rounded-xl bg-zinc-700/50 text-zinc-400 hover:text-red-400 hover:bg-zinc-700/80 transition-all duration-300"
+          onClick={onCancelRecording}
+          title="Cancel Recording"
+        >
+          <XCircle className="w-5 h-5" />
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -161,6 +175,7 @@ interface HomeSectionProps {
   profiles: Profile[]
   isProcessing: boolean
   onSelectProfile: (profile: Profile) => Promise<void>
+  onCancelRecording: () => void
   settings: StoreSchema['settings'] | null
   isCompactMode: boolean
   onExitCompactMode: () => void
@@ -175,6 +190,7 @@ export function HomeSection({
   profiles,
   isProcessing,
   onSelectProfile,
+  onCancelRecording,
   settings,
   isCompactMode,
   onExitCompactMode
@@ -230,6 +246,7 @@ export function HomeSection({
         transcription={transcription}
         processedText={processedText}
         onExitCompactMode={onExitCompactMode}
+        onCancelRecording={onCancelRecording}
       />
     )
   }
@@ -242,6 +259,7 @@ export function HomeSection({
             isRecording={isRecording}
             isProcessing={isProcessing}
             onToggleRecording={onToggleRecording}
+            onCancelRecording={onCancelRecording}
           />
           <ViewSelector viewMode={viewMode} setViewMode={setViewMode} />
           <ProfileSelector

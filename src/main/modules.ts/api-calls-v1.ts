@@ -116,7 +116,7 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
       processedText: result.data.processed ?? ''
     }
   } catch (error) {
-    console.error('Error processing recording:', error)
+    console.error('[API CALLS V1] Error processing recording:', error)
     throw error
   }
 }
@@ -132,14 +132,14 @@ async function getUserData(apiKey: string) {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`[API CALLS V1] HTTP error! status: ${response.status}`);
     }
 
     const result = await response.json();
     console.log("result", result)
     return result.data;
   } catch (error) {
-    console.error('Error fetching user data:', error);
+    console.error('[API CALLS V1] Error fetching user data:', error);
     throw error;
   }
 }

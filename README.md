@@ -133,9 +133,9 @@ Poner api key inválida
 
 - crear funcionalidad reescribir con IA **NO MVP**
 
----
+- boton de cancelar DONE
 
-- boton de cancelar
+---
 
 - mostrar estado de como estado de procesamiento (cambiar cursor)
 
