@@ -11,6 +11,7 @@ import {
   initShortcuts,
   unregisterAllShortcuts
 } from "./modules.ts/shortcuts";
+import { initAutoUpdater } from './modules.ts/auto-updater';
 
 // Remove the tray variable since it's now managed in the tray module
 function createWindow(): void {
@@ -90,6 +91,8 @@ app.whenReady().then(async () => {
   });
 
   createWindow();
+
+  await initAutoUpdater();
 
   // Replace tray creation with the new module
   createTray(iconPath);

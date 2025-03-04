@@ -1,3 +1,5 @@
-provider: generic
+provider: github
 url: https://example.com/auto-updates
 updaterCacheDirName: dicto-desktop-updater
+owner: TU_USUARIO_DE_GITHUB
+repo: dicto-desktop

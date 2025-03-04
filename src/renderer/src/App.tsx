@@ -7,11 +7,17 @@ import { useStore } from './hooks/useStore'
 import { Paintbrush2, Mic, Bot, Keyboard } from 'lucide-react'
 import { useRecord } from './hooks/useRecord'
 import { sendIPC } from './lib/ipc-renderer'
+import { UpdateNotification } from './components/UpdateNotification'
 
 function App(): JSX.Element {
   const [currentSection, setCurrentSection] = useState('home')
   const [isStartingApp, setIsStartingApp] = useState(true)
   const [isCompactMode, setIsCompactMode] = useState(false)
+  const [updateStatus, setUpdateStatus] = useState<
+    'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+  >('not-available')
+  const [updateProgress, setUpdateProgress] = useState(0)
+  const [updateError, setUpdateError] = useState('')
 
   const toggleCompactMode = () => {
     if (!isCompactMode) {
@@ -109,6 +115,34 @@ function App(): JSX.Element {
     }
   }, [settings, profiles, updateSelectedProfile])
 
+  useEffect(() => {
+    // Listen for update status changes
+    window.electron.ipcRenderer.on('update-status', (status: any) => {
+      setUpdateStatus(status.status)
+      if (status.progress) {
+        setUpdateProgress(status.progress.percent)
+      }
+      if (status.error) {
+        setUpdateError(status.error)
+      }
+    })
+
+    // Check for updates on component mount
+    window.electron.ipcRenderer.invoke('check-for-updates')
+
+    return () => {
+      window.electron.ipcRenderer.removeAllListeners('update-status')
+    }
+  }, [])
+
+  const handleDownloadUpdate = async () => {
+    await window.electron.ipcRenderer.invoke('download-update')
+  }
+
+  const handleInstallUpdate = async () => {
+    await window.electron.ipcRenderer.invoke('install-update')
+  }
+
   if (isStartingApp) {
     const CurrentIcon = loadingIcons[loadingIconIndex].icon
     return (
@@ -174,6 +208,13 @@ function App(): JSX.Element {
           />
         )}
       </main>
+      <UpdateNotification
+        status={updateStatus}
+        progress={updateProgress}
+        error={updateError}
+        onDownload={handleDownloadUpdate}
+        onInstall={handleInstallUpdate}
+      />
     </div>
   )
 }

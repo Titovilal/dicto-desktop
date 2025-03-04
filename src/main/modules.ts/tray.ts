@@ -2,7 +2,7 @@ import { app, Tray, Menu, BrowserWindow } from 'electron';
 
 let tray: Tray | null = null;
 
-function getMainWindow(): BrowserWindow | undefined {
+export function getMainWindow(): BrowserWindow | undefined {
     // Buscar la ventana principal excluyendo la ventana popup
     return BrowserWindow.getAllWindows().find(window =>
         !window.webContents.getURL().includes('index-popup.html')
