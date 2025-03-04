@@ -36,6 +36,7 @@ export interface StoreSchema {
         recordShortcut: string;
         selectedProfile: string;
         apiKey: string;
+        changeProfileShortcut: string;
     };
     profiles: Profile[];
     user: User;

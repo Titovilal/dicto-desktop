@@ -48,6 +48,7 @@ export function SettingsSection({
   updateUser
 }: SettingsSectionProps) {
   const [isRecording, setIsRecording] = useState(false)
+  const [isSettingProfileShortcut, setIsSettingProfileShortcut] = useState(false)
   const [apiKey, setApiKey] = useState(settings?.apiKey || '')
   const [isValidating, setIsValidating] = useState(false)
   const [validationStatus, setValidationStatus] = useState<'none' | 'success' | 'error'>('none')
@@ -107,6 +108,44 @@ export function SettingsSection({
         // Update the global shortcut in the main process
         await invokeIPC('update-shortcut', shortcut)
         setIsRecording(false)
+        window.removeEventListener('keydown', handleKeyDown)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+  }
+
+  const handleProfileShortcutClick = () => {
+    setIsSettingProfileShortcut(true)
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      e.preventDefault()
+
+      const keys: string[] = []
+      if (e.ctrlKey || e.metaKey) {
+        keys.push('CommandOrControl')
+      }
+      if (e.altKey) keys.push('Alt')
+      if (e.shiftKey) keys.push('Shift')
+
+      const specialKeys: { [key: string]: string } = {
+        ' ': 'Space',
+        ArrowUp: 'Up',
+        ArrowDown: 'Down',
+        ArrowLeft: 'Left',
+        ArrowRight: 'Right'
+      }
+
+      if (!['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) {
+        const mainKey = specialKeys[e.key] || (e.key.length === 1 ? e.key.toUpperCase() : e.key)
+        keys.push(mainKey)
+      }
+
+      const shortcut = keys.join('+')
+
+      if (keys.length > 1 && settings) {
+        updateSettings({ ...settings, changeProfileShortcut: shortcut })
+        await invokeIPC('update-profile-shortcut', shortcut)
+        setIsSettingProfileShortcut(false)
         window.removeEventListener('keydown', handleKeyDown)
       }
     }
@@ -277,6 +316,45 @@ export function SettingsSection({
             </div>
             <p className="text-sm text-zinc-400">
               Click the button above and press your desired key combination to set a global shortcut
+            </p>
+          </div>
+        </div>
+
+        {/* Profile Shortcut Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium text-zinc-100">Profile Shortcut</h2>
+            <div className="px-3 py-1 rounded-full bg-zinc-700/30 text-xs text-zinc-400">
+              System-wide
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="relative">
+              <button
+                onClick={handleProfileShortcutClick}
+                className={`w-fit px-6 py-2 rounded-lg text-sm text-left transition-all duration-200
+                  ${
+                    isSettingProfileShortcut
+                      ? 'bg-zinc-700/50 border-2 border-emerald-500/50'
+                      : 'bg-zinc-800/50 border border-zinc-700/50 hover:bg-zinc-800/70'
+                  }
+                `}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-2 h-2 rounded-full ${isSettingProfileShortcut ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
+                  />
+                  <span className="text-zinc-100">
+                    {isSettingProfileShortcut
+                      ? 'Press your shortcut...'
+                      : settings?.changeProfileShortcut || 'No shortcut set'}
+                  </span>
+                </div>
+              </button>
+            </div>
+            <p className="text-sm text-zinc-400">
+              Click the button above and press your desired key combination to set a global shortcut
+              for cycling through profiles
             </p>
           </div>
         </div>

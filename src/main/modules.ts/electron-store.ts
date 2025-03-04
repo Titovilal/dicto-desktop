@@ -13,6 +13,7 @@ export async function initStore() {
                 soundEnabled: true,
                 soundVolume: 1,
                 recordShortcut: 'CommandOrControl+Space',
+                changeProfileShortcut: 'CommandOrControl+P',
                 selectedProfile: 'Default',
                 apiKey: ''
             },

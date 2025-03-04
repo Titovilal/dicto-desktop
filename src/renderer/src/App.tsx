@@ -85,6 +85,30 @@ function App(): JSX.Element {
     }
   }, [settings, profiles, handleToggleRecording])
 
+  useEffect(() => {
+    window.electron.ipcRenderer.on('cycle-profile', () => {
+      if (settings && profiles.length > 0) {
+        // Encontrar el índice del perfil actual
+        const currentIndex = profiles.findIndex((p) => p.name === settings.selectedProfile)
+        // Calcular el índice del siguiente perfil
+        const nextIndex = (currentIndex + 1) % profiles.length
+        // Actualizar el perfil seleccionado
+        const nextProfile = profiles[nextIndex]
+        updateSelectedProfile(nextProfile)
+
+        // Usar un solo invoke con el estado y mensaje
+        window.electron.ipcRenderer.invoke('show-popup', {
+          state: 'using',
+          message: nextProfile.name
+        })
+      }
+    })
+
+    return () => {
+      window.electron.ipcRenderer.removeAllListeners('cycle-profile')
+    }
+  }, [settings, profiles, updateSelectedProfile])
+
   if (isStartingApp) {
     const CurrentIcon = loadingIcons[loadingIconIndex].icon
     return (

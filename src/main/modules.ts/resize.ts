@@ -1,6 +1,8 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, App } from 'electron';
 
-export async function initResize() {
+export async function initResize(
+    app: App
+) {
     console.log("[RESIZE] Initializing resize")
 
     ipcMain.on('toggle-compact-mode', (_event, isCompact) => {
@@ -21,5 +23,9 @@ export async function initResize() {
         window.setAlwaysOnTop(isCompact);
         window.setMinimumSize(width, height);
         window.setSize(width, height);
+    });
+
+    app.on('will-quit', () => {
+        ipcMain.removeHandler('resize-window');
     });
 }

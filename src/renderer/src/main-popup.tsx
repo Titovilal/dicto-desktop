@@ -2,7 +2,7 @@ import './assets/global.css'
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import PopupWindow from './components/PopupWindow'
+import AppPopup from './AppPopup'
 
 console.log('Popup main script loaded')
 
@@ -10,10 +10,10 @@ console.log('Popup main script loaded')
 const rootElement = document.getElementById('root')
 
 if (rootElement) {
-  console.log('Root element found, rendering PopupWindow')
+  console.log('Root element found, rendering AppPopup')
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <PopupWindow />
+      <AppPopup />
     </React.StrictMode>
   )
 } else {

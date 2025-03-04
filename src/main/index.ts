@@ -6,7 +6,11 @@ import { initStore } from "./modules.ts/electron-store";
 import { initApiCallsV1 } from "./modules.ts/api-calls-v1";
 import { createTray, destroyTray } from "./modules.ts/tray";
 import { initResize } from "./modules.ts/resize";
-import { destroyRecordingPopup } from './modules.ts/popup-window';
+import { destroyRecordingPopup } from "./modules.ts/popup-window";
+import {
+  initShortcuts,
+  unregisterAllShortcuts
+} from "./modules.ts/shortcuts";
 
 // Remove the tray variable since it's now managed in the tray module
 function createWindow(): void {
@@ -64,11 +68,21 @@ app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId("com.electron");
 
-  // Initialize store and register shortcut
+  // Initialize store first
   const store = await initStore();
+
+  // Get shortcut settings from store
   const recordShortcut = store.get("settings").recordShortcut;
-  await initApiCallsV1(recordShortcut, app);
-  await initResize();
+  const changeProfileShortcut = store.get("settings").changeProfileShortcut;
+
+  // Initialize shortcuts
+  initShortcuts(app, recordShortcut, changeProfileShortcut, store);
+
+  // Initialize API calls without shortcut registration
+  await initApiCallsV1(app);
+
+  // Initialize resize functionality
+  await initResize(app);
 
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on("browser-window-created", (_, window) => {
@@ -87,7 +101,6 @@ app.whenReady().then(async () => {
   });
 });
 
-
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
@@ -100,8 +113,7 @@ app.whenReady().then(async () => {
 app.on('will-quit', () => {
   destroyTray();
   destroyRecordingPopup();
-  // Remove IPC handlers
-  ipcMain.removeHandler('resize-window');
+  unregisterAllShortcuts();
 });
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.

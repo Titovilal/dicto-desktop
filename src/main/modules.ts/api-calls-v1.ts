@@ -1,45 +1,18 @@
-import { App, globalShortcut, ipcMain, BrowserWindow, protocol } from "electron";
+import { App, ipcMain, protocol } from "electron";
 import path from 'path';
 import { Profile } from '../../renderer/src/types/types';
 import { getClipboardText, setClipboardText, simulateCopy, simulateEnter, simulatePaste } from "./clipboard-and-keys";
-import { showRecordingPopup, updatePopupState, hideRecordingPopup, PopupState } from './popup-window';
+import {
+  initPopupWindow,
+  showRecordingPopup,
+  updatePopupState,
+  hideRecordingPopup
+} from './popup-window';
 
-let currentRegisteredShortcut: string;
+let popupApi: ReturnType<typeof initPopupWindow>;
 
 const dictoWebUrl = 'https://www.dicto.io/api/v1'
 // const dictoWebUrl = 'http://localhost:3000/api/v1'
-
-
-function registerGlobalShortcut(shortcut: string) {
-  if (currentRegisteredShortcut) {
-    globalShortcut.unregister(currentRegisteredShortcut);
-  }
-
-  try {
-    const success = globalShortcut.register(shortcut, () => {
-      console.log('[API CALLS V1] Shortcut triggered');
-      // Get the main window specifically
-      const mainWindow = BrowserWindow.getAllWindows().find(window =>
-        !window.webContents.getURL().includes('index-popup.html')
-      );
-
-      if (mainWindow) {
-        mainWindow.webContents.send('toggle-recording');
-      } else {
-        console.error('[API CALLS V1] Main window not found');
-      }
-    });
-
-    if (success) {
-      currentRegisteredShortcut = shortcut;
-      console.log(`[API CALLS V1] Shortcut ${shortcut} registered successfully`);
-    } else {
-      console.error(`[API CALLS V1] Failed to register shortcut ${shortcut}`);
-    }
-  } catch (error) {
-    console.error(`[API CALLS V1] Error registering shortcut ${shortcut}:`, error);
-  }
-}
 
 interface ProcessRecordingParams {
   audioData: Uint8Array;
@@ -163,31 +136,22 @@ async function getUserData(apiKey: string) {
   }
 }
 
-export async function initApiCallsV1(initialShortcut: string, app: App) {
-  // Configuramos el protocolo para manejar los recursos estáticos
+export async function initApiCallsV1(
+  app: App,
+) {
+
+  // Initialize popup API only once
+  if (!popupApi) {
+    popupApi = initPopupWindow();
+  }
+
+  // Configure protocol for static resources
   protocol.registerFileProtocol('app', (request, callback) => {
     const url = request.url.substr(6)
     callback({ path: path.normalize(`${__dirname}/${url}`) })
   })
 
-  registerGlobalShortcut(initialShortcut);
-
-  app.on('will-quit', () => {
-    globalShortcut.unregisterAll();
-    ipcMain.removeHandler('update-shortcut');
-    ipcMain.removeHandler('process-recording');
-    ipcMain.removeHandler('get-user-data');
-    ipcMain.removeHandler('show-popup');
-    ipcMain.removeHandler('update-popup-state');
-    ipcMain.removeHandler('hide-popup');
-  });
-
-
-  ipcMain.handle('update-shortcut', async (_, newShortcut: string) => {
-    registerGlobalShortcut(newShortcut);
-    return true;
-  });
-
+  // Register API-related IPC handlers
   ipcMain.handle('process-recording', async (_, params: ProcessRecordingParams) => {
     return await processRecording(params);
   });
@@ -196,19 +160,9 @@ export async function initApiCallsV1(initialShortcut: string, app: App) {
     return await getUserData(apiKey);
   });
 
-  ipcMain.handle('show-popup', async (_, state: PopupState) => {
-    showRecordingPopup(state);
-  });
-
-  ipcMain.handle('update-popup-state', async (_, state: PopupState) => {
-    console.log('[API CALLS V1] Updating popup state to:', state);
-    updatePopupState(state);
-    return true;
-  });
-
-  ipcMain.handle('hide-popup', async () => {
-    console.log('[API CALLS V1] Hiding popup');
-    hideRecordingPopup();
-    return true;
+  // Clean up handlers when app is quitting
+  app.on('will-quit', () => {
+    ipcMain.removeHandler('process-recording');
+    ipcMain.removeHandler('get-user-data');
   });
 }

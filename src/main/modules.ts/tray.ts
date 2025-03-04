@@ -2,6 +2,13 @@ import { app, Tray, Menu, BrowserWindow } from 'electron';
 
 let tray: Tray | null = null;
 
+function getMainWindow(): BrowserWindow | undefined {
+    // Buscar la ventana principal excluyendo la ventana popup
+    return BrowserWindow.getAllWindows().find(window =>
+        !window.webContents.getURL().includes('index-popup.html')
+    );
+}
+
 export function createTray(icon: string): Tray {
     console.log("[TRAY] Creating tray")
     tray = new Tray(icon);
@@ -10,7 +17,7 @@ export function createTray(icon: string): Tray {
         {
             label: 'Show app',
             click: () => {
-                const window = BrowserWindow.getAllWindows()[0];
+                const window = getMainWindow();
                 if (window) {
                     window.show();
                 }
@@ -21,7 +28,7 @@ export function createTray(icon: string): Tray {
             type: 'checkbox',
             checked: false,
             click: (menuItem) => {
-                const window = BrowserWindow.getAllWindows()[0];
+                const window = getMainWindow();
                 if (window) {
                     window.setAlwaysOnTop(menuItem.checked);
                 }
@@ -39,7 +46,7 @@ export function createTray(icon: string): Tray {
     tray.setToolTip('Dicto Desktop');
 
     tray.on('click', () => {
-        const window = BrowserWindow.getAllWindows()[0];
+        const window = getMainWindow();
         if (window) {
             window.show();
         }

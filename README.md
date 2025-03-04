@@ -133,7 +133,13 @@ Poner api key inválida
 
 - seleccionar por defecto modelo de IA en settings DONE
 
+- hacwer mas smooth los popups DONE
+
+- cambiar entre perfiles con shortcut DONE
+
 ---
+
+- hacer que la ventana de pop-up aparezca para cambiar el perfil y que apretar una vez te muestra el perfil en el que estás y apretar una segunda te cambia de perfil. DONE
 
 - Crear 3 o 4 perfiles por defecto distintos por defecto
 
@@ -145,14 +151,9 @@ Poner api key inválida
 
 - cambiar el precio de stripe
 
-- cambiar entre perfiles con shortcut
-
 - desinstalador autimatico (cierra cualquier instancia abierta)
 
 - mostrar en settings una opcion de que cuando se cierre se quede en segundo plano o se cierre totalmente
-
-- hacer que la ventana de pop-up aparezca para cambiar el perfil y que apretar una vez te muestra el perfil en el que estás y apretar una segunda te cambia de perfil.
-
 - si estamos en el estado de grabando y de repente se pulsa el botón de cambiar selección pues se hace se muestra el de cambiar selección sólo durante dos segundos y se vuelve al de grabando pero qué pasa si en estos dos segundos viene un mensaje para cambiar el estado a done entonces ya no se tiene que pasar otra vez a recording sino se pasará a done
 
 - actualizador automatico
