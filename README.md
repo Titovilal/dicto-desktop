@@ -1,10 +1,10 @@
 # dicto-desktop
 
-An Electron application with Vue
+An Electron application with React and TypeScript
 
 ## Recommended IDE Setup
 
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar)
+- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
 
 ## Project Setup
 
@@ -33,18 +33,127 @@ $ npm run build:mac
 $ npm run build:linux
 ```
 
-TODO:
-- [ ] Mover whisper a module en backend
-- [ ] Hacer que cuando se reescriba o se modifique el nombre de un perfil y es el perfil seleccionado, que se modifique el perfil seleccionado porque si no se buguea.
+---
 
-- [x] Hacer que se vea bien lo que esta pasando
-- [x] Crear modo compacto con solo indicadores visuales de lo que está pasando
-- [x] Añadir forma de ir hacía atras en settings o profiles.
-- [x] Añadir configuración de idioma
-- [x] Refactorizar creando hook para audio, otro para whisper y otro para play sound
-- [x] Añadir sonido de terminado
-- [x] Añadir reescritura con ChatGPT o DeepSeek
-- [x] Añadir perfiles de prompt para reescritura
-- [ ] A la hora de hacer autenticacion, generar un token y que se tenga que poner en la aplicación
-- [x] Añadir configuración de que se hace cuando llega el resultado (e.g. poner en portapapeles)
-- [ ] Crear nextjs app para el frontend con DB Neon y generación de API Keys
+## TESTS
+
+- Abrir la app y grabar con botón
+
+- Abrir la app y grabar con shortcut
+
+- CRUD perfil
+
+- Cambiar de perfil
+
+- Borrar perfil seleccionado
+
+- Poner api key valida
+
+Poner api key inválida
+
+---
+
+- crear electron store DONE
+
+- establecer crud de perfiles DONE
+
+- establecer selección de perfiles DONE
+
+- establecer shortcut y cambio de shortcut DONE
+
+- establecer botones para grabar y parar de grabar DONE
+
+- grabar audio DONE
+
+- api call para transcribir DONE
+
+- api call para recibir info del usuario DONE
+
+- poner sonidos de grabacion DONE
+
+- hacer api call DONE
+
+- que no se pueda apretar el boton de grabar mientras se este procesando DONE
+
+- mirar lo de copiar al portapapeles automatico DONE
+
+- mirar lo de hacer ctrl+v automatico DONE
+
+- mejorar interfaz DONE
+
+- manejar error de falta de creditos o api key no existe DONE
+
+- mirar porque la primera ejecucion la tengo que hacer apretando el boton y no desde el shortcut, sino da error y dice que no hay profile DONE
+
+- mejorar efectos de sonido DONE
+
+- controlar volumen desde settings DONE
+
+- poner modo siempre visible DONE
+
+- crear icono de la app DONE
+
+- crear modo compacto DONE
+
+- poner opcion siempre visible DONE
+
+- comprobar que funciona el transcription prompt bien DONE -> NO DE FORMA EXHAUSTIVA
+
+- comprobar que funciona el temperature correctamente DONE -> NO DE FORMA EXHAUSTIVA
+
+- mejorar explicaciones del profile form DONE
+
+- simplificar visual de perfil en profile section DONE
+
+- usar openrouter y permitir elegir diferentes modelos (haiku, 4o-mini) DONE
+
+- Revisar system prompt DONE
+
+- opción AUTO-ENTER DONE
+
+- opción texto copiado como contexto adicional (y mirar prompt para que devuelva el texto ) DONE
+
+- cobrar por tokens de output de ia DONE
+
+- implementar parametro slected text en endpoint DONE
+
+- comprobar system prompt y ai prompts para que funcione el selected text de forma correcta DONE
+
+- crear funcionalidad reescribir con IA DONE
+
+- boton de cancelar DONE
+
+- popup para mostrar estado DONE
+
+- icono de dicto web DONE
+
+- solucionar problema de resizing con nuevo popup DONE
+
+- mejorar la UX de la sidebar DONE
+
+- seleccionar por defecto modelo de IA en settings DONE
+
+- hacwer mas smooth los popups DONE
+
+- cambiar entre perfiles con shortcut DONE
+
+---
+
+- hacer que la ventana de pop-up aparezca para cambiar el perfil y que apretar una vez te muestra el perfil en el que estás y apretar una segunda te cambia de perfil. DONE
+
+- Crear 3 o 4 perfiles por defecto distintos por defecto
+
+- Crear un blog o página documentando el prompt engineering
+
+- crear playground como excalidraw
+
+- regenerar api key cuando te registras no funciona
+
+- cambiar el precio de stripe
+
+- desinstalador autimatico (cierra cualquier instancia abierta)
+
+- mostrar en settings una opcion de que cuando se cierre se quede en segundo plano o se cierre totalmente
+- si estamos en el estado de grabando y de repente se pulsa el botón de cambiar selección pues se hace se muestra el de cambiar selección sólo durante dos segundos y se vuelve al de grabando pero qué pasa si en estos dos segundos viene un mensaje para cambiar el estado a done entonces ya no se tiene que pasar otra vez a recording sino se pasará a done
+
+- actualizador automatico
