@@ -12,7 +12,7 @@ export function UpdateNotification({
   error,
   onDownload,
   onInstall
-}: UpdateNotificationProps) {
+}: UpdateNotificationProps): JSX.Element | null {
   if (status === 'not-available' || status === 'checking') return null
 
   return (

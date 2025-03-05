@@ -42,7 +42,7 @@ const AppPopup: React.FC = () => {
       setMessage(newMessage)
     })
 
-    return () => {
+    return (): void => {
       debouncedHide.cancel() // Limpiar cualquier debounce pendiente
       stateCleanup?.()
       messageCleanup?.()

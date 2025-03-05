@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react'
 import { Sidebar } from './components/ui/Sidebar'
 import { HomeSection } from './components/HomeSection'
@@ -19,7 +20,7 @@ function App(): JSX.Element {
   const [updateProgress, setUpdateProgress] = useState(0)
   const [updateError, setUpdateError] = useState('')
 
-  const toggleCompactMode = () => {
+  const toggleCompactMode = (): void => {
     if (!isCompactMode) {
       setCurrentSection('home')
       setIsCompactMode(true)
@@ -69,14 +70,14 @@ function App(): JSX.Element {
       setIsStartingApp(false)
     }, 2000)
 
-    return () => {
+    return (): void => {
       clearInterval(iconInterval)
     }
   }, [])
 
   useEffect(() => {
-    const handleShortcutToggle = () => {
-      if (settings && profiles.length > 0) {
+    const handleShortcutToggle = (): void => {
+      if (settings && profiles && profiles.length > 0) {
         handleToggleRecording(settings, profiles)
       } else {
         console.error('[APP] Settings or profiles not loaded yet')
@@ -86,14 +87,14 @@ function App(): JSX.Element {
     window.electron.ipcRenderer.removeAllListeners('toggle-recording')
     window.electron.ipcRenderer.on('toggle-recording', handleShortcutToggle)
 
-    return () => {
+    return (): void => {
       window.electron.ipcRenderer.removeAllListeners('toggle-recording')
     }
   }, [settings, profiles, handleToggleRecording])
 
   useEffect(() => {
     window.electron.ipcRenderer.on('cycle-profile', () => {
-      if (settings && profiles.length > 0) {
+      if (settings && profiles && profiles.length > 0) {
         // Encontrar el índice del perfil actual
         const currentIndex = profiles.findIndex((p) => p.name === settings.selectedProfile)
         // Calcular el índice del siguiente perfil
@@ -110,7 +111,7 @@ function App(): JSX.Element {
       }
     })
 
-    return () => {
+    return (): void => {
       window.electron.ipcRenderer.removeAllListeners('cycle-profile')
     }
   }, [settings, profiles, updateSelectedProfile])
@@ -130,16 +131,16 @@ function App(): JSX.Element {
     // Check for updates on component mount
     window.electron.ipcRenderer.invoke('check-for-updates')
 
-    return () => {
+    return (): void => {
       window.electron.ipcRenderer.removeAllListeners('update-status')
     }
   }, [])
 
-  const handleDownloadUpdate = async () => {
+  const handleDownloadUpdate = async (): Promise<void> => {
     await window.electron.ipcRenderer.invoke('download-update')
   }
 
-  const handleInstallUpdate = async () => {
+  const handleInstallUpdate = async (): Promise<void> => {
     await window.electron.ipcRenderer.invoke('install-update')
   }
 
@@ -177,11 +178,11 @@ function App(): JSX.Element {
         {currentSection === 'home' && (
           <HomeSection
             isRecording={isRecording}
-            onToggleRecording={() => handleToggleRecording(settings!, profiles)}
+            onToggleRecording={() => handleToggleRecording(settings!, profiles!)}
             onCancelRecording={() => cancelRecording(settings!)}
             transcription={transcription}
             processedText={processedText}
-            profiles={profiles}
+            profiles={profiles!}
             onSelectProfile={updateSelectedProfile}
             isProcessing={isProcessing}
             settings={settings}
@@ -191,7 +192,7 @@ function App(): JSX.Element {
         )}
         {currentSection === 'profiles' && (
           <ProfilesSection
-            profiles={profiles}
+            profiles={profiles!}
             onAddProfile={addProfile}
             onUpdateProfile={updateProfile}
             onDeleteProfile={deleteProfile}

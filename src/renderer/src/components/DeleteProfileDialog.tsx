@@ -5,7 +5,12 @@ interface DeleteDialogProps {
   profileName: string
 }
 
-export function DeleteDialog({ isOpen, onClose, onConfirm, profileName }: DeleteDialogProps) {
+export function DeleteDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  profileName
+}: DeleteDialogProps): JSX.Element | null {
   if (!isOpen) return null
 
   return (
@@ -13,7 +18,8 @@ export function DeleteDialog({ isOpen, onClose, onConfirm, profileName }: Delete
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-[400px] shadow-lg">
         <h2 className="text-xl font-semibold text-zinc-100 mb-2">Delete Profile</h2>
         <p className="text-zinc-400 mb-6">
-          Are you sure you want to delete the profile "{profileName}"? This action cannot be undone.
+          Are you sure you want to delete the profile &quot;{profileName}&quot;? This action cannot
+          be undone.
         </p>
 
         <div className="flex justify-end gap-3">

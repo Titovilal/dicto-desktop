@@ -1,4 +1,4 @@
-appId: com.electron.app
+appId: io.dicto.desktop
 productName: dicto-desktop
 directories:
   buildResources: build

@@ -15,7 +15,7 @@ function RecordingButton({
   isProcessing: boolean
   onToggleRecording: () => void
   onCancelRecording: () => void
-}) {
+}): JSX.Element {
   return (
     <div className="flex items-center gap-2">
       <button
@@ -63,7 +63,7 @@ function ViewSelector({
 }: {
   viewMode: 'dual' | 'transcription' | 'processed'
   setViewMode: (mode: 'dual' | 'transcription' | 'processed') => void
-}) {
+}): JSX.Element {
   return (
     <div className="flex bg-zinc-800/30 rounded-xl p-1.5 gap-1.5">
       <button
@@ -110,22 +110,22 @@ function ProfileSelector({
   profiles: Profile[]
   onSelectProfile: (profile: Profile) => Promise<void>
   selectedProfileName: string
-}) {
+}): JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent): void {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false)
       }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    return (): void => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleProfileChange = (profileName: string) => {
+  const handleProfileChange = (profileName: string): void => {
     const profile = profiles.find((p) => p.name === profileName)
     if (profile) {
       onSelectProfile(profile)
@@ -194,12 +194,12 @@ export function HomeSection({
   settings,
   isCompactMode,
   onExitCompactMode
-}: HomeSectionProps) {
+}: HomeSectionProps): JSX.Element {
   const [isTranscriptionCopied, setIsTranscriptionCopied] = useState(false)
   const [isProcessedCopied, setIsProcessedCopied] = useState(false)
   const [viewMode, setViewMode] = useState<'dual' | 'transcription' | 'processed'>('dual')
 
-  const handleCopy = (text: string, setCopied: (value: boolean) => void) => {
+  const handleCopy = (text: string, setCopied: (value: boolean) => void): void => {
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)

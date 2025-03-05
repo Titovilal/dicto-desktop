@@ -11,7 +11,7 @@ interface SettingsSectionProps {
   updateUser?: (user: StoreSchema['user']) => void
 }
 
-function CharactersInfoCard() {
+function CharactersInfoCard(): JSX.Element {
   return (
     <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/10">
       <div className="space-y-3">
@@ -27,9 +27,9 @@ function CharactersInfoCard() {
           </ol>
           <p className="text-xs border-l-2 border-blue-500/20 pl-3 mt-3">
             <span className="text-blue-400">Important:</span> Character count is based on the input
-            text, not the AI's response. For example, transcribing a 30-second audio might use 100
-            characters, and if you process that text with AI, it will count those same 100
-            characters, regardless of how long the AI's response is.
+            text, not the AI&apos;s response. For example, transcribing a 30-second audio might use
+            100 characters, and if you process that text with AI, it will count those same 100
+            characters, regardless of how long the AI&apos;s response is.
           </p>
           <p className="text-xs text-zinc-500 mt-2">
             Currently, AI processing is free. We plan to add more powerful models in the future
@@ -46,7 +46,7 @@ export function SettingsSection({
   updateSettings,
   user,
   updateUser
-}: SettingsSectionProps) {
+}: SettingsSectionProps): JSX.Element {
   const [isRecording, setIsRecording] = useState(false)
   const [isSettingProfileShortcut, setIsSettingProfileShortcut] = useState(false)
   const [apiKey, setApiKey] = useState(settings?.apiKey || '')
@@ -56,7 +56,7 @@ export function SettingsSection({
   const { playTestSound } = useSound()
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchUserData = async (): Promise<void> => {
       if (!settings || !settings.apiKey || !updateUser || settings.apiKey !== apiKey) return
 
       try {
@@ -70,9 +70,9 @@ export function SettingsSection({
     fetchUserData()
   }, [])
 
-  const handleShortcutClick = () => {
+  const handleShortcutClick = (): void => {
     setIsRecording(true)
-    const handleKeyDown = async (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent): Promise<void> => {
       e.preventDefault()
 
       // Build the shortcut with Electron-compatible format
@@ -115,9 +115,9 @@ export function SettingsSection({
     window.addEventListener('keydown', handleKeyDown)
   }
 
-  const handleProfileShortcutClick = () => {
+  const handleProfileShortcutClick = (): void => {
     setIsSettingProfileShortcut(true)
-    const handleKeyDown = async (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent): Promise<void> => {
       e.preventDefault()
 
       const keys: string[] = []
@@ -153,12 +153,12 @@ export function SettingsSection({
     window.addEventListener('keydown', handleKeyDown)
   }
 
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setApiKey(e.target.value)
     setValidationStatus('none')
   }
 
-  const validateApiKey = async () => {
+  const validateApiKey = async (): Promise<void> => {
     if (!updateUser || !settings) return
 
     setIsValidating(true)
@@ -201,18 +201,18 @@ export function SettingsSection({
     }
   }
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     if (!settings) return
     const volume = parseFloat(e.target.value)
     updateSettings({ ...settings, soundVolume: volume })
   }
 
-  const toggleSound = () => {
+  const toggleSound = (): void => {
     if (!settings) return
     updateSettings({ ...settings, soundEnabled: !settings.soundEnabled })
   }
 
-  const handleTestSound = () => {
+  const handleTestSound = (): void => {
     if (!settings?.soundEnabled) return
     playTestSound(settings.soundVolume)
   }

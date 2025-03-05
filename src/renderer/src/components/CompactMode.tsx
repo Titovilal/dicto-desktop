@@ -21,7 +21,7 @@ function CompactRecordingButton({
   isProcessing: boolean
   onToggleRecording: () => void
   onCancelRecording: () => void
-}) {
+}): JSX.Element {
   const [showCancelButton, setShowCancelButton] = useState(false)
 
   // Control the appearance of cancel button with a delay
@@ -37,7 +37,7 @@ function CompactRecordingButton({
       setShowCancelButton(false)
     }
 
-    return () => {
+    return (): void => {
       if (timer) clearTimeout(timer)
     }
   }, [isRecording])
@@ -92,15 +92,15 @@ function CompactProfileSelector({
   profiles: Profile[]
   onSelectProfile: (profile: Profile) => Promise<void>
   selectedProfileName: string
-}) {
+}): JSX.Element {
   const currentIndex = profiles.findIndex((p) => p.name === selectedProfileName)
 
-  const handlePrevProfile = () => {
+  const handlePrevProfile = (): void => {
     const newIndex = currentIndex > 0 ? currentIndex - 1 : profiles.length - 1
     onSelectProfile(profiles[newIndex])
   }
 
-  const handleNextProfile = () => {
+  const handleNextProfile = (): void => {
     const newIndex = currentIndex < profiles.length - 1 ? currentIndex + 1 : 0
     onSelectProfile(profiles[newIndex])
   }
@@ -152,17 +152,17 @@ export function CompactMode({
   transcription,
   processedText,
   onExitCompactMode
-}: CompactModeProps) {
+}: CompactModeProps): JSX.Element {
   const [isTranscriptionCopied, setIsTranscriptionCopied] = useState(false)
   const [isProcessedCopied, setIsProcessedCopied] = useState(false)
 
-  const handleCopyTranscription = () => {
+  const handleCopyTranscription = (): void => {
     navigator.clipboard.writeText(transcription)
     setIsTranscriptionCopied(true)
     setTimeout(() => setIsTranscriptionCopied(false), 2000)
   }
 
-  const handleCopyProcessed = () => {
+  const handleCopyProcessed = (): void => {
     navigator.clipboard.writeText(processedText)
     setIsProcessedCopied(true)
     setTimeout(() => setIsProcessedCopied(false), 2000)

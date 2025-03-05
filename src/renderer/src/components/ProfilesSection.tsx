@@ -17,7 +17,7 @@ interface ProfilesSectionProps {
 }
 
 // Añade este componente para los indicadores
-function FeatureIndicator({ enabled, label }: { enabled: boolean; label: string }) {
+function FeatureIndicator({ enabled, label }: { enabled: boolean; label: string }): JSX.Element {
   return (
     <div className="flex items-center gap-1.5">
       <div className={`w-1.5 h-1.5 rounded-full ${enabled ? 'bg-emerald-500' : 'bg-zinc-600'}`} />
@@ -33,36 +33,36 @@ export function ProfilesSection({
   onDeleteProfile,
   onSelectProfile,
   settings
-}: ProfilesSectionProps) {
+}: ProfilesSectionProps): JSX.Element {
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null)
   const [newProfileName, setNewProfileName] = useState('')
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [profileToDelete, setProfileToDelete] = useState<Profile | null>(null)
 
-  const handleAddProfile = async () => {
+  const handleAddProfile = async (): Promise<void> => {
     if (!newProfileName.trim()) return
     const newProfile = getNewProfileTemplate(newProfileName)
     await onAddProfile(newProfile)
     setNewProfileName('')
   }
 
-  const handleDeleteClick = (profile: Profile) => {
+  const handleDeleteClick = (profile: Profile): void => {
     setProfileToDelete(profile)
     setIsDeleteDialogOpen(true)
   }
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (): Promise<void> => {
     if (!profileToDelete) return
     await onDeleteProfile(profileToDelete)
     setIsDeleteDialogOpen(false)
     setProfileToDelete(null)
   }
 
-  const handleSelectProfile = async (profile: Profile) => {
+  const handleSelectProfile = async (profile: Profile): Promise<void> => {
     await onSelectProfile(profile)
   }
 
-  const handleUpdateProfile = async (profile: Profile, updates: Profile) => {
+  const handleUpdateProfile = async (profile: Profile, updates: Profile): Promise<void> => {
     const updatedProfile = {
       ...updates,
       name: profile.name

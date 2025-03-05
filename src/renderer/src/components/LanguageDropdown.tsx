@@ -14,7 +14,7 @@ export function LanguageDropdown({
   selectedLanguage,
   onSelectLanguage,
   buttonRef
-}: LanguageDropdownProps) {
+}: LanguageDropdownProps): JSX.Element | null {
   if (!isOpen || !buttonRef.current) return null
 
   const rect = buttonRef.current.getBoundingClientRect()

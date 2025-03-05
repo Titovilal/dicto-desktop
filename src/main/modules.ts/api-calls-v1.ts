@@ -1,26 +1,36 @@
-import { App, ipcMain, protocol } from "electron";
-import path from 'path';
-import { Profile } from '../../renderer/src/types/types';
-import { getClipboardText, setClipboardText, simulateCopy, simulateEnter, simulatePaste } from "./clipboard-and-keys";
+import { App, ipcMain, protocol } from 'electron'
+import path from 'path'
+import { Profile } from '../../renderer/src/types/types'
+import {
+  getClipboardText,
+  setClipboardText,
+  simulateCopy,
+  simulateEnter,
+  simulatePaste
+} from './clipboard-and-keys'
 import {
   initPopupWindow,
   showRecordingPopup,
   updatePopupState,
   hideRecordingPopup
-} from './popup-window';
+} from './popup-window'
 
-let popupApi: ReturnType<typeof initPopupWindow>;
+let popupApi: ReturnType<typeof initPopupWindow>
 
 const dictoWebUrl = 'https://www.dicto.io/api/v1'
 // const dictoWebUrl = 'http://localhost:3000/api/v1'
 
 interface ProcessRecordingParams {
-  audioData: Uint8Array;
-  profile: Profile;
-  apiKey: string;
+  audioData: Uint8Array
+  profile: Profile
+  apiKey: string
 }
 
-async function processRecording({ audioData, profile, apiKey }: ProcessRecordingParams) {
+async function processRecording({
+  audioData,
+  profile,
+  apiKey
+}: ProcessRecordingParams): Promise<{ transcription: string; processedText: string }> {
   try {
     if (!profile) {
       throw new Error('[API_CALLS_V1] No profile selected')
@@ -31,7 +41,7 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
     }
 
     // Show the recording popup with processing state
-    showRecordingPopup('processing');
+    showRecordingPopup('processing')
 
     const formData = new FormData()
     const audioBlob = new Blob([audioData], { type: 'audio/webm' })
@@ -66,7 +76,7 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
     const response = await fetch(`${dictoWebUrl}/get-transcription`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`
       },
       body: formData
     })
@@ -75,11 +85,11 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    const result = await response.json();
+    const result = await response.json()
 
     // Copy to clipboard
     if (profile.copyToClipboard) {
-      const textToCopy = profile.useAI ? result.data.processed ?? '' : result.data.text ?? ''
+      const textToCopy = profile.useAI ? (result.data.processed ?? '') : (result.data.text ?? '')
       setClipboardText(textToCopy)
     }
 
@@ -94,12 +104,12 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
     }
 
     // When processing is complete, update the popup state to finished
-    updatePopupState('finished');
+    updatePopupState('finished')
 
     // Hide the popup after a short delay
     setTimeout(() => {
-      hideRecordingPopup();
-    }, 2000);
+      hideRecordingPopup()
+    }, 2000)
 
     return {
       transcription: result.data.text ?? '',
@@ -108,41 +118,50 @@ async function processRecording({ audioData, profile, apiKey }: ProcessRecording
   } catch (error) {
     console.error('[API CALLS V1] Error processing recording:', error)
     // Hide popup on error
-    hideRecordingPopup();
+    hideRecordingPopup()
     throw error
   }
 }
 
-async function getUserData(apiKey: string) {
+async function getUserData(apiKey: string): Promise<{
+  email: string
+  name: string
+  sub_credits: number
+  otp_credits: number
+  has_access: boolean
+  sub_date_time: string | null
+  otp_date_time: string | null
+  has_subscription: boolean
+  cancel_next_month: boolean
+  created_at: string
+  updated_at: string
+}> {
   try {
     const response = await fetch(`${dictoWebUrl}/get-user-data`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       }
-    });
+    })
 
     if (!response.ok) {
-      throw new Error(`[API CALLS V1] HTTP error! status: ${response.status}`);
+      throw new Error(`[API CALLS V1] HTTP error! status: ${response.status}`)
     }
 
-    const result = await response.json();
-    console.log("result", result)
-    return result.data;
+    const result = await response.json()
+    console.log('result', result)
+    return result.data
   } catch (error) {
-    console.error('[API CALLS V1] Error fetching user data:', error);
-    throw error;
+    console.error('[API CALLS V1] Error fetching user data:', error)
+    throw error
   }
 }
 
-export async function initApiCallsV1(
-  app: App,
-) {
-
+export async function initApiCallsV1(app: App): Promise<void> {
   // Initialize popup API only once
   if (!popupApi) {
-    popupApi = initPopupWindow();
+    popupApi = initPopupWindow()
   }
 
   // Configure protocol for static resources
@@ -153,16 +172,16 @@ export async function initApiCallsV1(
 
   // Register API-related IPC handlers
   ipcMain.handle('process-recording', async (_, params: ProcessRecordingParams) => {
-    return await processRecording(params);
-  });
+    return await processRecording(params)
+  })
 
   ipcMain.handle('get-user-data', async (_, apiKey: string) => {
-    return await getUserData(apiKey);
-  });
+    return await getUserData(apiKey)
+  })
 
   // Clean up handlers when app is quitting
   app.on('will-quit', () => {
-    ipcMain.removeHandler('process-recording');
-    ipcMain.removeHandler('get-user-data');
-  });
+    ipcMain.removeHandler('process-recording')
+    ipcMain.removeHandler('get-user-data')
+  })
 }

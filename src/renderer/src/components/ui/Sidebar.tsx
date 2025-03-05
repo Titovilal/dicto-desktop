@@ -8,7 +8,7 @@ interface SidebarButtonProps {
   onClick: () => void
 }
 
-function SidebarButton({ icon: Icon, label, isActive, onClick }: SidebarButtonProps) {
+function SidebarButton({ icon: Icon, label, isActive, onClick }: SidebarButtonProps): JSX.Element {
   return (
     <button
       onClick={onClick}
@@ -30,8 +30,12 @@ interface SidebarProps {
   onToggleCompactMode: () => void
 }
 
-export function Sidebar({ currentSection, onSectionChange, onToggleCompactMode }: SidebarProps) {
-  const openDashboard = () => {
+export function Sidebar({
+  currentSection,
+  onSectionChange,
+  onToggleCompactMode
+}: SidebarProps): JSX.Element {
+  const openDashboard = (): void => {
     sendIPC('open-external', 'https://dicto.io/dashboard')
   }
 

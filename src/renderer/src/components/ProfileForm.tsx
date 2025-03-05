@@ -15,7 +15,7 @@ interface ProfileFormProps {
 }
 
 // Componente para la sección de encabezado
-function SectionHeader({ title, badge }: { title: string; badge?: string }) {
+function SectionHeader({ title, badge }: { title: string; badge?: string }): JSX.Element {
   return (
     <div className="flex items-center justify-between mb-6">
       <h2 className="text-lg font-medium text-zinc-100">{title}</h2>
@@ -41,7 +41,7 @@ function TextAreaField({
   placeholder: string
   description: string
   rows?: number
-}) {
+}): JSX.Element {
   return (
     <div>
       <label className="block text-xs text-zinc-400 mb-2">{label}</label>
@@ -72,7 +72,7 @@ function ToggleOption({
   onChange: (checked: boolean) => void
   badge?: string
   disabled?: boolean
-}) {
+}): JSX.Element {
   return (
     <div
       className={`p-4 rounded-lg bg-zinc-800/50 border border-zinc-700/50 ${disabled ? 'opacity-50' : ''}`}
@@ -121,7 +121,13 @@ function ToggleOption({
 }
 
 // Componente para secciones con fondo gradiente
-function Section({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function Section({
+  children,
+  className = ''
+}: {
+  children: React.ReactNode
+  className?: string
+}): JSX.Element {
   return (
     <div
       className={`p-6 rounded-xl bg-gradient-to-br from-zinc-800/50 to-zinc-800/30 border border-zinc-700/30 backdrop-blur-sm ${className}`}
@@ -132,7 +138,7 @@ function Section({ children, className = '' }: { children: React.ReactNode; clas
 }
 
 // Añadir este nuevo componente para el mensaje informativo
-function InfoCard() {
+function InfoCard(): JSX.Element {
   return (
     <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-200">
       <div className="flex items-start gap-3">
@@ -140,8 +146,8 @@ function InfoCard() {
           <InfoIcon className="w-4 h-4" />
         </div>
         <p className="text-sm leading-relaxed">
-          We know there are many options to configure. We're building a playground on our website to
-          help you test and improve your prompts. It will be ready soon!
+          We know there are many options to configure. We&apos;re building a playground on our
+          website to help you test and improve your prompts. It will be ready soon!
         </p>
       </div>
     </div>
@@ -149,7 +155,7 @@ function InfoCard() {
 }
 
 // Componente principal ProfileForm
-export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps) {
+export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JSX.Element {
   const [editingProfile, setEditingProfile] = useState<Profile>(profile)
 
   useEffect(() => {

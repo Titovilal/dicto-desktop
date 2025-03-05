@@ -139,7 +139,7 @@ Poner api key inválida
 
 ---
 
-- hacer que la ventana de pop-up aparezca para cambiar el perfil y que apretar una vez te muestra el perfil en el que estás y apretar una segunda te cambia de perfil. DONE
+- Comprobar que el auto update funciona correctamente
 
 - Crear 3 o 4 perfiles por defecto distintos por defecto
 
@@ -151,9 +151,14 @@ Poner api key inválida
 
 - cambiar el precio de stripe
 
-- desinstalador autimatico (cierra cualquier instancia abierta)
-
 - mostrar en settings una opcion de que cuando se cierre se quede en segundo plano o se cierre totalmente
 - si estamos en el estado de grabando y de repente se pulsa el botón de cambiar selección pues se hace se muestra el de cambiar selección sólo durante dos segundos y se vuelve al de grabando pero qué pasa si en estos dos segundos viene un mensaje para cambiar el estado a done entonces ya no se tiene que pasar otra vez a recording sino se pasará a done
 
 - actualizador automatico
+
+# Como crear releases:
+
+git add .
+git commit -m "Release v1.0.1"
+git tag v1.0.1
+git push && git push --tags
