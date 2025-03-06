@@ -17,7 +17,9 @@ import {
 
 let popupApi: ReturnType<typeof initPopupWindow>
 
+const dictoEndpoint = 'https://dicto-endpoint-production.up.railway.app/v1'
 const dictoWebUrl = 'https://www.dicto.io/api/v1'
+
 // const dictoWebUrl = 'http://localhost:3000/api/v1'
 
 interface ProcessRecordingParams {
@@ -73,7 +75,7 @@ async function processRecording({
 
     // console.log("[API CALLS V1] Data sent to Dicto API:", formData)
 
-    const response = await fetch(`${dictoWebUrl}/get-transcription`, {
+    const response = await fetch(`${dictoEndpoint}/process-audio`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`
