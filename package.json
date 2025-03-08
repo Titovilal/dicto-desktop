@@ -1,10 +1,28 @@
 {
   "name": "dicto-desktop",
-  "version": "1.0.2",
+  "version": "1.0.5",
   "description": "Transcription software with superpowers",
   "main": "./out/main/index.js",
   "author": "dicto.io",
   "homepage": "https://dicto.io",
+  "build": {
+    "appId": "com.dicto.desktop",
+    "productName": "Dicto Desktop",
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "repository": "https://github.com/Titovilal/dicto-desktop.git",
+  "publish": {
+    "provider": "github",
+    "owner": "Titovilal",
+    "repo": "dicto-desktop",
+    "releaseType": "release"
+  },
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
@@ -14,12 +32,8 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
-    "postinstall": "electron-builder install-app-deps",
-    "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win",
-    "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux",
-    "publish": "electron-builder --win -p always"
+    "publish:win": "npm run build && electron-builder --win -p always",
+    "help": "electron-builder --help"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
@@ -72,9 +86,5 @@
     "react-dom": "^18.3.1",
     "typescript": "^5.5.2",
     "vite": "^5.3.1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Titovilal/dicto-desktop.git"
   }
 }

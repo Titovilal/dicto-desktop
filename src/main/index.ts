@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import iconPath from '../../resources/icon.png?asset'
+import { initLogger, initLoggerIPC } from './modules.ts/logger'
 import { initStore } from './modules.ts/electron-store'
 import { initApiCallsV1 } from './modules.ts/api-calls-v1'
 import { createTray, destroyTray } from './modules.ts/tray'
@@ -9,6 +10,9 @@ import { initResize } from './modules.ts/resize'
 import { destroyRecordingPopup } from './modules.ts/popup-window'
 import { initShortcuts, unregisterAllShortcuts } from './modules.ts/shortcuts'
 import { initAutoUpdater } from './modules.ts/auto-updater'
+
+// Initialize logger as early as possible
+initLogger()
 
 // Remove the tray variable since it's now managed in the tray module
 function createWindow(): void {
@@ -65,6 +69,9 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+
+  // Initialize logger IPC
+  initLoggerIPC()
 
   // Initialize store first
   const store = await initStore()

@@ -39,7 +39,7 @@ export function useStore(): useStoreReturn {
 
   const addProfile = async (profile: Profile): Promise<void> => {
     await invokeIPC('add-profile', profile)
-    setProfiles([...profiles, profile])
+    setProfiles((prevProfiles) => [...(prevProfiles ?? []), profile])
   }
 
   const updateProfile = async (profile: Profile): Promise<void> => {

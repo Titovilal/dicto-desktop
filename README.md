@@ -137,6 +137,12 @@ Poner api key inválida
 
 - cambiar entre perfiles con shortcut DONE
 
+- Desplegar endpoint en railway para eliminar el 60 sec processing DONE
+
+- regenerar api key cuando te registras no funciona DONE
+
+- actualizador automatico DONE
+
 ---
 
 - Comprobar que el auto update funciona correctamente
@@ -147,18 +153,14 @@ Poner api key inválida
 
 - crear playground como excalidraw
 
-- regenerar api key cuando te registras no funciona
-
 - cambiar el precio de stripe
 
-- mostrar en settings una opcion de que cuando se cierre se quede en segundo plano o se cierre totalmente
 - si estamos en el estado de grabando y de repente se pulsa el botón de cambiar selección pues se hace se muestra el de cambiar selección sólo durante dos segundos y se vuelve al de grabando pero qué pasa si en estos dos segundos viene un mensaje para cambiar el estado a done entonces ya no se tiene que pasar otra vez a recording sino se pasará a done
-
-- actualizador automatico
 
 # Como crear releases:
 
-git add .
-git commit -m "Release v1.0.1"
-git tag v1.0.1
-git push && git push --tags
+publicar y luego ir a github releases y quitar de draft
+
+# Como ver logs de la app
+
+Get-Content -Path C:\Users\scast\AppData\Roaming\dicto-desktop\logs\main.log -Tail 10 -Wait

@@ -1,5 +1,6 @@
 import { sendIPC } from '@/lib/ipc-renderer'
-import { Home, Users, Settings, AppWindow, Minimize2, LucideIcon } from 'lucide-react' // Add Minimize2
+import { Home, Users, Settings, AppWindow, Minimize2, LucideIcon } from 'lucide-react'
+import { UpdateButton } from './UpdateButton'
 
 interface SidebarButtonProps {
   icon: LucideIcon
@@ -8,7 +9,12 @@ interface SidebarButtonProps {
   onClick: () => void
 }
 
-function SidebarButton({ icon: Icon, label, isActive, onClick }: SidebarButtonProps): JSX.Element {
+export function SidebarButton({
+  icon: Icon,
+  label,
+  isActive,
+  onClick
+}: SidebarButtonProps): JSX.Element {
   return (
     <button
       onClick={onClick}
@@ -78,7 +84,8 @@ export function Sidebar({
           </nav>
         </div>
 
-        <div className="mt-auto flex flex-col gap-2">
+        <div className="mt-auto flex flex-col gap-4">
+          <UpdateButton />
           <div className="text-zinc-500 text-sm text-center font-medium tracking-wide">
             Made with ❤️
           </div>
