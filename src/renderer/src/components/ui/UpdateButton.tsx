@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react'
-import { Download, X, Loader2 } from 'lucide-react'
+import { HardDriveDownload, RefreshCw, Check, X, Download } from 'lucide-react'
 
 export function UpdateButton(): JSX.Element | null {
   const [updateStatus, setUpdateStatus] = useState<
@@ -79,69 +79,79 @@ export function UpdateButton(): JSX.Element | null {
     }
   }
 
-  // Uncomment this to only show the button when relevant
-  if (
-    updateStatus !== 'available' &&
-    updateStatus !== 'downloaded' &&
-    updateStatus !== 'downloading' &&
-    updateStatus !== 'error'
-  ) {
-    return null
+  const handleCheckForUpdates = (): void => {
+    window.logger.info('[UpdateButton] Manual check for updates requested')
+    window.electron.ipcRenderer.send('check-for-updates')
   }
 
-  return (
-    <button
-      onClick={handleUpdateAction}
-      disabled={updateStatus === 'downloading'}
-      className={`
-        w-full px-4 py-2 rounded-lg flex items-center justify-between
-        transition-all duration-200 relative overflow-hidden
-        ${
-          updateStatus === 'error'
-            ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
-            : updateStatus === 'downloading'
-              ? 'bg-zinc-700/30 text-zinc-400 cursor-wait'
-              : updateStatus === 'downloaded'
-                ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
-                : 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30'
-        }
-      `}
-    >
-      <div className="flex items-center gap-2">
-        {updateStatus === 'downloading' ? (
-          <Loader2 size={18} className="animate-spin" />
-        ) : updateStatus === 'error' ? (
-          <X size={18} className="text-red-300" />
-        ) : (
-          <Download size={18} />
-        )}
-        <span className="text-sm font-medium">
-          {updateStatus === 'available'
-            ? 'Update Available'
-            : updateStatus === 'downloading'
-              ? 'Downloading...'
-              : updateStatus === 'downloaded'
-                ? 'Install Update'
-                : 'Update Error'}
-        </span>
-      </div>
+  // Render different buttons based on update status
+  switch (updateStatus) {
+    case 'checking':
+      return (
+        <button
+          disabled
+          className="w-fit mx-auto flex items-center gap-2 justify-center px-3 py-1.5 text-xs text-zinc-400 bg-zinc-700/30 rounded-full border border-zinc-700"
+        >
+          <RefreshCw className="w-4 h-4 animate-spin" />
+          Checking...
+        </button>
+      )
 
-      {/* Progress bar for downloading state */}
-      {updateStatus === 'downloading' && (
-        <div
-          className="absolute bottom-0 left-0 h-0.5 bg-blue-500 transition-all duration-200"
-          style={{ width: `${updateProgress}%` }}
-        />
-      )}
+    case 'available':
+      return (
+        <button
+          onClick={handleUpdateAction}
+          className="w-fit mx-auto flex items-center gap-2 justify-center px-3 py-1.5 text-xs text-zinc-100 bg-zinc-700/30 rounded-full border border-zinc-700 hover:bg-zinc-700/50"
+        >
+          <HardDriveDownload className="w-4 h-4" />
+          Update
+        </button>
+      )
 
-      {/* Show error message or progress percentage */}
-      <span className="text-xs opacity-75">
-        {updateStatus === 'error'
-          ? updateError
-          : updateStatus === 'downloading'
-            ? `${Math.round(updateProgress)}%`
-            : ''}
-      </span>
-    </button>
-  )
+    case 'downloading':
+      return (
+        <button
+          disabled
+          className="w-fit mx-auto flex items-center gap-2 justify-center px-3 py-1.5 text-xs text-zinc-400 bg-zinc-700/30 rounded-full border border-zinc-700"
+        >
+          <Download className="w-4 h-4 animate-pulse" />
+          {updateProgress.toFixed(0)}%
+        </button>
+      )
+
+    case 'downloaded':
+      return (
+        <button
+          onClick={handleInstallUpdate}
+          className="w-fit mx-auto flex items-center gap-2 justify-center px-3 py-1.5 text-xs text-zinc-100 bg-green-700/30 rounded-full border border-green-700 hover:bg-green-700/50"
+        >
+          <Check className="w-4 h-4" />
+          Install
+        </button>
+      )
+
+    case 'error':
+      return (
+        <button
+          onClick={handleCheckForUpdates}
+          title={updateError}
+          className="w-fit mx-auto flex items-center gap-2 justify-center px-3 py-1.5 text-xs text-zinc-100 bg-red-700/30 rounded-full border border-red-700 hover:bg-red-700/50"
+        >
+          <X className="w-4 h-4" />
+          Retry
+        </button>
+      )
+
+    case 'not-available':
+    default:
+      return (
+        <button
+          onClick={handleCheckForUpdates}
+          className="w-fit mx-auto flex items-center gap-2 justify-center px-3 py-1.5 text-xs text-zinc-100 bg-zinc-700/30 rounded-full border border-zinc-700 hover:bg-zinc-700/50"
+        >
+          <Check className="w-4 h-4" />
+          All up to date
+        </button>
+      )
+  }
 }

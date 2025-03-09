@@ -1,6 +1,7 @@
 import { sendIPC } from '@/lib/ipc-renderer'
 import { Home, Users, Settings, AppWindow, Minimize2, LucideIcon } from 'lucide-react'
 import { UpdateButton } from './UpdateButton'
+import { useState, useEffect } from 'react'
 
 interface SidebarButtonProps {
   icon: LucideIcon
@@ -41,6 +42,15 @@ export function Sidebar({
   onSectionChange,
   onToggleCompactMode
 }: SidebarProps): JSX.Element {
+  const [appVersion, setAppVersion] = useState<string>('')
+
+  useEffect(() => {
+    // Get app version from main process
+    window.electron.ipcRenderer.invoke('get-app-version').then((version) => {
+      setAppVersion(version)
+    })
+  }, [])
+
   const openDashboard = (): void => {
     sendIPC('open-external', 'https://dicto.io/dashboard')
   }
@@ -86,8 +96,9 @@ export function Sidebar({
 
         <div className="mt-auto flex flex-col gap-4">
           <UpdateButton />
-          <div className="text-zinc-500 text-sm text-center font-medium tracking-wide">
-            Made with ❤️
+          <div className="text-zinc-500 text-xs text-center">
+            {appVersion && <div className="opacity-75"></div>}
+            <div className="font-medium tracking-wide mb-1">(v{appVersion}) Made with ❤️</div>
           </div>
         </div>
       </div>

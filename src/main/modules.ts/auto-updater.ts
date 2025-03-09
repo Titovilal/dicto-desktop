@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { autoUpdater } from 'electron-updater'
 import { getMainWindow } from './tray'
-import { ipcMain } from 'electron'
+import { ipcMain, app } from 'electron'
 
 // Disable auto downloading
 autoUpdater.autoDownload = false
@@ -41,6 +41,11 @@ export async function initAutoUpdater(): Promise<any> {
   ipcMain.on('quit-and-install', () => {
     console.info('[AUTO-UPDATER] Quit and install requested')
     autoUpdater.quitAndInstall()
+  })
+
+  // Add handler to get app version
+  ipcMain.handle('get-app-version', () => {
+    return app.getVersion()
   })
 
   // Set up event handlers
