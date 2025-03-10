@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Profile } from '@/types/types'
 import { LANGUAGES } from '@/lib/languages'
-import { useEffect } from 'react'
 import { AI_MODELS } from '@/lib/models'
 import { AI_MODELS_INFO } from '@/lib/models'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/Select'
 import { InfoIcon, HelpCircle } from 'lucide-react'
 import { Dialog, DialogContent, DialogTrigger } from './ui/Dialog'
+import { debounce } from 'lodash'
 
 interface ProfileFormProps {
   profile: Profile
@@ -162,21 +162,30 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JS
     setEditingProfile(profile)
   }, [profile])
 
+  const debouncedSave = useCallback(
+    debounce(async (currentProfile: Profile) => {
+      await onSave(profile, currentProfile)
+      console.log('currentProfile', currentProfile)
+    }, 1000),
+    [profile, onSave]
+  )
+
+  // Función para actualizar el perfil
+  const updateProfile = (updates: Partial<Profile>): void => {
+    const updatedProfile = { ...editingProfile, ...updates }
+    setEditingProfile(updatedProfile)
+    debouncedSave(updatedProfile)
+  }
+
   return (
     <div className="flex flex-col h-full">
-      {/* Buttons Section */}
-      <div className="flex items-center justify-between gap-2 mb-3">
+      {/* Header Section with Status and Go Back button */}
+      <div className="flex items-center justify-end gap-2 mb-3">
         <button
           onClick={onCancel}
           className="px-3 py-1.5 text-sm rounded-md bg-zinc-700/50 text-zinc-300 hover:bg-zinc-700/70 transition-all duration-200"
         >
-          Cancel
-        </button>
-        <button
-          onClick={() => onSave(profile, editingProfile)}
-          className="px-3 py-1.5 text-sm rounded-md bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 transition-all duration-200"
-        >
-          Save Changes
+          Go Back
         </button>
       </div>
 
@@ -194,9 +203,7 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JS
                 <label className="block text-xs text-zinc-400 mb-2">Language</label>
                 <Select
                   value={editingProfile.language}
-                  onValueChange={(value) =>
-                    setEditingProfile({ ...editingProfile, language: value })
-                  }
+                  onValueChange={(value) => updateProfile({ language: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select language" />
@@ -218,9 +225,7 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JS
               <TextAreaField
                 label="Transcription Prompt"
                 value={editingProfile.transcriptionPrompt}
-                onChange={(value) =>
-                  setEditingProfile({ ...editingProfile, transcriptionPrompt: value })
-                }
+                onChange={(value) => updateProfile({ transcriptionPrompt: value })}
                 placeholder="Enter transcription prompt..."
                 description="A prompt to guide the transcript's style. You can use it to: improve specific word recognition (e.g., 'NFT, DeFi, DAO'), maintain punctuation, or preserve filler words. The prompt should be in the same language as the audio."
                 rows={3}
@@ -237,16 +242,14 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JS
                 label="Use AI"
                 description="Process the transcripted text through the selected AI model. It uses the AI prompt and the temperature to process the text."
                 checked={editingProfile.useAI}
-                onChange={(checked) => setEditingProfile({ ...editingProfile, useAI: checked })}
+                onChange={(checked) => updateProfile({ useAI: checked })}
               />
               {/* Use selected text */}
               <ToggleOption
                 label="Use Selected Text"
                 description="Use the selected text as context for the AI model. It can be used to rewrite content or just to have more context. Depends on the prompt."
                 checked={editingProfile.useSelectedText}
-                onChange={(checked) =>
-                  setEditingProfile({ ...editingProfile, useSelectedText: checked })
-                }
+                onChange={(checked) => updateProfile({ useSelectedText: checked })}
               />
 
               {/* Model Selection */}
@@ -294,9 +297,7 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JS
                 </div>
                 <Select
                   value={editingProfile.modelName}
-                  onValueChange={(value) =>
-                    setEditingProfile({ ...editingProfile, modelName: value })
-                  }
+                  onValueChange={(value) => updateProfile({ modelName: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a model" />
@@ -332,8 +333,7 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JS
                   step="0.1"
                   value={editingProfile.temperature}
                   onChange={(e) =>
-                    setEditingProfile({
-                      ...editingProfile,
+                    updateProfile({
                       temperature: parseFloat(e.target.value)
                     })
                   }
@@ -354,7 +354,7 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JS
               <TextAreaField
                 label="AI Prompt"
                 value={editingProfile.prompt}
-                onChange={(value) => setEditingProfile({ ...editingProfile, prompt: value })}
+                onChange={(value) => updateProfile({ prompt: value })}
                 placeholder="Enter AI prompt..."
                 rows={3}
                 description="This prompt will be used to process your text. Here are some examples: 'Translate it to python code.', 'Summarize the text.', 'Translate it to spanish.'"
@@ -371,8 +371,7 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JS
                 description="Automatically copy the processed text to your clipboard when ready"
                 checked={editingProfile.copyToClipboard}
                 onChange={(checked) =>
-                  setEditingProfile({
-                    ...editingProfile,
+                  updateProfile({
                     copyToClipboard: checked,
                     // If copy to clipboard is disabled, auto paste should be disabled too
                     autoPaste: checked ? editingProfile.autoPaste : false,
@@ -387,8 +386,7 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JS
                 description="Automatically paste the transcripted or processed text into the input field when ready. Only available if Copy to Clipboard is enabled."
                 checked={editingProfile.autoPaste}
                 onChange={(checked) =>
-                  setEditingProfile({
-                    ...editingProfile,
+                  updateProfile({
                     autoPaste: checked,
                     // If auto paste is disabled, auto enter should be disabled too
                     autoEnter: checked ? editingProfile.autoEnter : false
@@ -401,7 +399,7 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JS
                 label="Auto Enter"
                 description="Automatically press enter after the AI processed the text. Only available if Copy to Clipboard and Auto Paste are enabled."
                 checked={editingProfile.autoEnter}
-                onChange={(checked) => setEditingProfile({ ...editingProfile, autoEnter: checked })}
+                onChange={(checked) => updateProfile({ autoEnter: checked })}
                 disabled={!editingProfile.autoPaste}
               />
 
@@ -409,9 +407,7 @@ export function ProfileForm({ profile, onCancel, onSave }: ProfileFormProps): JS
                 label="Return Both Versions"
                 description="Show the transcripted text and the AI processed text in the results. It might be useful to compare the results. If disabled can increase the performance."
                 checked={editingProfile.returnBoth}
-                onChange={(checked) =>
-                  setEditingProfile({ ...editingProfile, returnBoth: checked })
-                }
+                onChange={(checked) => updateProfile({ returnBoth: checked })}
               />
             </div>
           </Section>

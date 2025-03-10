@@ -68,7 +68,6 @@ export function ProfilesSection({
       name: profile.name
     }
     await onUpdateProfile(updatedProfile)
-    setEditingProfile(null)
   }
 
   if (editingProfile) {
@@ -161,7 +160,7 @@ export function ProfilesSection({
                       className={`p-2 rounded-lg ${
                         settings?.selectedProfile !== profile.name
                           ? 'text-zinc-300 hover:bg-zinc-700/70 transition-all duration-200'
-                          : 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 transition-all duration-200'
+                          : 'text-emerald-500 transition-all duration-200'
                       }`}
                     >
                       <Check className="w-4 h-4" />
