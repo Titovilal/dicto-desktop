@@ -1,3 +1,5 @@
+import { AI_MODELS, ONLY_LLM_MODELS } from '../lib/models'
+
 export interface Profile {
   name: string
   prompt: string
@@ -8,9 +10,10 @@ export interface Profile {
   autoPaste: boolean
   autoEnter: boolean
   useSelectedText: boolean
-  modelName: string
+  modelName: keyof typeof AI_MODELS | keyof typeof ONLY_LLM_MODELS
   temperature: number
   transcriptionPrompt: string
+  onlyLlm: boolean
 }
 
 export interface User {

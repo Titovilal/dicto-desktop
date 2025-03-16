@@ -213,8 +213,8 @@ export function SettingsSection({
   }
 
   const handleTestSound = (): void => {
-    if (!settings?.soundEnabled) return
-    playTestSound(settings.soundVolume)
+    if (!settings) return
+    playTestSound(settings.soundVolume, settings.soundEnabled)
   }
 
   return (

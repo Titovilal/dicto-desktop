@@ -13,7 +13,8 @@ export const DEFAULT_PROFILES: Profile[] = [
     useSelectedText: false,
     modelName: 'google/gemini-2.0-flash-001',
     temperature: 0.3,
-    transcriptionPrompt: 'Transcribe the following audio:'
+    transcriptionPrompt: 'Transcribe the following audio:',
+    onlyLlm: false
   },
   {
     name: 'AI Assistant',
@@ -27,7 +28,8 @@ export const DEFAULT_PROFILES: Profile[] = [
     useSelectedText: false,
     modelName: 'google/gemini-2.0-flash-001',
     temperature: 0.7,
-    transcriptionPrompt: 'Transcribe the following audio:'
+    transcriptionPrompt: 'Transcribe the following audio:',
+    onlyLlm: false
   },
   {
     name: 'Quick Copy',
@@ -41,6 +43,7 @@ export const DEFAULT_PROFILES: Profile[] = [
     useSelectedText: false,
     modelName: 'google/gemini-2.0-flash-001',
     temperature: 0.3,
-    transcriptionPrompt: 'Transcribe the following audio:'
+    transcriptionPrompt: 'Transcribe the following audio:',
+    onlyLlm: false
   }
 ]

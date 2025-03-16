@@ -12,5 +12,6 @@ export const getNewProfileTemplate = (name: string): Profile => ({
   useSelectedText: false,
   modelName: 'google/gemini-2.0-flash-001',
   temperature: 0.7,
-  transcriptionPrompt: 'Transcribe the following audio:'
+  transcriptionPrompt: 'Transcribe the following audio:',
+  onlyLlm: false
 })

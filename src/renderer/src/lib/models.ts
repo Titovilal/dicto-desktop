@@ -1,12 +1,22 @@
+export const ONLY_LLM_MODELS = {
+  'gemini-2.0-flash': 'Gemini Flash 2.0',
+  'gemini-2.0-pro-exp-02-05': 'Gemini Pro 2.0'
+} as const
+
 export const AI_MODELS = {
   // Google
   'google/gemini-2.0-flash-001': 'Gemini Flash 2.0',
+
   // Deepseek
   'deepseek/deepseek-chat': 'DeepSeek R1',
   // OpenAI
   'openai/o3-mini': 'o3 Mini',
   'openai/o3-mini-high': 'o3 Mini High',
-  'openai/gpt-4o-mini': 'GPT-4o Mini'
+  'openai/gpt-4o-mini': 'GPT-4o Mini',
+  // Microsoft
+  'microsoft/phi-4-multimodal-instruct': 'Phi-4',
+  // Meta
+  'meta-llama/llama-3.3-70b-instruct': 'Llama 3.3 70B Instruct'
 } as const
 
 export interface ModelInfo {
@@ -15,6 +25,30 @@ export interface ModelInfo {
   bestFor: string[]
 }
 export const AI_MODELS_INFO: Record<keyof typeof AI_MODELS, ModelInfo> = {
+  'microsoft/phi-4-multimodal-instruct': {
+    name: 'Phi 4',
+    description:
+      'Superior, fast and efficient model with exceptional capabilities across all tasks. The default choice for most use cases, combining speed with high-quality outputs.',
+    bestFor: [
+      'Very quick responses',
+      'Time-sensitive tasks',
+      'General-purpose use',
+      'Code generation',
+      'Complex reasoning'
+    ]
+  },
+  'meta-llama/llama-3.3-70b-instruct': {
+    name: 'Llama 3.3 70b',
+    description:
+      'Superior, fast and efficient model with exceptional capabilities across all tasks. The default choice for most use cases, combining speed with high-quality outputs.',
+    bestFor: [
+      'Very quick responses',
+      'Time-sensitive tasks',
+      'General-purpose use',
+      'Code generation',
+      'Complex reasoning'
+    ]
+  },
   'google/gemini-2.0-flash-001': {
     name: 'Gemini Flash 2.0',
     description:

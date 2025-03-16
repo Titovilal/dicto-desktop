@@ -118,7 +118,11 @@ export function ProfilesSection({
             {profiles.map((profile) => (
               <div
                 key={profile.name}
-                className="p-4 rounded-xl bg-gradient-to-br from-zinc-800/50 to-zinc-800/30 border border-zinc-700/30 backdrop-blur-sm hover:from-zinc-800/60 hover:to-zinc-800/40 transition-all duration-200"
+                className={`p-4 rounded-xl backdrop-blur-sm transition-all duration-200 ${
+                  profile.onlyLlm
+                    ? 'bg-gradient-to-br from-zinc-800/50 to-zinc-800/30 border border-zinc-700/30 hover:from-zinc-800/60 hover:to-zinc-800/40'
+                    : 'bg-gradient-to-br from-zinc-800/50 to-zinc-800/30 border border-zinc-700/30 hover:from-zinc-800/60 hover:to-zinc-800/40'
+                }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -133,27 +137,49 @@ export function ProfilesSection({
                         >
                           {profile.name}
                         </h3>
+                        {profile.onlyLlm && (
+                          <div className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-xs font-medium border border-blue-500/20">
+                            Direct LLM
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-zinc-400">
-                          {LANGUAGES[profile.language as keyof typeof LANGUAGES]}
-                        </span>
-                        <span className="text-xs text-zinc-500">•</span>
+                      {!profile.onlyLlm && (
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-xs text-zinc-400">
+                            {LANGUAGES[profile.language as keyof typeof LANGUAGES]}
+                          </span>
+                          <span className="text-xs text-zinc-500">•</span>
+                          <span className="text-xs text-zinc-400">
+                            {AI_MODELS[profile.modelName as keyof typeof AI_MODELS]}
+                          </span>
+                        </div>
+                      )}
+                      {profile.onlyLlm && (
                         <span className="text-xs text-zinc-400">
                           {AI_MODELS[profile.modelName as keyof typeof AI_MODELS]}
                         </span>
-                      </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="grid grid-cols-3 gap-x-3 gap-y-1 mr-2">
-                      <FeatureIndicator enabled={profile.copyToClipboard} label="Copy" />
-                      <FeatureIndicator enabled={profile.autoPaste} label="Paste" />
-                      <FeatureIndicator enabled={profile.autoEnter} label="Enter" />
-                      <FeatureIndicator enabled={profile.useAI} label="Use AI" />
-                      <FeatureIndicator enabled={profile.useSelectedText} label="Selected Text" />
-                    </div>
+                    {profile.onlyLlm ? (
+                      <div className="grid grid-cols-3 gap-x-3 gap-y-1 mr-2">
+                        <FeatureIndicator enabled={true} label="Copy" />
+                        <FeatureIndicator enabled={true} label="Paste" />
+                        <FeatureIndicator enabled={false} label="Enter" />
+                        <FeatureIndicator enabled={true} label="Use AI" />
+                        <FeatureIndicator enabled={true} label="Selected Text" />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-x-3 gap-y-1 mr-2">
+                        <FeatureIndicator enabled={profile.copyToClipboard} label="Copy" />
+                        <FeatureIndicator enabled={profile.autoPaste} label="Paste" />
+                        <FeatureIndicator enabled={profile.autoEnter} label="Enter" />
+                        <FeatureIndicator enabled={profile.useAI} label="Use AI" />
+                        <FeatureIndicator enabled={profile.useSelectedText} label="Selected Text" />
+                      </div>
+                    )}
 
                     <button
                       onClick={() => handleSelectProfile(profile)}

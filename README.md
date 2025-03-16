@@ -154,7 +154,6 @@ Poner api key inválida
 - crear playground como excalidraw
 
 - cambiar el precio de stripe
-
 - si estamos en el estado de grabando y de repente se pulsa el botón de cambiar selección pues se hace se muestra el de cambiar selección sólo durante dos segundos y se vuelve al de grabando pero qué pasa si en estos dos segundos viene un mensaje para cambiar el estado a done entonces ya no se tiene que pasar otra vez a recording sino se pasará a done
 
 # Como crear releases:

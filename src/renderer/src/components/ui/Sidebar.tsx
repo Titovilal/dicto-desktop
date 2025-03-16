@@ -27,7 +27,7 @@ export function SidebarButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 ${
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${
         isActive
           ? 'bg-zinc-700/50 text-zinc-100'
           : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50'
@@ -59,8 +59,8 @@ export function Sidebar({
     })
   }, [])
 
-  const openDashboard = (): void => {
-    sendIPC('open-external', 'https://dicto.io/dashboard')
+  const openUrl = (url: string): void => {
+    sendIPC('open-external', url)
   }
 
   return (
@@ -107,8 +107,20 @@ export function Sidebar({
             LINKS
           </div>
           <nav className="flex flex-col gap-2">
-            <SidebarButton icon={LayoutDashboard} label="Dashboard" onClick={openDashboard} />
-            <SidebarButton icon={FlaskConical} label="Playground" onClick={openDashboard} />
+            <SidebarButton
+              icon={LayoutDashboard}
+              label="Dashboard"
+              onClick={() => {
+                openUrl('https://dicto.io/dashboard')
+              }}
+            />
+            <SidebarButton
+              icon={FlaskConical}
+              label="Playground"
+              onClick={() => {
+                openUrl('https://dicto.io/playground')
+              }}
+            />
           </nav>
         </div>
 

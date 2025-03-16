@@ -17,11 +17,8 @@ import {
 
 let popupApi: ReturnType<typeof initPopupWindow>
 
-// const dictoEndpoint = 'https://dicto-endpoint-production.up.railway.app/v1'
-// const dictoWebUrl = 'https://www.dicto.io/api/v1'
-
-const dictoWebUrl = 'http://localhost:3000/v1'
-const dictoEndpoint = 'http://localhost:3000/v1'
+// const endpointUrl = 'https://www.dicto.io/api/v1'
+const endpointUrl = 'http://localhost:3000/api/v1'
 
 interface ProcessRecordingParams {
   audioData: Uint8Array
@@ -61,46 +58,55 @@ async function processRecording({
     if (profile.transcriptionPrompt?.trim()) {
       formData.append('transcriptionPrompt', profile.transcriptionPrompt.trim())
     }
-
     if (profile.prompt?.trim() && profile.useAI) {
       formData.append('prompt', profile.prompt.trim())
     }
-
-    if (profile.useSelectedText && profile.useAI) {
+    let selectedText
+    if ((profile.useSelectedText && profile.useAI) || profile.onlyLlm) {
       await simulateCopy()
-      const selectedText = getClipboardText()
+      selectedText = getClipboardText()
       if (selectedText?.trim()) {
         formData.append('selectedText', selectedText)
       }
     }
 
-    // console.log("[API CALLS V1] Data sent to Dicto API:", formData)
+    // TODO: Fix the way we do this
+    let fetchResponse
+    if (profile.onlyLlm) {
+      const formtDataAi = new FormData()
+      formtDataAi.append('file', audioBlob, 'recording.webm')
+      formtDataAi.append('modelName', 'gemini-2.0-pro-exp-02-05') // gemini-2.0-flash
+      formtDataAi.append('selectedText', selectedText)
 
-    const response = await fetch(`${dictoEndpoint}/process-audio`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: formData
-    })
-
-    if (response.status !== 200) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      fetchResponse = await fetch(`${endpointUrl}/transcriptions-ai`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`
+        },
+        body: formtDataAi
+      })
+    } else {
+      fetchResponse = await fetch(`${endpointUrl}/transcriptions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`
+        },
+        body: formData
+      })
     }
 
-    const result = await response.json()
+    const result = await fetchResponse.json()
 
     // Copy to clipboard
-    if (profile.copyToClipboard) {
-      const textToCopy = profile.useAI ? (result.data.processed ?? '') : (result.data.text ?? '')
+    if (profile.copyToClipboard || profile.onlyLlm) {
+      const textToCopy =
+        profile.useAI || profile.onlyLlm ? (result.data.processed ?? '') : (result.data.text ?? '')
       setClipboardText(textToCopy)
     }
-
     // Auto paste
-    if (profile.autoPaste) {
+    if (profile.autoPaste || profile.onlyLlm) {
       await simulatePaste()
     }
-
     // Auto enter
     if (profile.autoEnter) {
       await simulateEnter()
@@ -140,7 +146,7 @@ async function getUserData(apiKey: string): Promise<{
   updated_at: string
 }> {
   try {
-    const response = await fetch(`${dictoWebUrl}/get-user-data`, {
+    const response = await fetch(`${endpointUrl}/users`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${apiKey}`,
