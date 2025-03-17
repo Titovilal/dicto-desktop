@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 export async function invokeIPC(functionName: string, ...args: any[]): Promise<any> {
   return await window.electron.ipcRenderer.invoke(functionName, ...args)
 }

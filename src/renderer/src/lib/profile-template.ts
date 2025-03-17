@@ -1,4 +1,4 @@
-import { Profile } from '@/types/types'
+import { Profile } from '../types/types'
 
 export const getNewProfileTemplate = (name: string): Profile => ({
   name,
