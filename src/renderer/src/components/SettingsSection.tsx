@@ -1,8 +1,9 @@
 import { StoreSchema } from '@/types/types'
 import { useState, useEffect } from 'react'
-import { CaseLower, Volume2, VolumeX, Play, InfoIcon } from 'lucide-react'
+import { CaseLower, Volume2, VolumeX, Play, InfoIcon, Mic } from 'lucide-react'
 import { invokeIPC } from '@/lib/ipc-renderer'
 import { useSound } from '@/hooks/useSound'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/Select'
 
 interface SettingsSectionProps {
   settings: StoreSchema['settings'] | null
@@ -52,6 +53,7 @@ export function SettingsSection({
   const [apiKey, setApiKey] = useState(settings?.apiKey || '')
   const [isValidating, setIsValidating] = useState(false)
   const [validationStatus, setValidationStatus] = useState<'none' | 'success' | 'error'>('none')
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
 
   const { playTestSound } = useSound()
 
@@ -68,6 +70,21 @@ export function SettingsSection({
     }
 
     fetchUserData()
+  }, [])
+
+  useEffect(() => {
+    // Fetch available audio input devices
+    const getAudioDevices = async (): Promise<void> => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const audioInputDevices = devices.filter((device) => device.kind === 'audioinput')
+        setAudioDevices(audioInputDevices)
+      } catch (error) {
+        console.error('Error fetching audio devices:', error)
+      }
+    }
+
+    getAudioDevices()
   }, [])
 
   const handleShortcutClick = (): void => {
@@ -217,10 +234,54 @@ export function SettingsSection({
     playTestSound(settings.soundVolume, settings.soundEnabled)
   }
 
+  const handleAudioDeviceChange = (deviceId: string): void => {
+    if (!settings) return
+    updateSettings({ ...settings, defaultMediaDevice: deviceId })
+  }
+
   return (
     <section className="h-full flex flex-col">
       <div className="space-y-12 pl-2 overflow-y-auto pr-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-zinc-800/30 [&::-webkit-scrollbar-thumb]:bg-zinc-600/50 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-zinc-800/30 hover:[&::-webkit-scrollbar-thumb]:bg-zinc-500/50">
-        {/* Add Sound Settings Section before the Shortcut Section */}
+        {/* Audio Input Device Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium text-zinc-100">Audio Input Device</h2>
+            <div className="px-3 py-1 rounded-full bg-zinc-700/30 text-xs text-zinc-400">
+              Recording
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-zinc-700/50 text-zinc-300">
+                <Mic size={20} />
+              </div>
+              <div className="flex-1">
+                <Select
+                  value={settings?.defaultMediaDevice || 'default'}
+                  onValueChange={handleAudioDeviceChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select microphone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">System Default</SelectItem>
+                    {audioDevices.map((device) => (
+                      <SelectItem key={device.deviceId} value={device.deviceId}>
+                        {device.label || `Microphone ${device.deviceId.slice(0, 5)}...`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-sm text-zinc-400">
+              Select which microphone to use for voice recording. If no device is selected, the
+              system default will be used.
+            </p>
+          </div>
+        </div>
+
+        {/* Sound Settings Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-zinc-100">Sound Settings</h2>

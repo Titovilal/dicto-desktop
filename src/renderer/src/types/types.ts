@@ -30,17 +30,20 @@ export interface User {
   updated_at: string
 }
 
+export interface Settings {
+  theme: 'light' | 'dark'
+  appLanguage: string
+  soundEnabled: boolean
+  soundVolume: number
+  recordShortcut: string
+  selectedProfile: string
+  apiKey: string
+  changeProfileShortcut: string
+  defaultMediaDevice: string
+}
+
 export interface StoreSchema {
-  settings?: {
-    theme: 'light' | 'dark'
-    appLanguage: string
-    soundEnabled: boolean
-    soundVolume: number
-    recordShortcut: string
-    selectedProfile: string
-    apiKey: string
-    changeProfileShortcut: string
-  }
+  settings?: Settings
   profiles?: Profile[]
   user?: User
 }

@@ -1,6 +1,6 @@
 {
   "name": "dicto-desktop",
-  "version": "1.0.7",
+  "version": "1.1.1",
   "description": "Transcription software with superpowers",
   "main": "./out/main/index.js",
   "author": "dicto.io",
@@ -33,7 +33,12 @@
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "publish:win": "npm run build && electron-builder --win -p always",
-    "help": "electron-builder --help"
+    "help": "electron-builder --help",
+    "bump:patch": "node scripts/bump-version.js patch",
+    "bump:minor": "node scripts/bump-version.js minor",
+    "bump:major": "node scripts/bump-version.js major",
+    "prepublish:win": "npm run bump:patch",
+    "postpublish:win": "git add package.json && git commit -m \"chore: bump version to v$(node -p \"require('./package.json').version\")\" && git push"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",

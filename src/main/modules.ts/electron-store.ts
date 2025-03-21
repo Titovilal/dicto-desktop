@@ -15,7 +15,8 @@ export async function initStore(): Promise<any> {
         recordShortcut: 'CommandOrControl+Space',
         changeProfileShortcut: 'CommandOrControl+P',
         selectedProfile: 'Default',
-        apiKey: ''
+        apiKey: '',
+        defaultMediaDevice: ''
       },
       profiles: DEFAULT_PROFILES,
       user: {

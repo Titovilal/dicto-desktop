@@ -17,8 +17,8 @@ import {
 
 let popupApi: ReturnType<typeof initPopupWindow>
 
-// const endpointUrl = 'https://www.dicto.io/api/v1'
-const endpointUrl = 'http://localhost:3000/api/v1'
+const endpointUrl = 'https://www.dicto.io/api/v1'
+// const endpointUrl = 'http://localhost:3000/api/v1'
 
 interface ProcessRecordingParams {
   audioData: Uint8Array
