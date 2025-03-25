@@ -96,6 +96,7 @@ async function processRecording({
     }
 
     const result = await fetchResponse.json()
+    console.log('5')
 
     // Copy to clipboard
     if (profile.copyToClipboard || profile.onlyLlm) {
@@ -103,17 +104,22 @@ async function processRecording({
         profile.useAI || profile.onlyLlm ? (result.data.processed ?? '') : (result.data.text ?? '')
       setClipboardText(textToCopy)
     }
+    console.log('6')
     // Auto paste
     if (profile.autoPaste || profile.onlyLlm) {
       await simulatePaste()
     }
+    console.log('7')
     // Auto enter
     if (profile.autoEnter) {
       await simulateEnter()
     }
+    console.log('8')
 
     // When processing is complete, update the popup state to finished
     updatePopupState('finished')
+
+    console.log('Processing finished', result.data)
 
     // Hide the popup after a short delay
     setTimeout(() => {
