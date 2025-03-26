@@ -1,52 +1,89 @@
-import { useCallback } from 'react'
 import recordingOff from '../assets/off.mp3' // Asegúrate de tener este archivo
 import recordingOk from '../assets/ok.mp3'
 import recordingOn from '../assets/on.mp3'
 
 type useSoundReturn = {
-  playTestSound: (volume?: number, enabled?: boolean) => void
-  playRecordStartSound: (volume?: number, enabled?: boolean) => void
-  playRecordStopSound: (volume?: number, enabled?: boolean) => void
-  playFinishSound: (volume?: number, enabled?: boolean) => void
+  playTestSound: (
+    volume: number | undefined,
+    enabled: boolean | undefined,
+    outputDevice?: string
+  ) => void
+  playRecordStartSound: (
+    volume: number | undefined,
+    enabled: boolean | undefined,
+    outputDevice?: string
+  ) => void
+  playRecordStopSound: (
+    volume: number | undefined,
+    enabled: boolean | undefined,
+    outputDevice?: string
+  ) => void
+  playFinishSound: (
+    volume: number | undefined,
+    enabled: boolean | undefined,
+    outputDevice?: string
+  ) => void
 }
 
 export function useSound(): useSoundReturn {
-  const playSound = useCallback((soundFile: string, volume = 1, enabled = true) => {
-    // Don't play if sounds are disabled
-    if (!enabled) return
+  const playSound = async (
+    soundFile: string,
+    volume: number | undefined,
+    enabled: boolean | undefined,
+    outputDevice?: string
+  ): Promise<void> => {
+    if (enabled === false) return
 
-    const audio = new Audio(soundFile)
-    audio.volume = volume
-    audio.play()
-  }, [])
+    try {
+      const audio = new Audio(soundFile)
+      audio.volume = volume ?? 1
 
-  const playTestSound = useCallback(
-    (volume = 1, enabled = true) => {
-      playSound(recordingOk, volume, enabled)
-    },
-    [playSound]
-  )
+      // Set the output device if specified
+      if (outputDevice && audio.setSinkId) {
+        try {
+          await audio.setSinkId(outputDevice)
+        } catch (error) {
+          console.error('Error setting audio output device:', error)
+        }
+      }
 
-  const playRecordStartSound = useCallback(
-    (volume = 1, enabled = true) => {
-      playSound(recordingOn, volume, enabled)
-    },
-    [playSound]
-  )
+      await audio.play()
+    } catch (error) {
+      console.error('Error playing sound:', error)
+    }
+  }
 
-  const playRecordStopSound = useCallback(
-    (volume = 1, enabled = true) => {
-      playSound(recordingOff, volume, enabled)
-    },
-    [playSound]
-  )
+  const playTestSound = (
+    volume: number | undefined,
+    enabled: boolean | undefined,
+    outputDevice?: string
+  ): void => {
+    playSound(recordingOk, volume, enabled, outputDevice)
+  }
 
-  const playFinishSound = useCallback(
-    (volume = 1, enabled = true) => {
-      playSound(recordingOk, volume, enabled)
-    },
-    [playSound]
-  )
+  const playRecordStartSound = (
+    volume: number | undefined,
+    enabled: boolean | undefined,
+    outputDevice?: string
+  ): void => {
+    playSound(recordingOn, volume, enabled, outputDevice)
+  }
+
+  const playRecordStopSound = (
+    volume: number | undefined,
+    enabled: boolean | undefined,
+    outputDevice?: string
+  ): void => {
+    playSound(recordingOff, volume, enabled, outputDevice)
+  }
+
+  const playFinishSound = (
+    volume: number | undefined,
+    enabled: boolean | undefined,
+    outputDevice?: string
+  ): void => {
+    playSound(recordingOk, volume, enabled, outputDevice)
+  }
 
   return {
     playTestSound,

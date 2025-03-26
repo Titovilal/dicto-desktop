@@ -82,7 +82,11 @@ export function useRecord(): {
             invokeIPC('hide-popup')
           }, 2000)
 
-          playFinishSound(settings.soundVolume, settings.soundEnabled)
+          playFinishSound(
+            settings.outputVolume,
+            settings.outputVolumeEnabled,
+            settings.outputDevice
+          )
           setIsProcessing(false)
           setTranscription(result.transcription)
           setProcessedText(result.processedText)
@@ -98,7 +102,11 @@ export function useRecord(): {
       await invokeIPC('show-popup', 'recording')
 
       mediaRecorderRef.current.start(1000)
-      playRecordStartSound(settings.soundVolume, settings.soundEnabled)
+      playRecordStartSound(
+        settings.outputVolume,
+        settings.outputVolumeEnabled,
+        settings.outputDevice
+      )
       setIsRecording(true)
     } catch (error) {
       console.error('[RECORD] Error starting recording:', error)
@@ -114,7 +122,11 @@ export function useRecord(): {
       isCancellingRef.current = true
       mediaRecorderRef.current.stop()
       mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop())
-      playRecordStopSound(settings?.soundVolume, settings?.soundEnabled)
+      playRecordStopSound(
+        settings?.outputVolume,
+        settings?.outputVolumeEnabled,
+        settings?.outputDevice
+      )
       setIsRecording(false)
       setIsProcessing(false)
       audioChunksRef.current = []
@@ -131,7 +143,11 @@ export function useRecord(): {
 
       mediaRecorderRef.current.stop()
       mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop())
-      playRecordStopSound(settings?.soundVolume, settings?.soundEnabled)
+      playRecordStopSound(
+        settings?.outputVolume,
+        settings?.outputVolumeEnabled,
+        settings?.outputDevice
+      )
       setIsRecording(false)
       setIsProcessing(true)
     }

@@ -33,13 +33,15 @@ export interface User {
 export interface Settings {
   theme: 'light' | 'dark'
   appLanguage: string
-  soundEnabled: boolean
-  soundVolume: number
+  outputVolumeEnabled: boolean
+  outputVolume: number
   recordShortcut: string
   selectedProfile: string
   apiKey: string
   changeProfileShortcut: string
-  defaultMediaDevice: string
+  inputDevice: string
+  inputVolume: number
+  outputDevice: string
 }
 
 export interface StoreSchema {

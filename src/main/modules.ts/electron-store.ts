@@ -10,13 +10,15 @@ export async function initStore(): Promise<any> {
       settings: {
         theme: 'light',
         appLanguage: 'es',
-        soundEnabled: true,
-        soundVolume: 1,
+        outputVolumeEnabled: true,
+        outputVolume: 1,
         recordShortcut: 'CommandOrControl+Space',
         changeProfileShortcut: 'CommandOrControl+P',
         selectedProfile: 'Default',
         apiKey: '',
-        defaultMediaDevice: ''
+        inputDevice: '',
+        inputVolume: 1,
+        outputDevice: ''
       },
       profiles: DEFAULT_PROFILES,
       user: {

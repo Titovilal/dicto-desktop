@@ -4,6 +4,7 @@ import { CaseLower, Volume2, VolumeX, Play, InfoIcon } from 'lucide-react'
 import { invokeIPC } from '@/lib/ipc-renderer'
 import { useSound } from '@/hooks/useSound'
 import { AudioDeviceSelector } from './AudioDeviceSelector'
+import { OutputDeviceSelector } from './OutputDeviceSelector'
 
 interface SettingsSectionProps {
   settings: StoreSchema['settings'] | null
@@ -205,29 +206,32 @@ export function SettingsSection({
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     if (!settings) return
     const volume = parseFloat(e.target.value)
-    updateSettings({ ...settings, soundVolume: volume })
+    updateSettings({ ...settings, outputVolume: volume })
   }
 
   const toggleSound = (): void => {
     if (!settings) return
-    updateSettings({ ...settings, soundEnabled: !settings.soundEnabled })
+    updateSettings({ ...settings, outputVolumeEnabled: !settings.outputVolumeEnabled })
   }
 
   const handleTestSound = (): void => {
     if (!settings) return
-    playTestSound(settings.soundVolume, settings.soundEnabled)
+    playTestSound(settings.outputVolume, settings.outputVolumeEnabled, settings.outputDevice)
   }
 
   return (
     <section className="h-full flex flex-col">
       <div className="space-y-12 pl-2 overflow-y-auto pr-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-zinc-800/30 [&::-webkit-scrollbar-thumb]:bg-zinc-600/50 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-zinc-800/30 hover:[&::-webkit-scrollbar-thumb]:bg-zinc-500/50">
-        {/* Audio Input Device Section - Now using the extracted component */}
+        {/* Audio Input Device Section */}
         <AudioDeviceSelector settings={settings} updateSettings={updateSettings} />
+
+        {/* Audio Output Device Section - New component */}
+        <OutputDeviceSelector settings={settings} updateSettings={updateSettings} />
 
         {/* Sound Settings Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium text-zinc-100">Sound Settings</h2>
+            <h2 className="text-lg font-medium text-zinc-100">Output Sound Settings</h2>
             <div className="px-3 py-1 rounded-full bg-zinc-700/30 text-xs text-zinc-400">
               App-wide
             </div>
@@ -238,12 +242,12 @@ export function SettingsSection({
                 onClick={toggleSound}
                 className={`p-2 rounded-lg transition-all duration-200 
                   ${
-                    settings?.soundEnabled
+                    settings?.outputVolumeEnabled
                       ? 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30'
                       : 'bg-zinc-700/50 text-zinc-400 hover:bg-zinc-700/70'
                   }`}
               >
-                {settings?.soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                {settings?.outputVolumeEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
               </button>
               <div className="flex-1">
                 <input
@@ -251,26 +255,26 @@ export function SettingsSection({
                   min="0"
                   max="1"
                   step="0.1"
-                  value={settings?.soundVolume ?? 1}
+                  value={settings?.outputVolume ?? 1}
                   onChange={handleVolumeChange}
-                  disabled={!settings?.soundEnabled}
+                  disabled={!settings?.outputVolumeEnabled}
                   className={`w-full h-2 rounded-lg appearance-none cursor-pointer 
                     ${
-                      settings?.soundEnabled
+                      settings?.outputVolumeEnabled
                         ? 'bg-zinc-700/50'
                         : 'bg-zinc-800/50 cursor-not-allowed'
                     }`}
                 />
               </div>
               <span className="text-sm text-zinc-400 w-12">
-                {Math.round((settings?.soundVolume ?? 1) * 100)}%
+                {Math.round((settings?.outputVolume ?? 1) * 100)}%
               </span>
               <button
                 onClick={handleTestSound}
-                disabled={!settings?.soundEnabled}
+                disabled={!settings?.outputVolumeEnabled}
                 className={`p-2 rounded-lg transition-all duration-200
                   ${
-                    settings?.soundEnabled
+                    settings?.outputVolumeEnabled
                       ? 'bg-zinc-700/50 text-zinc-300 hover:bg-zinc-700/70'
                       : 'bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
                   }`}

@@ -1,6 +1,6 @@
 {
   "name": "dicto-desktop",
-  "version": "1.1.22",
+  "version": "1.1.23",
   "description": "Transcription software with superpowers",
   "main": "./out/main/index.js",
   "author": "dicto.io",
