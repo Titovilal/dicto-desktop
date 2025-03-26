@@ -38,11 +38,36 @@ export function useRecord(): {
       audioChunksRef.current = []
       isCancellingRef.current = false
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Use the selected input device from settings
+      const deviceId = settings?.inputDevice || 'default'
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: deviceId !== 'default' ? { exact: deviceId } : undefined }
+      })
 
       console.log('[RECORD] Starting new recording...')
 
       mediaRecorderRef.current = new MediaRecorder(stream)
+
+      // Apply input volume if specified in settings
+      if (settings.inputVolume !== undefined && settings.inputVolume !== 1) {
+        try {
+          const audioContext = new AudioContext()
+          const source = audioContext.createMediaStreamSource(stream)
+          const gainNode = audioContext.createGain()
+          gainNode.gain.value = settings.inputVolume
+          source.connect(gainNode)
+
+          // Create a destination stream that we can use with MediaRecorder
+          const destinationNode = audioContext.createMediaStreamDestination()
+          gainNode.connect(destinationNode)
+
+          // Use the processed stream for recording
+          mediaRecorderRef.current = new MediaRecorder(destinationNode.stream)
+        } catch (error) {
+          console.error('[RECORD] Error applying volume settings:', error)
+          // Fall back to the original recorder if there's an error
+        }
+      }
 
       mediaRecorderRef.current.ondataavailable = (event): void => {
         if (event.data.size > 0) {

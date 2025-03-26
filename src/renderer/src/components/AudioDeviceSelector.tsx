@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Play, StopCircle, Volume2, VolumeX } from 'lucide-react'
+import { Play, StopCircle, Volume2, VolumeX, Download } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/Select'
 import { StoreSchema } from '@/types/types'
 import { Slider } from './ui/Slider'
@@ -16,6 +16,7 @@ interface AudioProcessingRefs {
   gainNode: GainNode | null
   audioElement: HTMLAudioElement | null
   animationFrame: number | null
+  mediaRecorder: MediaRecorder | null
 }
 
 export function AudioDeviceSelector({
@@ -28,6 +29,8 @@ export function AudioDeviceSelector({
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null)
   const [audioLevel, setAudioLevel] = useState(0)
   const [volume, setVolume] = useState(settings?.inputVolume || 1)
+  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([])
+  const [recordingAvailable, setRecordingAvailable] = useState(false)
 
   // Audio processing references
   const refs = useRef<AudioProcessingRefs>({
@@ -35,7 +38,8 @@ export function AudioDeviceSelector({
     analyser: null,
     gainNode: null,
     audioElement: null,
-    animationFrame: null
+    animationFrame: null,
+    mediaRecorder: null
   })
 
   // Load audio devices on component mount
@@ -105,9 +109,12 @@ export function AudioDeviceSelector({
 
       setAudioStream(stream)
       setIsTesting(true)
+      setRecordedChunks([])
+      setRecordingAvailable(false)
 
       setupAudioProcessing(stream)
       startAudioLevelMonitoring()
+      startRecording(stream)
     } catch (error) {
       console.error('Error testing microphone:', error)
       setIsTesting(false)
@@ -174,7 +181,31 @@ export function AudioDeviceSelector({
     updateAudioLevel()
   }
 
+  const startRecording = (stream: MediaStream): void => {
+    const mediaRecorder = new MediaRecorder(stream)
+    refs.current.mediaRecorder = mediaRecorder
+
+    mediaRecorder.ondataavailable = (event): void => {
+      if (event.data.size > 0) {
+        setRecordedChunks((prev) => [...prev, event.data])
+      }
+    }
+
+    mediaRecorder.onstop = (): void => {
+      if (recordedChunks.length > 0) {
+        setRecordingAvailable(true)
+      }
+    }
+
+    mediaRecorder.start()
+  }
+
   const stopAudioTest = (): void => {
+    // Stop recording
+    if (refs.current.mediaRecorder && refs.current.mediaRecorder.state !== 'inactive') {
+      refs.current.mediaRecorder.stop()
+    }
+
     cleanupAudioResources()
 
     // Reset state
@@ -213,6 +244,27 @@ export function AudioDeviceSelector({
       refs.current.analyser = null
       refs.current.gainNode = null
     }
+
+    // Clean up media recorder
+    refs.current.mediaRecorder = null
+  }
+
+  const handleDownloadRecording = (): void => {
+    if (recordedChunks.length === 0) return
+
+    const blob = new Blob(recordedChunks, { type: 'audio/webm' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.style.display = 'none'
+    a.href = url
+    a.download = `mic-test-recording-${new Date().toISOString().slice(0, 19)}.webm`
+    document.body.appendChild(a)
+    a.click()
+
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }, 100)
   }
 
   // UI Components
@@ -289,6 +341,23 @@ export function AudioDeviceSelector({
     </div>
   )
 
+  const renderDownloadButton = (): JSX.Element | null => {
+    if (!recordingAvailable) return null
+
+    return (
+      <button
+        onClick={handleDownloadRecording}
+        className="w-full p-2 rounded-lg transition-all duration-200 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
+        title="Download test recording"
+      >
+        <div className="flex items-center justify-center gap-2">
+          <Download size={20} />
+          <span>Download Recording</span>
+        </div>
+      </button>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -298,6 +367,7 @@ export function AudioDeviceSelector({
       <div className="space-y-4">
         {renderDeviceSelector()}
         {renderTestButton()}
+        {renderDownloadButton()}
         {renderAudioLevelMeter()}
         {renderVolumeControl()}
 
