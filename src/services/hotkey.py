@@ -44,7 +44,6 @@ class HotkeyListener:
         self.current_modifiers: Set = set()
         self.hotkey_pressed = False
         self.listener = None
-        self._thread = None
 
     def _parse_modifiers(self, modifiers: List[str]) -> Set:
         """Convert modifier strings to pynput Key objects."""
@@ -149,8 +148,9 @@ class HotkeyListener:
             on_release=self._on_release
         )
 
-        self._thread = threading.Thread(target=self.listener.start, daemon=True)
-        self._thread.start()
+        # keyboard.Listener is already a threading.Thread subclass
+        # Just call start() directly - it runs in its own daemon thread
+        self.listener.start()
         print(f"Hotkey listener started: {'+'.join([str(m) for m in self.modifiers])}+{self.key}")
 
     def stop(self):
@@ -158,7 +158,6 @@ class HotkeyListener:
         if self.listener is not None:
             self.listener.stop()
             self.listener = None
-            self._thread = None
             print("Hotkey listener stopped")
 
     def is_running(self) -> bool:

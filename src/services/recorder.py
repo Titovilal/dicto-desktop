@@ -1,8 +1,9 @@
 """
-Audio recording service using pyaudio.
+Audio recording service using sounddevice.
 """
-import pyaudio
-import wave
+import sounddevice as sd
+import soundfile as sf
+import numpy as np
 import threading
 import tempfile
 import time
@@ -27,18 +28,11 @@ class AudioRecorder:
         self.max_duration = max_duration
         self.chunk_size = 1024  # Number of frames per buffer
 
-        self.audio = None
-        self.stream = None
         self.frames = []
         self.is_recording = False
         self.recording_thread = None
         self.temp_file_path = None
-
-        # Initialize PyAudio
-        try:
-            self.audio = pyaudio.PyAudio()
-        except Exception as e:
-            raise RuntimeError(f"Failed to initialize audio system: {e}")
+        self.stream = None
 
     def start_recording(self) -> bool:
         """
@@ -52,15 +46,6 @@ class AudioRecorder:
             return False
 
         try:
-            # Open audio stream
-            self.stream = self.audio.open(
-                format=pyaudio.paInt16,  # 16-bit audio
-                channels=self.channels,
-                rate=self.sample_rate,
-                input=True,
-                frames_per_buffer=self.chunk_size
-            )
-
             self.frames = []
             self.is_recording = True
 
@@ -74,9 +59,6 @@ class AudioRecorder:
         except Exception as e:
             print(f"Error starting recording: {e}")
             self.is_recording = False
-            if self.stream:
-                self.stream.close()
-                self.stream = None
             return False
 
     def stop_recording(self) -> Optional[str]:
@@ -97,12 +79,6 @@ class AudioRecorder:
         if self.recording_thread:
             self.recording_thread.join(timeout=2.0)
 
-        # Close stream
-        if self.stream:
-            self.stream.stop_stream()
-            self.stream.close()
-            self.stream = None
-
         # Save to temporary file
         if len(self.frames) == 0:
             print("Warning: No audio data recorded")
@@ -118,14 +94,11 @@ class AudioRecorder:
             self.temp_file_path = temp_file.name
             temp_file.close()
 
-            # Write WAV file
-            with wave.open(self.temp_file_path, 'wb') as wf:
-                wf.setnchannels(self.channels)
-                wf.setsampwidth(self.audio.get_sample_size(pyaudio.paInt16))
-                wf.setframerate(self.sample_rate)
-                wf.writeframes(b''.join(self.frames))
+            # Concatenate all frames and write WAV file
+            audio_data = np.concatenate(self.frames, axis=0)
+            sf.write(self.temp_file_path, audio_data, self.sample_rate)
 
-            duration = len(self.frames) * self.chunk_size / self.sample_rate
+            duration = len(audio_data) / self.sample_rate
             print(f"Recording saved: {self.temp_file_path} ({duration:.1f}s)")
             return self.temp_file_path
 
@@ -137,21 +110,26 @@ class AudioRecorder:
         """Internal method that records audio in a loop until stopped or max duration reached."""
         start_time = time.time()
 
-        try:
-            while self.is_recording:
-                # Check if max duration exceeded
-                elapsed = time.time() - start_time
-                if elapsed > self.max_duration:
-                    print(f"Max recording duration ({self.max_duration}s) reached")
-                    break
+        def callback(indata, frames, time_info, status):
+            if status:
+                print(f"Audio stream status: {status}")
+            if self.is_recording:
+                self.frames.append(indata.copy())
 
-                # Read audio data
-                try:
-                    data = self.stream.read(self.chunk_size, exception_on_overflow=False)
-                    self.frames.append(data)
-                except Exception as e:
-                    print(f"Error reading audio stream: {e}")
-                    break
+        try:
+            with sd.InputStream(
+                samplerate=self.sample_rate,
+                channels=self.channels,
+                dtype='int16',
+                blocksize=self.chunk_size,
+                callback=callback
+            ):
+                while self.is_recording:
+                    elapsed = time.time() - start_time
+                    if elapsed > self.max_duration:
+                        print(f"Max recording duration ({self.max_duration}s) reached")
+                        break
+                    time.sleep(0.1)
 
         except Exception as e:
             print(f"Error in recording thread: {e}")
@@ -177,29 +155,21 @@ class AudioRecorder:
         """
         if not self.frames:
             return 0.0
-        return len(self.frames) * self.chunk_size / self.sample_rate
+        total_frames = sum(len(f) for f in self.frames)
+        return total_frames / self.sample_rate
 
     def list_audio_devices(self):
         """List all available audio input devices."""
         print("\nAvailable audio input devices:")
-        for i in range(self.audio.get_device_count()):
-            dev_info = self.audio.get_device_info_by_index(i)
-            if dev_info['maxInputChannels'] > 0:
-                print(f"  [{i}] {dev_info['name']} (channels: {dev_info['maxInputChannels']})")
+        devices = sd.query_devices()
+        for i, dev in enumerate(devices):
+            if dev['max_input_channels'] > 0:
+                print(f"  [{i}] {dev['name']} (channels: {dev['max_input_channels']})")
 
     def close(self):
         """Clean up resources."""
         if self.is_recording:
             self.stop_recording()
-
-        if self.stream:
-            self.stream.close()
-            self.stream = None
-
-        if self.audio:
-            self.audio.terminate()
-            self.audio = None
-
         self.cleanup_temp_file()
 
     def __del__(self):
