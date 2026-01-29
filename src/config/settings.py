@@ -119,6 +119,11 @@ class Settings:
         """Get transcription API key."""
         return cast(str, self.config["transcription"]["api_key"])
 
+    @transcription_api_key.setter
+    def transcription_api_key(self, value: str) -> None:
+        """Set transcription API key."""
+        self.config["transcription"]["api_key"] = value
+
     @property
     def transcription_language(self) -> str:
         """Get transcription language (e.g., 'auto', 'es', 'en')."""

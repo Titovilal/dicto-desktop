@@ -3,7 +3,7 @@ System tray manager for Dicto application.
 """
 
 import logging
-from PySide6.QtWidgets import QSystemTrayIcon, QMenu
+from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
 from PySide6.QtGui import QIcon, QAction, QActionGroup
 from PySide6.QtCore import QObject, Signal, Slot
 
@@ -141,6 +141,13 @@ class TrayManager(QObject):
 
         self.menu.addSeparator()
 
+        # Paste Groq API Key from clipboard
+        self.paste_api_key_action = QAction("Paste Groq API Key", self.menu)
+        self.paste_api_key_action.triggered.connect(self._on_paste_api_key)
+        self.menu.addAction(self.paste_api_key_action)
+
+        self.menu.addSeparator()
+
         # Quit action
         quit_action = QAction("Quit", self.menu)
         quit_action.triggered.connect(self._on_quit)
@@ -220,6 +227,31 @@ class TrayManager(QObject):
             if self.settings:
                 self.settings.transcription_language = language_code
                 self.settings.save()
+
+    @Slot()
+    def _on_paste_api_key(self):
+        """Handle paste Groq API key from clipboard."""
+        clipboard = QApplication.clipboard()
+        api_key = clipboard.text().strip() if clipboard else ""
+
+        if not api_key:
+            self.show_error("Clipboard is empty")
+            return
+
+        # Basic validation: Groq API keys start with "gsk_"
+        if not api_key.startswith("gsk_"):
+            self.show_error("Invalid Groq API key (should start with 'gsk_')")
+            return
+
+        if self.settings:
+            self.settings.transcription_api_key = api_key
+            self.settings.save()
+            # Show masked key in notification
+            masked_key = api_key[:7] + "..." + api_key[-4:]
+            self.show_success(f"API Key updated: {masked_key}")
+            logger.info("Groq API key updated from clipboard")
+        else:
+            self.show_error("Settings not available")
 
     @Slot(str)
     def update_last_transcription(self, text: str):
