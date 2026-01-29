@@ -45,23 +45,33 @@ git clone <repository-url>
 cd voice-to-clipboard
 ```
 
-2. Create a virtual environment (recommended):
+2. Install dependencies (choose one method):
+
+### Option A: Using uv (recommended - 10-100x faster)
 ```bash
-python -m venv venv
+# Install uv if you don't have it (one-time setup)
+curl -LsSf https://astral.sh/uv/install.sh | sh  # Linux/Mac
+# Or on Windows: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-# On Linux/Mac:
-source venv/bin/activate
+# Create virtual environment and install dependencies
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -r requirements.txt
 
-# On Windows:
-venv\Scripts\activate
+# Or use pyproject.toml (even cleaner):
+uv sync
 ```
 
-3. Install dependencies:
+### Option B: Using traditional pip
 ```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Configure the application:
+> **Why uv?** It's 10-100x faster than pip, written in Rust, and fully compatible with pip/PyPI. Learn more at [astral.sh/uv](https://astral.sh/uv)
+
+3. Configure the application:
 ```bash
 # Copy the example config
 cp config.yaml.example config.yaml
@@ -100,7 +110,14 @@ audio:
 
 1. Start the application:
 ```bash
+# If using uv:
+uv run python -m src.main
+
+# Or with traditional python:
 python -m src.main
+
+# Or if installed with pip install -e .:
+voice-to-clipboard
 ```
 
 2. The app will start in the background and show an icon in the system tray.
