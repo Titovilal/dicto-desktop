@@ -1,0 +1,88 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: Voice-to-Clipboard.exe
+            asset_name: voice-to-clipboard-windows.exe
+          - os: ubuntu-latest
+            artifact_name: voice-to-clipboard
+            asset_name: voice-to-clipboard-linux
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y portaudio19-dev libasound2-dev
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Build with PyInstaller (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          pyinstaller --name "Voice-to-Clipboard" --onefile --windowed --noconfirm src/main.py
+
+      - name: Build with PyInstaller (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          pyinstaller --name "voice-to-clipboard" --onefile --windowed --noconfirm src/main.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: dist/${{ matrix.artifact_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: voice-to-clipboard-windows.exe
+          path: dist/
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: voice-to-clipboard-linux
+          path: dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Voice-to-Clipboard.exe
+            dist/voice-to-clipboard
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
