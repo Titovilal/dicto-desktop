@@ -3,12 +3,27 @@ Configuration management for Dicto application.
 """
 
 import os
+import sys
 import logging
 import yaml
 from pathlib import Path
 from typing import Dict, Any, List, cast
 
 logger = logging.getLogger(__name__)
+
+
+def get_app_dir() -> Path:
+    """Get the directory where the application is located.
+
+    When running as a PyInstaller executable, returns the directory containing the .exe.
+    When running as a script, returns the project root directory.
+    """
+    if getattr(sys, "frozen", False):
+        # Running as PyInstaller executable
+        return Path(sys.executable).parent
+    else:
+        # Running as script - go up from src/config/ to project root
+        return Path(__file__).parent.parent.parent
 
 
 class Settings:
@@ -33,7 +48,7 @@ class Settings:
             config_path: Path to config.yaml file. If None, looks in current directory.
         """
         if config_path is None:
-            self.config_path = Path.cwd() / "config.yaml"
+            self.config_path = get_app_dir() / "config.yaml"
         else:
             self.config_path = Path(config_path)
         self.config = self._load_config()
