@@ -34,7 +34,7 @@ class Settings:
         "overlay": {"position": "top-right", "size": 100, "opacity": 0.9},
         "transcription": {"provider": "groq", "api_key": "", "language": "auto"},
         "audio": {"sample_rate": 16000, "max_duration": 120, "channels": 1},
-        "behavior": {"auto_paste": False, "auto_enter": False},
+        "behavior": {"auto_paste": False, "auto_enter": False, "show_success_notifications": True},
     }
 
     config_path: Path
@@ -189,6 +189,18 @@ class Settings:
         if "behavior" not in self.config:
             self.config["behavior"] = {}
         self.config["behavior"]["auto_enter"] = value
+
+    @property
+    def show_success_notifications(self) -> bool:
+        """Get show success notifications setting."""
+        return cast(bool, self.config.get("behavior", {}).get("show_success_notifications", True))
+
+    @show_success_notifications.setter
+    def show_success_notifications(self, value: bool) -> None:
+        """Set show success notifications setting."""
+        if "behavior" not in self.config:
+            self.config["behavior"] = {}
+        self.config["behavior"]["show_success_notifications"] = value
 
     def save(self) -> None:
         """Save current configuration to yaml file."""

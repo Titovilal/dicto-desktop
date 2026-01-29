@@ -160,9 +160,10 @@ class DictoApp:
         # Show success overlay
         self.overlay.show_success()
 
-        # Show success notification
-        preview = text[:100] + "..." if len(text) > 100 else text
-        self.tray_manager.show_success(f"Copied to clipboard: {preview}")
+        # Show success notification (if enabled)
+        if self.settings.show_success_notifications:
+            preview = text[:100] + "..." if len(text) > 100 else text
+            self.tray_manager.show_success(f"Copied to clipboard: {preview}")
 
         # Return to idle after overlay hides
         QTimer.singleShot(1500, self.controller.return_to_idle)

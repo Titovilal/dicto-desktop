@@ -115,6 +115,14 @@ class TrayManager(QObject):
         self.auto_enter_action.triggered.connect(self._on_auto_enter_changed)
         self.menu.addAction(self.auto_enter_action)
 
+        # Show success notifications option
+        self.show_success_notifications_action = QAction("Show Success Notifications", self.menu)
+        self.show_success_notifications_action.setCheckable(True)
+        if self.settings:
+            self.show_success_notifications_action.setChecked(self.settings.show_success_notifications)
+        self.show_success_notifications_action.triggered.connect(self._on_show_success_notifications_changed)
+        self.menu.addAction(self.show_success_notifications_action)
+
         self.menu.addSeparator()
 
         # Language submenu
@@ -214,6 +222,15 @@ class TrayManager(QObject):
         logger.info(f"Auto-enter {'enabled' if checked else 'disabled'}")
         if self.settings:
             self.settings.auto_enter = checked
+            self.settings.save()
+
+    @Slot()
+    def _on_show_success_notifications_changed(self):
+        """Handle show success notifications toggle."""
+        checked = self.show_success_notifications_action.isChecked()
+        logger.info(f"Show success notifications {'enabled' if checked else 'disabled'}")
+        if self.settings:
+            self.settings.show_success_notifications = checked
             self.settings.save()
 
     @Slot()
