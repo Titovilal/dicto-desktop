@@ -2,6 +2,7 @@
 Audio recording service using sounddevice.
 """
 
+import logging
 import sounddevice as sd
 import soundfile as sf
 import numpy as np
@@ -10,6 +11,8 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class AudioRecorder:
@@ -45,7 +48,7 @@ class AudioRecorder:
             True if recording started successfully, False otherwise
         """
         if self.is_recording:
-            print("Warning: Recording already in progress")
+            logger.warning("Recording already in progress")
             return False
 
         try:
@@ -58,11 +61,11 @@ class AudioRecorder:
             )
             self.recording_thread.start()
 
-            print(f"Recording started (max {self.max_duration}s)")
+            logger.info(f"Recording started (max {self.max_duration}s)")
             return True
 
         except Exception as e:
-            print(f"Error starting recording: {e}")
+            logger.error(f"Error starting recording: {e}")
             self.is_recording = False
             return False
 
@@ -74,7 +77,7 @@ class AudioRecorder:
             Path to the temporary audio file, or None if recording failed
         """
         if not self.is_recording:
-            print("Warning: No recording in progress")
+            logger.warning("No recording in progress")
             return None
 
         # Signal recording to stop
@@ -86,7 +89,7 @@ class AudioRecorder:
 
         # Save to temporary file
         if len(self.frames) == 0:
-            print("Warning: No audio data recorded")
+            logger.warning("No audio data recorded")
             return None
 
         try:
@@ -102,11 +105,11 @@ class AudioRecorder:
             sf.write(self.temp_file_path, audio_data, self.sample_rate)
 
             duration = len(audio_data) / self.sample_rate
-            print(f"Recording saved: {self.temp_file_path} ({duration:.1f}s)")
+            logger.info(f"Recording saved: {self.temp_file_path} ({duration:.1f}s)")
             return self.temp_file_path
 
         except Exception as e:
-            print(f"Error saving recording: {e}")
+            logger.error(f"Error saving recording: {e}")
             return None
 
     def _record_audio(self):
@@ -115,7 +118,7 @@ class AudioRecorder:
 
         def callback(indata, frames, time_info, status):
             if status:
-                print(f"Audio stream status: {status}")
+                logger.warning(f"Audio stream status: {status}")
             if self.is_recording:
                 self.frames.append(indata.copy())
 
@@ -130,12 +133,12 @@ class AudioRecorder:
                 while self.is_recording:
                     elapsed = time.time() - start_time
                     if elapsed > self.max_duration:
-                        print(f"Max recording duration ({self.max_duration}s) reached")
+                        logger.info(f"Max recording duration ({self.max_duration}s) reached")
                         break
                     time.sleep(0.1)
 
         except Exception as e:
-            print(f"Error in recording thread: {e}")
+            logger.error(f"Error in recording thread: {e}")
         finally:
             self.is_recording = False
 
@@ -144,10 +147,10 @@ class AudioRecorder:
         if self.temp_file_path and Path(self.temp_file_path).exists():
             try:
                 Path(self.temp_file_path).unlink()
-                print(f"Temporary file deleted: {self.temp_file_path}")
+                logger.debug(f"Temporary file deleted: {self.temp_file_path}")
                 self.temp_file_path = None
             except Exception as e:
-                print(f"Error deleting temporary file: {e}")
+                logger.error(f"Error deleting temporary file: {e}")
 
     def get_recording_duration(self) -> float:
         """
@@ -163,11 +166,11 @@ class AudioRecorder:
 
     def list_audio_devices(self):
         """List all available audio input devices."""
-        print("\nAvailable audio input devices:")
+        logger.info("Available audio input devices:")
         devices = sd.query_devices()
         for i, dev in enumerate(devices):
             if dev["max_input_channels"] > 0:
-                print(f"  [{i}] {dev['name']} (channels: {dev['max_input_channels']})")
+                logger.info(f"  [{i}] {dev['name']} (channels: {dev['max_input_channels']})")
 
     def close(self):
         """Clean up resources."""

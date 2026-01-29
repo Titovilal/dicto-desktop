@@ -3,9 +3,12 @@ Configuration management for Voice to Clipboard application.
 """
 
 import os
+import logging
 import yaml
 from pathlib import Path
 from typing import Dict, Any, List, cast
+
+logger = logging.getLogger(__name__)
 
 
 class Settings:
@@ -48,11 +51,11 @@ class Settings:
                 self._deep_merge(config, loaded_config)
                 return config
             except Exception as e:
-                print(f"Warning: Failed to load config from {self.config_path}: {e}")
-                print("Using default configuration.")
+                logger.warning(f"Failed to load config from {self.config_path}: {e}")
+                logger.warning("Using default configuration.")
                 return self.DEFAULT_CONFIG.copy()
         else:
-            print(f"Config file not found at {self.config_path}. Using defaults.")
+            logger.info(f"Config file not found at {self.config_path}. Using defaults.")
             return self.DEFAULT_CONFIG.copy()
 
     def _deep_merge(self, base: Dict, override: Dict) -> None:
@@ -172,16 +175,16 @@ class Settings:
         try:
             with open(self.config_path, "w", encoding="utf-8") as f:
                 yaml.dump(self.config, f, default_flow_style=False)
-            print(f"Configuration saved to {self.config_path}")
+            logger.info(f"Configuration saved to {self.config_path}")
         except Exception as e:
-            print(f"Error saving configuration: {e}")
+            logger.error(f"Error saving configuration: {e}")
 
     def create_default_config(self) -> None:
         """Create a default config.yaml file if it doesn't exist."""
         if not self.config_path.exists():
             self.config = self.DEFAULT_CONFIG.copy()
             self.save()
-            print(f"Created default configuration at {self.config_path}")
+            logger.info(f"Created default configuration at {self.config_path}")
 
 
 # Global settings instance

@@ -13,6 +13,9 @@ from src.services.hotkey import HotkeyListener
 from src.services.recorder import AudioRecorder
 from src.services.transcriber import Transcriber, TranscriptionError, APIKeyError
 from src.services.clipboard import ClipboardManager
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class AppState(Enum):
@@ -77,15 +80,15 @@ class Controller(QObject):
                 channels=self.settings.audio_channels,
                 max_duration=self.settings.audio_max_duration,
             )
-            print("Audio recorder initialized")
+            logger.info("Audio recorder initialized")
 
             # Initialize transcriber
             api_key = self.settings.transcription_api_key
             provider = self.settings.transcription_provider
             if not api_key:
                 env_var = "GROQ_API_KEY" if provider == "groq" else "OPENAI_API_KEY"
-                print(
-                    f"Warning: No API key found. Set {env_var} environment variable or add to config.yaml"
+                logger.warning(
+                    f"No API key found. Set {env_var} environment variable or add to config.yaml"
                 )
             else:
                 self.transcriber = Transcriber(
@@ -93,7 +96,7 @@ class Controller(QObject):
                     language=self.settings.transcription_language,
                     provider=provider,
                 )
-                print(f"Transcriber initialized (provider: {provider})")
+                logger.info(f"Transcriber initialized (provider: {provider})")
 
             # Initialize hotkey listener
             self.hotkey_listener = HotkeyListener(
@@ -102,10 +105,10 @@ class Controller(QObject):
                 on_press=self._on_hotkey_press,
                 on_release=self._on_hotkey_release,
             )
-            print("Hotkey listener initialized")
+            logger.info("Hotkey listener initialized")
 
         except Exception as e:
-            print(f"Error initializing services: {e}")
+            logger.error(f"Error initializing services: {e}")
             traceback.print_exc()
             raise
 
@@ -117,16 +120,16 @@ class Controller(QObject):
                 self.hotkey_listener.start()
 
             self._set_state(AppState.IDLE)
-            print("Controller started successfully")
+            logger.info("Controller started successfully")
 
         except Exception as e:
-            print(f"Error starting controller: {e}")
+            logger.error(f"Error starting controller: {e}")
             traceback.print_exc()
             raise
 
     def stop(self):
         """Stop the controller and clean up resources."""
-        print("Stopping controller...")
+        logger.info("Stopping controller...")
 
         # Stop hotkey listener
         if self.hotkey_listener:
@@ -143,7 +146,7 @@ class Controller(QObject):
         if self.transcriber:
             self.transcriber.close()
 
-        print("Controller stopped")
+        logger.info("Controller stopped")
 
     def _set_state(self, new_state: AppState):
         """
@@ -155,7 +158,7 @@ class Controller(QObject):
         if self.current_state != new_state:
             self.current_state = new_state
             self.state_changed.emit(new_state)
-            print(f"State changed: {new_state.value}")
+            logger.debug(f"State changed: {new_state.value}")
 
     def _on_hotkey_press(self):
         """Callback when hotkey is pressed - start recording."""
@@ -178,7 +181,7 @@ class Controller(QObject):
             self.recording_started.emit()
 
             if self.recorder.start_recording():
-                print("Recording started")
+                logger.info("Recording started")
             else:
                 self._handle_error(
                     "Failed to start recording. Check microphone permissions."
@@ -226,7 +229,7 @@ class Controller(QObject):
                 )
                 return
 
-            print(f"Transcribing audio: {audio_file_path}")
+            logger.info(f"Transcribing audio: {audio_file_path}")
 
             # Transcribe
             text = self.transcriber.transcribe(audio_file_path)
@@ -239,7 +242,7 @@ class Controller(QObject):
             if ClipboardManager.copy(text):
                 self._set_state(AppState.SUCCESS)
                 self.transcription_completed.emit(text)
-                print(f"Transcription successful: {text}")
+                logger.info(f"Transcription successful: {text}")
 
                 # Auto-paste and auto-enter if enabled
                 self._perform_auto_actions()
@@ -286,24 +289,24 @@ class Controller(QObject):
             self.keyboard_controller.press("v")
             self.keyboard_controller.release("v")
             self.keyboard_controller.release(keyboard.Key.ctrl)
-            print("Auto-paste: Ctrl+V executed")
+            logger.debug("Auto-paste: Ctrl+V executed")
 
             if self.settings.auto_enter:
                 # Emit signal to schedule timer on Qt main thread
                 self._auto_enter_requested.emit()
 
         except Exception as e:
-            print(f"Error performing auto-paste: {e}")
+            logger.error(f"Error performing auto-paste: {e}")
 
     def _do_auto_enter(self):
         """Execute Enter keystroke."""
         try:
             self.keyboard_controller.press(keyboard.Key.enter)
             self.keyboard_controller.release(keyboard.Key.enter)
-            print("Auto-enter: Enter executed")
+            logger.debug("Auto-enter: Enter executed")
 
         except Exception as e:
-            print(f"Error performing auto-enter: {e}")
+            logger.error(f"Error performing auto-enter: {e}")
 
     def _handle_error(self, error_message: str):
         """
@@ -312,7 +315,7 @@ class Controller(QObject):
         Args:
             error_message: Error message to display
         """
-        print(f"ERROR: {error_message}")
+        logger.error(error_message)
         self._set_state(AppState.ERROR)
         self.error_occurred.emit(error_message)
 

@@ -2,9 +2,12 @@
 System tray manager for Voice to Clipboard application.
 """
 
+import logging
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu
 from PySide6.QtGui import QIcon, QAction, QActionGroup
 from PySide6.QtCore import QObject, Signal, Slot
+
+logger = logging.getLogger(__name__)
 
 
 class TrayManager(QObject):
@@ -52,7 +55,7 @@ class TrayManager(QObject):
         """Create system tray icon and menu."""
         # Check if system tray is available
         if not QSystemTrayIcon.isSystemTrayAvailable():
-            print("System tray is not available on this system")
+            logger.warning("System tray is not available on this system")
             return
 
         # Create tray icon
@@ -72,7 +75,7 @@ class TrayManager(QObject):
 
         # Show tray icon
         self.tray_icon.show()
-        print("System tray icon created")
+        logger.info("System tray icon created")
 
     def _create_menu(self):
         """Create context menu for tray icon."""
@@ -185,14 +188,14 @@ class TrayManager(QObject):
     @Slot()
     def _on_quit(self):
         """Handle quit action."""
-        print("Quit requested from tray menu")
+        logger.info("Quit requested from tray menu")
         self.quit_requested.emit()
 
     @Slot()
     def _on_auto_paste_changed(self):
         """Handle auto-paste toggle."""
         checked = self.auto_paste_action.isChecked()
-        print(f"Auto-paste {'enabled' if checked else 'disabled'}")
+        logger.info(f"Auto-paste {'enabled' if checked else 'disabled'}")
         if self.settings:
             self.settings.auto_paste = checked
             self.settings.save()
@@ -201,7 +204,7 @@ class TrayManager(QObject):
     def _on_auto_enter_changed(self):
         """Handle auto-enter toggle."""
         checked = self.auto_enter_action.isChecked()
-        print(f"Auto-enter {'enabled' if checked else 'disabled'}")
+        logger.info(f"Auto-enter {'enabled' if checked else 'disabled'}")
         if self.settings:
             self.settings.auto_enter = checked
             self.settings.save()
@@ -213,7 +216,7 @@ class TrayManager(QObject):
         if action:
             language_code = action.data()
             language_name = self.LANGUAGES.get(language_code, language_code)
-            print(f"Language changed to: {language_name} ({language_code})")
+            logger.info(f"Language changed to: {language_name} ({language_code})")
             if self.settings:
                 self.settings.transcription_language = language_code
                 self.settings.save()
@@ -279,4 +282,4 @@ class TrayManager(QObject):
         """Clean up tray icon."""
         if self.tray_icon:
             self.tray_icon.hide()
-            print("Tray icon cleaned up")
+            logger.info("Tray icon cleaned up")

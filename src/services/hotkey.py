@@ -2,8 +2,11 @@
 Global hotkey listener service using pynput.
 """
 
+import logging
 from pynput import keyboard
 from typing import Callable, List, Set
+
+logger = logging.getLogger(__name__)
 
 
 class HotkeyListener:
@@ -165,7 +168,7 @@ class HotkeyListener:
         # keyboard.Listener is already a threading.Thread subclass
         # Just call start() directly - it runs in its own daemon thread
         self.listener.start()
-        print(
+        logger.info(
             f"Hotkey listener started: {'+'.join([str(m) for m in self.modifiers])}+{self.key}"
         )
 
@@ -174,7 +177,7 @@ class HotkeyListener:
         if self.listener is not None:
             self.listener.stop()
             self.listener = None
-            print("Hotkey listener stopped")
+            logger.info("Hotkey listener stopped")
 
     def is_running(self) -> bool:
         """Check if listener is currently running."""

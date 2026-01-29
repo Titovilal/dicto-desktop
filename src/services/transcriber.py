@@ -2,9 +2,12 @@
 Transcription service using Groq or OpenAI Whisper API.
 """
 
+import logging
 import httpx
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class TranscriptionError(Exception):
@@ -116,7 +119,7 @@ class Transcriber:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
                     delay = self.RETRY_DELAY * (2**attempt)  # Exponential backoff
-                    print(
+                    logger.warning(
                         f"Rate limit hit, retrying in {delay}s... (attempt {attempt + 1}/{self.MAX_RETRIES})"
                     )
                     time.sleep(delay)
@@ -130,7 +133,7 @@ class Transcriber:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
                     delay = self.RETRY_DELAY * (2**attempt)
-                    print(
+                    logger.warning(
                         f"Transcription failed, retrying in {delay}s... (attempt {attempt + 1}/{self.MAX_RETRIES})"
                     )
                     time.sleep(delay)

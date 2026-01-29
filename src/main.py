@@ -27,6 +27,9 @@ from src.config.settings import get_settings  # noqa: E402
 from src.controller import Controller, AppState  # noqa: E402
 from src.ui.tray import TrayManager  # noqa: E402
 from src.ui.overlay import OverlayWindow  # noqa: E402
+from src.utils.logger import setup_logging, get_logger  # noqa: E402
+
+logger = get_logger(__name__)
 
 
 class VoiceToClipboardApp:
@@ -44,21 +47,21 @@ class VoiceToClipboardApp:
         self.app.setQuitOnLastWindowClosed(False)  # Keep running in tray
 
         # Load settings
-        print("Loading settings...")
+        logger.info("Loading settings...")
         self.settings = get_settings()
 
         # Create default config if it doesn't exist
         config_path = Path.cwd() / "config.yaml"
         if not config_path.exists():
-            print("Creating default config.yaml...")
+            logger.info("Creating default config.yaml...")
             self.settings.create_default_config()
-            print(
+            logger.info(
                 "Please edit config.yaml and set your OpenAI API key, then restart the app."
             )
-            print("You can also set OPENAI_API_KEY environment variable.")
+            logger.info("You can also set OPENAI_API_KEY environment variable.")
 
         # Initialize components
-        print("Initializing components...")
+        logger.info("Initializing components...")
         self.controller = None
         self.tray_manager = None
         self.overlay = None
@@ -91,10 +94,10 @@ class VoiceToClipboardApp:
                 opacity=self.settings.overlay_opacity,
             )
 
-            print("All components initialized successfully")
+            logger.info("All components initialized successfully")
 
         except Exception as e:
-            print(f"Failed to initialize components: {e}")
+            logger.error(f"Failed to initialize components: {e}")
             sys.exit(1)
 
     def _connect_signals(self):
@@ -117,7 +120,7 @@ class VoiceToClipboardApp:
         # Tray actions
         self.tray_manager.quit_requested.connect(self.quit)
 
-        print("Signals connected")
+        logger.info("Signals connected")
 
     @Slot(AppState)
     def _on_state_changed(self, state: AppState):
@@ -142,7 +145,7 @@ class VoiceToClipboardApp:
     @Slot(float)
     def _on_recording_stopped(self, duration: float):
         """Handle recording stopped event."""
-        print(f"Recording stopped, duration: {duration:.1f}s")
+        logger.info(f"Recording stopped, duration: {duration:.1f}s")
 
     @Slot(str)
     def _on_transcription_completed(self, text: str):
@@ -185,22 +188,22 @@ class VoiceToClipboardApp:
 
     def _signal_handler(self, signum, frame):
         """Handle system signals for clean shutdown."""
-        print(f"\nReceived signal {signum}, shutting down...")
+        logger.info(f"Received signal {signum}, shutting down...")
         self.quit()
 
     def run(self):
         """Start the application."""
         assert self.controller is not None
 
-        print("\n" + "=" * 60)
-        print("Voice to Clipboard started!")
-        print("=" * 60)
-        print(
+        logger.info("=" * 60)
+        logger.info("Voice to Clipboard started!")
+        logger.info("=" * 60)
+        logger.info(
             f"Hotkey: {'+'.join(self.settings.hotkey_modifiers).upper()} + {self.settings.hotkey_key.upper()}"
         )
-        print("Press the hotkey and speak, release to transcribe.")
-        print("Check system tray for status and options.")
-        print("=" * 60 + "\n")
+        logger.info("Press the hotkey and speak, release to transcribe.")
+        logger.info("Check system tray for status and options.")
+        logger.info("=" * 60)
 
         try:
             # Start controller
@@ -210,11 +213,11 @@ class VoiceToClipboardApp:
             sys.exit(self.app.exec())
 
         except KeyboardInterrupt:
-            print("\nKeyboard interrupt received")
+            logger.info("Keyboard interrupt received")
             self.quit()
 
         except Exception as e:
-            print(f"Fatal error: {e}")
+            logger.error(f"Fatal error: {e}")
             import traceback
 
             traceback.print_exc()
@@ -222,7 +225,7 @@ class VoiceToClipboardApp:
 
     def quit(self):
         """Clean shutdown of the application."""
-        print("\nShutting down Voice to Clipboard...")
+        logger.info("Shutting down Voice to Clipboard...")
 
         # Stop controller
         if self.controller:
@@ -239,16 +242,17 @@ class VoiceToClipboardApp:
         # Quit Qt application
         self.app.quit()
 
-        print("Goodbye!")
+        logger.info("Goodbye!")
 
 
 def main():
     """Main entry point."""
+    setup_logging()
     try:
         app = VoiceToClipboardApp()
         app.run()
     except Exception as e:
-        print(f"Failed to start application: {e}")
+        logger.error(f"Failed to start application: {e}")
         import traceback
 
         traceback.print_exc()
