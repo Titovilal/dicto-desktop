@@ -1,0 +1,55 @@
+[project]
+name = "voice-to-clipboard"
+version = "0.1.0"
+description = "Minimalist desktop app for voice-to-text transcription with global hotkey"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Titovilal", email = "terturionsland@gmail.com"}
+]
+keywords = ["voice", "transcription", "clipboard", "whisper", "hotkey"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "PySide6>=6.5.0",
+    "pynput>=1.7.6",
+    "sounddevice>=0.4.6",
+    "soundfile>=0.12.0",
+    "pyperclip>=1.8.2",
+    "httpx>=0.24.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Titovilal/voice-to-clipboard"
+Repository = "https://github.com/Titovilal/voice-to-clipboard"
+Issues = "https://github.com/Titovilal/voice-to-clipboard/issues"
+
+[project.scripts]
+voice-to-clipboard = "src.main:main"
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
