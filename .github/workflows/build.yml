@@ -56,11 +56,11 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact_name: Voice-to-Clipboard.exe
-            asset_name: voice-to-clipboard-windows.exe
+            artifact_name: Dicto.exe
+            asset_name: dicto-windows.exe
           - os: ubuntu-latest
-            artifact_name: voice-to-clipboard
-            asset_name: voice-to-clipboard-linux
+            artifact_name: dicto
+            asset_name: dicto-linux
 
     runs-on: ${{ matrix.os }}
 
@@ -87,12 +87,12 @@ jobs:
       - name: Build with PyInstaller (Windows)
         if: runner.os == 'Windows'
         run: |
-          pyinstaller --name "Voice-to-Clipboard" --onefile --windowed --noconfirm src/main.py
+          pyinstaller --name "Dicto" --onefile --windowed --noconfirm src/main.py
 
       - name: Build with PyInstaller (Linux)
         if: runner.os == 'Linux'
         run: |
-          pyinstaller --name "voice-to-clipboard" --onefile --windowed --noconfirm src/main.py
+          pyinstaller --name "dicto" --onefile --windowed --noconfirm src/main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -113,13 +113,13 @@ jobs:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: voice-to-clipboard-windows.exe
+          name: dicto-windows.exe
           path: dist/
 
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
-          name: voice-to-clipboard-linux
+          name: dicto-linux
           path: dist/
 
       - name: Create Release
@@ -128,8 +128,8 @@ jobs:
           tag_name: v${{ needs.version.outputs.version }}
           name: v${{ needs.version.outputs.version }}
           files: |
-            dist/Voice-to-Clipboard.exe
-            dist/voice-to-clipboard
+            dist/Dicto.exe
+            dist/dicto
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

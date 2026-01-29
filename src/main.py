@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Voice to Clipboard - Main entry point
+Dicto - Main entry point
 A minimalist desktop application for voice-to-text transcription.
 """
 
@@ -12,7 +12,7 @@ from pathlib import Path
 # Must be done before creating QApplication
 if sys.platform == "win32":
     import ctypes
-    app_id = "voicetoclipboard.dicto.desktop.1.0"
+    app_id = "dicto.desktop.1.0"
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
 
 from dotenv import load_dotenv
@@ -32,7 +32,7 @@ from src.utils.logger import setup_logging, get_logger  # noqa: E402
 logger = get_logger(__name__)
 
 
-class VoiceToClipboardApp:
+class DictoApp:
     """Main application class."""
 
     controller: Controller | None
@@ -43,7 +43,7 @@ class VoiceToClipboardApp:
         """Initialize application."""
         # Create Qt application
         self.app = QApplication(sys.argv)
-        self.app.setApplicationName("Voice to Clipboard")
+        self.app.setApplicationName("Dicto")
         self.app.setQuitOnLastWindowClosed(False)  # Keep running in tray
 
         # Load settings
@@ -196,7 +196,7 @@ class VoiceToClipboardApp:
         assert self.controller is not None
 
         logger.info("=" * 60)
-        logger.info("Voice to Clipboard started!")
+        logger.info("Dicto started!")
         logger.info("=" * 60)
         logger.info(
             f"Hotkey: {'+'.join(self.settings.hotkey_modifiers).upper()} + {self.settings.hotkey_key.upper()}"
@@ -225,7 +225,7 @@ class VoiceToClipboardApp:
 
     def quit(self):
         """Clean shutdown of the application."""
-        logger.info("Shutting down Voice to Clipboard...")
+        logger.info("Shutting down Dicto...")
 
         # Stop controller
         if self.controller:
@@ -249,7 +249,7 @@ def main():
     """Main entry point."""
     setup_logging()
     try:
-        app = VoiceToClipboardApp()
+        app = DictoApp()
         app.run()
     except Exception as e:
         logger.error(f"Failed to start application: {e}")

@@ -1,5 +1,5 @@
 run:
-	uv run voice-to-clipboard
+	uv run dicto
 
 clean:
 	rmdir /s /q build dist 2>nul & del /q *.spec 2>nul & echo Done
@@ -15,7 +15,7 @@ type:
 
 build:
 	uv pip install -e ".[dev]"
-	pyinstaller --name "Voice-to-Clipboard" --onefile --windowed --noconfirm src/main.py
+	pyinstaller --name "Dicto" --onefile --windowed --noconfirm src/main.py
 
 # Create release using version from pyproject.toml
 release:

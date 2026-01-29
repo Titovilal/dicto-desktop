@@ -1,4 +1,4 @@
-# Voice to Clipboard - Project Overview
+# Dicto - Project Overview
 
 ## What It Does
 Desktop application that transcribes voice to text using a global hotkey. Press and hold the hotkey to record, release to transcribe, and the result is automatically copied to clipboard.
@@ -23,7 +23,7 @@ Desktop application that transcribes voice to text using a global hotkey. Press 
 
 ## Architecture
 ```
-VoiceToClipboardApp (main.py)
+DictoApp (main.py)
     |
     +-- Controller (controller.py)
     |       |

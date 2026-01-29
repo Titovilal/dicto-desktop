@@ -1,3 +1,3 @@
 """
-Utility modules for Voice to Clipboard application.
+Utility modules for Dicto application.
 """

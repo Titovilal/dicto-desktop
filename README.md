@@ -1,4 +1,4 @@
-# Voice to Clipboard
+# Dicto
 
 A minimalist desktop application that records your voice via a global hotkey, transcribes it using AI, and copies the result to your clipboard. Runs in the background with minimal resource usage.
 
@@ -42,7 +42,7 @@ PyAudio will be installed automatically. No additional dependencies needed.
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd voice-to-clipboard
+cd dicto-desktop
 ```
 
 2. Install dependencies (choose one method):
@@ -117,7 +117,7 @@ uv run python -m src.main
 python -m src.main
 
 # Or if installed with pip install -e .:
-voice-to-clipboard
+dicto
 ```
 
 2. The app will start in the background and show an icon in the system tray.
@@ -170,7 +170,7 @@ voice-to-clipboard
 Project structure:
 
 ```
-voice-to-clipboard/
+dicto-desktop/
 ├── src/
 │   ├── main.py              # Application entry point
 │   ├── controller.py        # Main controller

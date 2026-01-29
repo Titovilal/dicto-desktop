@@ -1,5 +1,5 @@
 """
-System tray manager for Voice to Clipboard application.
+System tray manager for Dicto application.
 """
 
 import logging
@@ -68,7 +68,7 @@ class TrayManager(QObject):
         self.tray_icon.setIcon(icon)
 
         # Set tooltip
-        self.tray_icon.setToolTip("Voice to Clipboard")
+        self.tray_icon.setToolTip("Dicto")
 
         # Create context menu
         self._create_menu()

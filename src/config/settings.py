@@ -1,5 +1,5 @@
 """
-Configuration management for Voice to Clipboard application.
+Configuration management for Dicto application.
 """
 
 import os

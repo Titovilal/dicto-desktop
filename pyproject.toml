@@ -1,5 +1,5 @@
 [project]
-name = "voice-to-clipboard"
+name = "dicto"
 version = "2.0.0"
 description = "Minimalist desktop app for voice-to-text transcription with global hotkey"
 readme = "README.md"
@@ -32,12 +32,12 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Titovilal/voice-to-clipboard"
-Repository = "https://github.com/Titovilal/voice-to-clipboard"
-Issues = "https://github.com/Titovilal/voice-to-clipboard/issues"
+Homepage = "https://github.com/Titovilal/dicto-desktop"
+Repository = "https://github.com/Titovilal/dicto-desktop"
+Issues = "https://github.com/Titovilal/dicto-desktop/issues"
 
 [project.scripts]
-voice-to-clipboard = "src.main:main"
+dicto = "src.main:main"
 
 [project.optional-dependencies]
 dev = [

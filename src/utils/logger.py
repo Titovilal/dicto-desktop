@@ -1,5 +1,5 @@
 """
-Logging configuration for Voice to Clipboard application.
+Logging configuration for Dicto application.
 """
 
 import logging
