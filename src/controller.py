@@ -305,7 +305,3 @@ class Controller(QObject):
     def return_to_idle(self):
         """Return to idle state (called after success or error display)."""
         self._set_state(AppState.IDLE)
-
-    def get_state(self) -> AppState:
-        """Get current application state."""
-        return self.current_state

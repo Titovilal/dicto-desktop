@@ -29,10 +29,6 @@ class TrayManager(QObject):
 
     # Signals
     quit_requested = Signal()
-    show_last_transcription = Signal()
-    auto_paste_changed = Signal(bool)
-    auto_enter_changed = Signal(bool)
-    language_changed = Signal(str)
 
     def __init__(self, app, settings=None):
         """
@@ -170,8 +166,6 @@ class TrayManager(QObject):
     def _on_show_last_transcription(self):
         """Handle show last transcription action."""
         if self.last_transcription:
-            self.show_last_transcription.emit()
-            # Show a message with the last transcription
             if self.tray_icon:
                 self.tray_icon.showMessage(
                     "Last Transcription",
@@ -202,7 +196,6 @@ class TrayManager(QObject):
         if self.settings:
             self.settings.auto_paste = checked
             self.settings.save()
-        self.auto_paste_changed.emit(checked)
 
     @Slot()
     def _on_auto_enter_changed(self):
@@ -212,7 +205,6 @@ class TrayManager(QObject):
         if self.settings:
             self.settings.auto_enter = checked
             self.settings.save()
-        self.auto_enter_changed.emit(checked)
 
     @Slot()
     def _on_language_changed(self):
@@ -225,7 +217,6 @@ class TrayManager(QObject):
             if self.settings:
                 self.settings.transcription_language = language_code
                 self.settings.save()
-            self.language_changed.emit(language_code)
 
     @Slot(str)
     def update_last_transcription(self, text: str):
@@ -250,20 +241,6 @@ class TrayManager(QObject):
         """
         if self.status_action:
             self.status_action.setText(f"Status: {status.capitalize()}")
-
-    @Slot()
-    def set_recording_icon(self):
-        """Change icon to indicate recording state."""
-        # In production, load a different icon for recording state
-        # For now, keep the same icon
-        pass
-
-    @Slot()
-    def set_idle_icon(self):
-        """Change icon back to idle state."""
-        # In production, load the normal icon
-        # For now, keep the same icon
-        pass
 
     def show_message(self, title: str, message: str, icon_type=None):
         """

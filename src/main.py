@@ -110,10 +110,6 @@ class VoiceToClipboardApp:
         # Tray actions
         self.tray_manager.quit_requested.connect(self.quit)
 
-        # Auto-return to idle after success/error overlay hides
-        controller = self.controller
-        QTimer.singleShot(0, lambda: controller.return_to_idle)
-
         print("Signals connected")
 
     @Slot(AppState)
@@ -126,15 +122,11 @@ class VoiceToClipboardApp:
         self.tray_manager.update_status(state.value)
 
         # Update overlay based on state
-        if state == AppState.RECORDING:
-            self.tray_manager.set_recording_icon()
-
-        elif state == AppState.PROCESSING:
+        if state == AppState.PROCESSING:
             self.overlay.show_processing()
 
         elif state == AppState.IDLE:
-            self.tray_manager.set_idle_icon()
-            # Overlay will auto-hide after success/error
+            pass  # Overlay auto-hides after success/error
 
         elif state == AppState.ERROR:
             # Overlay will be updated by error_occurred signal
