@@ -106,10 +106,15 @@ class AudioRecorder:
 
             duration = len(audio_data) / self.sample_rate
             logger.info(f"Recording saved: {self.temp_file_path} ({duration:.1f}s)")
+
+            # Clear frames to free memory
+            self.frames = []
+
             return self.temp_file_path
 
         except Exception as e:
             logger.error(f"Error saving recording: {e}")
+            self.frames = []  # Clear frames to free memory even on error
             return None
 
     def _record_audio(self):

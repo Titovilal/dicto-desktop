@@ -159,22 +159,20 @@ class Transcriber:
             # Prepare request
             headers = {"Authorization": f"Bearer {self.api_key}"}
 
-            # Prepare form data
-            files = {"file": (audio_path.name, open(audio_path, "rb"), "audio/wav")}
-
             data = {"model": self.model}
 
             # Add language if specified
             if self.language:
                 data["language"] = self.language
 
-            # Make request
-            response = self.client.post(
-                self.api_url, headers=headers, files=files, data=data
-            )
+            # Use context manager to ensure file is always closed
+            with open(audio_path, "rb") as audio_file:
+                files = {"file": (audio_path.name, audio_file, "audio/wav")}
 
-            # Close file
-            files["file"][1].close()
+                # Make request
+                response = self.client.post(
+                    self.api_url, headers=headers, files=files, data=data
+                )
 
             # Handle response
             if response.status_code == 200:
