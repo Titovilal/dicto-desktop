@@ -1,6 +1,7 @@
 """
 Configuration management for Voice to Clipboard application.
 """
+
 import os
 import yaml
 from pathlib import Path
@@ -11,25 +12,11 @@ class Settings:
     """Manages application configuration from config.yaml and environment variables."""
 
     DEFAULT_CONFIG = {
-        "hotkey": {
-            "modifiers": ["ctrl", "shift"],
-            "key": "space"
-        },
-        "overlay": {
-            "position": "top-right",
-            "size": 100,
-            "opacity": 0.9
-        },
-        "transcription": {
-            "provider": "openai",
-            "api_key": "",
-            "language": "auto"
-        },
-        "audio": {
-            "sample_rate": 16000,
-            "max_duration": 120,
-            "channels": 1
-        }
+        "hotkey": {"modifiers": ["ctrl", "shift"], "key": "space"},
+        "overlay": {"position": "top-right", "size": 100, "opacity": 0.9},
+        "transcription": {"provider": "groq", "api_key": "", "language": "auto"},
+        "audio": {"sample_rate": 16000, "max_duration": 120, "channels": 1},
+        "behavior": {"auto_paste": False, "auto_enter": False},
     }
 
     def __init__(self, config_path: str = None):
@@ -52,7 +39,7 @@ class Settings:
         """Load configuration from yaml file or use defaults."""
         if self.config_path.exists():
             try:
-                with open(self.config_path, 'r', encoding='utf-8') as f:
+                with open(self.config_path, "r", encoding="utf-8") as f:
                     loaded_config = yaml.safe_load(f) or {}
 
                 # Merge with defaults
@@ -77,8 +64,16 @@ class Settings:
 
     def _apply_env_overrides(self) -> None:
         """Apply environment variable overrides."""
-        # API key from environment
-        api_key_env = os.environ.get("OPENAI_API_KEY")
+        # API key from environment (check provider-specific key first, then generic)
+        provider = self.config["transcription"]["provider"]
+
+        if provider == "groq":
+            api_key_env = os.environ.get("GROQ_API_KEY")
+        elif provider == "openai":
+            api_key_env = os.environ.get("OPENAI_API_KEY")
+        else:
+            api_key_env = None
+
         if api_key_env:
             self.config["transcription"]["api_key"] = api_key_env
 
@@ -141,10 +136,35 @@ class Settings:
         """Get number of audio channels (1 for mono, 2 for stereo)."""
         return self.config["audio"]["channels"]
 
+    # Behavior settings
+    @property
+    def auto_paste(self) -> bool:
+        """Get auto-paste setting (Ctrl+V after copy)."""
+        return self.config.get("behavior", {}).get("auto_paste", False)
+
+    @auto_paste.setter
+    def auto_paste(self, value: bool) -> None:
+        """Set auto-paste setting."""
+        if "behavior" not in self.config:
+            self.config["behavior"] = {}
+        self.config["behavior"]["auto_paste"] = value
+
+    @property
+    def auto_enter(self) -> bool:
+        """Get auto-enter setting (press Enter after paste)."""
+        return self.config.get("behavior", {}).get("auto_enter", False)
+
+    @auto_enter.setter
+    def auto_enter(self, value: bool) -> None:
+        """Set auto-enter setting."""
+        if "behavior" not in self.config:
+            self.config["behavior"] = {}
+        self.config["behavior"]["auto_enter"] = value
+
     def save(self) -> None:
         """Save current configuration to yaml file."""
         try:
-            with open(self.config_path, 'w', encoding='utf-8') as f:
+            with open(self.config_path, "w", encoding="utf-8") as f:
                 yaml.dump(self.config, f, default_flow_style=False)
             print(f"Configuration saved to {self.config_path}")
         except Exception as e:

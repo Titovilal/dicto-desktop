@@ -1,9 +1,12 @@
 """
 Main controller that orchestrates all application components.
 """
-from PySide6.QtCore import QObject, Signal, Slot
+
+from PySide6.QtCore import QObject, Signal, Slot, QTimer
 from enum import Enum
 import traceback
+
+from pynput import keyboard
 
 from src.config.settings import Settings
 from src.services.hotkey import HotkeyListener
@@ -14,6 +17,7 @@ from src.services.clipboard import ClipboardManager
 
 class AppState(Enum):
     """Application states."""
+
     IDLE = "idle"
     RECORDING = "recording"
     PROCESSING = "processing"
@@ -47,6 +51,7 @@ class Controller(QObject):
         self.hotkey_listener = None
         self.recorder = None
         self.transcriber = None
+        self.keyboard_controller = keyboard.Controller()
 
         self._init_services()
 
@@ -57,27 +62,32 @@ class Controller(QObject):
             self.recorder = AudioRecorder(
                 sample_rate=self.settings.audio_sample_rate,
                 channels=self.settings.audio_channels,
-                max_duration=self.settings.audio_max_duration
+                max_duration=self.settings.audio_max_duration,
             )
             print("Audio recorder initialized")
 
             # Initialize transcriber
             api_key = self.settings.transcription_api_key
+            provider = self.settings.transcription_provider
             if not api_key:
-                print("Warning: No OpenAI API key found. Set OPENAI_API_KEY environment variable or add to config.yaml")
+                env_var = "GROQ_API_KEY" if provider == "groq" else "OPENAI_API_KEY"
+                print(
+                    f"Warning: No API key found. Set {env_var} environment variable or add to config.yaml"
+                )
             else:
                 self.transcriber = Transcriber(
                     api_key=api_key,
-                    language=self.settings.transcription_language
+                    language=self.settings.transcription_language,
+                    provider=provider,
                 )
-                print("Transcriber initialized")
+                print(f"Transcriber initialized (provider: {provider})")
 
             # Initialize hotkey listener
             self.hotkey_listener = HotkeyListener(
                 modifiers=self.settings.hotkey_modifiers,
                 key=self.settings.hotkey_key,
                 on_press=self._on_hotkey_press,
-                on_release=self._on_hotkey_release
+                on_release=self._on_hotkey_release,
             )
             print("Hotkey listener initialized")
 
@@ -153,7 +163,9 @@ class Controller(QObject):
             if self.recorder.start_recording():
                 print("Recording started")
             else:
-                self._handle_error("Failed to start recording. Check microphone permissions.")
+                self._handle_error(
+                    "Failed to start recording. Check microphone permissions."
+                )
 
         except Exception as e:
             self._handle_error(f"Error starting recording: {e}")
@@ -188,7 +200,9 @@ class Controller(QObject):
         try:
             # Check if transcriber is initialized
             if not self.transcriber:
-                self._handle_error("Transcriber not initialized. Please set OpenAI API key.")
+                self._handle_error(
+                    "Transcriber not initialized. Please set API key in environment or config.yaml"
+                )
                 return
 
             print(f"Transcribing audio: {audio_file_path}")
@@ -205,6 +219,9 @@ class Controller(QObject):
                 self._set_state(AppState.SUCCESS)
                 self.transcription_completed.emit(text)
                 print(f"Transcription successful: {text}")
+
+                # Auto-paste and auto-enter if enabled
+                self._perform_auto_actions()
 
                 # Return to idle after a short delay (handled by UI)
             else:
@@ -224,6 +241,38 @@ class Controller(QObject):
             # Clean up temporary audio file
             if self.recorder:
                 self.recorder.cleanup_temp_file()
+
+    def _perform_auto_actions(self):
+        """Perform auto-paste (Ctrl+V) and auto-enter if enabled."""
+        if self.settings.auto_paste:
+            # Small delay to ensure clipboard is ready, then paste
+            QTimer.singleShot(100, self._do_auto_paste)
+
+    def _do_auto_paste(self):
+        """Execute Ctrl+V keystroke."""
+        try:
+            self.keyboard_controller.press(keyboard.Key.ctrl)
+            self.keyboard_controller.press("v")
+            self.keyboard_controller.release("v")
+            self.keyboard_controller.release(keyboard.Key.ctrl)
+            print("Auto-paste: Ctrl+V executed")
+
+            if self.settings.auto_enter:
+                # Small delay before Enter
+                QTimer.singleShot(50, self._do_auto_enter)
+
+        except Exception as e:
+            print(f"Error performing auto-paste: {e}")
+
+    def _do_auto_enter(self):
+        """Execute Enter keystroke."""
+        try:
+            self.keyboard_controller.press(keyboard.Key.enter)
+            self.keyboard_controller.release(keyboard.Key.enter)
+            print("Auto-enter: Enter executed")
+
+        except Exception as e:
+            print(f"Error performing auto-enter: {e}")
 
     def _handle_error(self, error_message: str):
         """

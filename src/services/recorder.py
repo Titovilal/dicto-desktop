@@ -1,6 +1,7 @@
 """
 Audio recording service using sounddevice.
 """
+
 import sounddevice as sd
 import soundfile as sf
 import numpy as np
@@ -14,7 +15,9 @@ from typing import Optional
 class AudioRecorder:
     """Records audio from the microphone."""
 
-    def __init__(self, sample_rate: int = 16000, channels: int = 1, max_duration: int = 120):
+    def __init__(
+        self, sample_rate: int = 16000, channels: int = 1, max_duration: int = 120
+    ):
         """
         Initialize audio recorder.
 
@@ -50,7 +53,9 @@ class AudioRecorder:
             self.is_recording = True
 
             # Start recording in a separate thread
-            self.recording_thread = threading.Thread(target=self._record_audio, daemon=True)
+            self.recording_thread = threading.Thread(
+                target=self._record_audio, daemon=True
+            )
             self.recording_thread.start()
 
             print(f"Recording started (max {self.max_duration}s)")
@@ -87,9 +92,7 @@ class AudioRecorder:
         try:
             # Create temporary file
             temp_file = tempfile.NamedTemporaryFile(
-                suffix=".wav",
-                delete=False,
-                prefix="voice_recording_"
+                suffix=".wav", delete=False, prefix="voice_recording_"
             )
             self.temp_file_path = temp_file.name
             temp_file.close()
@@ -120,9 +123,9 @@ class AudioRecorder:
             with sd.InputStream(
                 samplerate=self.sample_rate,
                 channels=self.channels,
-                dtype='int16',
+                dtype="int16",
                 blocksize=self.chunk_size,
-                callback=callback
+                callback=callback,
             ):
                 while self.is_recording:
                     elapsed = time.time() - start_time
@@ -163,7 +166,7 @@ class AudioRecorder:
         print("\nAvailable audio input devices:")
         devices = sd.query_devices()
         for i, dev in enumerate(devices):
-            if dev['max_input_channels'] > 0:
+            if dev["max_input_channels"] > 0:
                 print(f"  [{i}] {dev['name']} (channels: {dev['max_input_channels']})")
 
     def close(self):

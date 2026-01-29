@@ -1,9 +1,9 @@
 """
 Global hotkey listener service using pynput.
 """
+
 from pynput import keyboard
 from typing import Callable, List, Set
-import threading
 
 
 class HotkeyListener:
@@ -25,8 +25,13 @@ class HotkeyListener:
         "cmd_r": keyboard.Key.cmd_r,
     }
 
-    def __init__(self, modifiers: List[str], key: str,
-                 on_press: Callable = None, on_release: Callable = None):
+    def __init__(
+        self,
+        modifiers: List[str],
+        key: str,
+        on_press: Callable = None,
+        on_release: Callable = None,
+    ):
         """
         Initialize hotkey listener.
 
@@ -88,10 +93,20 @@ class HotkeyListener:
     def _on_press(self, key):
         """Internal callback for key press events."""
         # Track modifiers
-        if key in [keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r,
-                   keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r,
-                   keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r,
-                   keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r]:
+        if key in [
+            keyboard.Key.ctrl,
+            keyboard.Key.ctrl_l,
+            keyboard.Key.ctrl_r,
+            keyboard.Key.shift,
+            keyboard.Key.shift_l,
+            keyboard.Key.shift_r,
+            keyboard.Key.alt,
+            keyboard.Key.alt_l,
+            keyboard.Key.alt_r,
+            keyboard.Key.cmd,
+            keyboard.Key.cmd_l,
+            keyboard.Key.cmd_r,
+        ]:
             # Normalize L/R modifiers to generic
             if key in [keyboard.Key.ctrl_l, keyboard.Key.ctrl_r]:
                 self.current_modifiers.add(keyboard.Key.ctrl)
@@ -144,14 +159,15 @@ class HotkeyListener:
             return  # Already running
 
         self.listener = keyboard.Listener(
-            on_press=self._on_press,
-            on_release=self._on_release
+            on_press=self._on_press, on_release=self._on_release
         )
 
         # keyboard.Listener is already a threading.Thread subclass
         # Just call start() directly - it runs in its own daemon thread
         self.listener.start()
-        print(f"Hotkey listener started: {'+'.join([str(m) for m in self.modifiers])}+{self.key}")
+        print(
+            f"Hotkey listener started: {'+'.join([str(m) for m in self.modifiers])}+{self.key}"
+        )
 
     def stop(self):
         """Stop listening for hotkeys."""

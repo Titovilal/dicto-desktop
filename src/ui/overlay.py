@@ -1,6 +1,7 @@
 """
 Overlay window for visual feedback during recording and processing.
 """
+
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, Property
 from PySide6.QtGui import QPainter, QColor, QPen
@@ -9,7 +10,9 @@ from PySide6.QtGui import QPainter, QColor, QPen
 class OverlayWindow(QWidget):
     """Frameless, transparent overlay window showing application state."""
 
-    def __init__(self, position: str = "top-right", size: int = 100, opacity: float = 0.9):
+    def __init__(
+        self, position: str = "top-right", size: int = 100, opacity: float = 0.9
+    ):
         """
         Initialize overlay window.
 
@@ -35,9 +38,9 @@ class OverlayWindow(QWidget):
         """Configure window properties."""
         # Frameless, always on top, tool window (doesn't appear in taskbar)
         self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool
         )
 
         # Transparent background
@@ -146,7 +149,7 @@ class OverlayWindow(QWidget):
             center_x - pulse_radius,
             center_y - pulse_radius,
             pulse_radius * 2,
-            pulse_radius * 2
+            pulse_radius * 2,
         )
 
     def _draw_processing(self, painter: QPainter):
@@ -167,10 +170,7 @@ class OverlayWindow(QWidget):
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(
-            center_x - radius,
-            center_y - radius,
-            radius * 2,
-            radius * 2
+            center_x - radius, center_y - radius, radius * 2, radius * 2
         )
 
     def _draw_success(self, painter: QPainter):
@@ -189,10 +189,7 @@ class OverlayWindow(QWidget):
         green_color = QColor(50, 255, 50, 200)
         painter.setBrush(green_color)
         painter.drawEllipse(
-            center_x - radius,
-            center_y - radius,
-            radius * 2,
-            radius * 2
+            center_x - radius, center_y - radius, radius * 2, radius * 2
         )
 
         # Simple checkmark (simplified as "✓" text for now)
@@ -214,22 +211,17 @@ class OverlayWindow(QWidget):
         red_color = QColor(255, 50, 50, 200)
         painter.setBrush(red_color)
         painter.drawEllipse(
-            center_x - radius,
-            center_y - radius,
-            radius * 2,
-            radius * 2
+            center_x - radius, center_y - radius, radius * 2, radius * 2
         )
 
         # X mark (simplified)
         painter.setPen(QPen(QColor(255, 255, 255), 3))
         offset = 15
         painter.drawLine(
-            center_x - offset, center_y - offset,
-            center_x + offset, center_y + offset
+            center_x - offset, center_y - offset, center_x + offset, center_y + offset
         )
         painter.drawLine(
-            center_x + offset, center_y - offset,
-            center_x - offset, center_y + offset
+            center_x + offset, center_y - offset, center_x - offset, center_y + offset
         )
 
     # Property for pulse animation

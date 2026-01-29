@@ -3,9 +3,15 @@
 Voice to Clipboard - Main entry point
 A minimalist desktop application for voice-to-text transcription.
 """
+
 import sys
 import signal
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load .env file before importing other modules that use settings
+load_dotenv()
 
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QTimer, Slot
@@ -35,7 +41,9 @@ class VoiceToClipboardApp:
         if not config_path.exists():
             print("Creating default config.yaml...")
             self.settings.create_default_config()
-            print("Please edit config.yaml and set your OpenAI API key, then restart the app.")
+            print(
+                "Please edit config.yaml and set your OpenAI API key, then restart the app."
+            )
             print("You can also set OPENAI_API_KEY environment variable.")
 
         # Initialize components
@@ -63,13 +71,13 @@ class VoiceToClipboardApp:
             self.controller = Controller(self.settings)
 
             # Initialize tray manager
-            self.tray_manager = TrayManager(self.app)
+            self.tray_manager = TrayManager(self.app, self.settings)
 
             # Initialize overlay window
             self.overlay = OverlayWindow(
                 position=self.settings.overlay_position,
                 size=self.settings.overlay_size,
-                opacity=self.settings.overlay_opacity
+                opacity=self.settings.overlay_opacity,
             )
 
             print("All components initialized successfully")
@@ -86,7 +94,9 @@ class VoiceToClipboardApp:
         # Controller events -> Update overlay
         self.controller.recording_started.connect(self.overlay.show_recording)
         self.controller.recording_stopped.connect(self._on_recording_stopped)
-        self.controller.transcription_completed.connect(self._on_transcription_completed)
+        self.controller.transcription_completed.connect(
+            self._on_transcription_completed
+        )
         self.controller.error_occurred.connect(self._on_error)
 
         # Tray actions
@@ -143,7 +153,9 @@ class VoiceToClipboardApp:
     def _on_error(self, error_message: str):
         """Handle error."""
         # Show error overlay
-        short_message = error_message[:30] + "..." if len(error_message) > 30 else error_message
+        short_message = (
+            error_message[:30] + "..." if len(error_message) > 30 else error_message
+        )
         self.overlay.show_error(short_message)
 
         # Show error notification
@@ -162,7 +174,9 @@ class VoiceToClipboardApp:
         print("\n" + "=" * 60)
         print("Voice to Clipboard started!")
         print("=" * 60)
-        print(f"Hotkey: {'+'.join(self.settings.hotkey_modifiers).upper()} + {self.settings.hotkey_key.upper()}")
+        print(
+            f"Hotkey: {'+'.join(self.settings.hotkey_modifiers).upper()} + {self.settings.hotkey_key.upper()}"
+        )
         print("Press the hotkey and speak, release to transcribe.")
         print("Check system tray for status and options.")
         print("=" * 60 + "\n")
@@ -181,6 +195,7 @@ class VoiceToClipboardApp:
         except Exception as e:
             print(f"Fatal error: {e}")
             import traceback
+
             traceback.print_exc()
             self.quit()
 
@@ -214,6 +229,7 @@ def main():
     except Exception as e:
         print(f"Failed to start application: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

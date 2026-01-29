@@ -1,10 +1,10 @@
 """
 System tray manager for Voice to Clipboard application.
 """
+
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import QObject, Signal, Slot
-import sys
 
 
 class TrayManager(QObject):
@@ -13,17 +13,21 @@ class TrayManager(QObject):
     # Signals
     quit_requested = Signal()
     show_last_transcription = Signal()
+    auto_paste_changed = Signal(bool)
+    auto_enter_changed = Signal(bool)
 
-    def __init__(self, app):
+    def __init__(self, app, settings=None):
         """
         Initialize tray manager.
 
         Args:
             app: QApplication instance
+            settings: Settings instance for persisting preferences
         """
         super().__init__()
 
         self.app = app
+        self.settings = settings
         self.tray_icon = None
         self.menu = None
         self.last_transcription = ""
@@ -61,8 +65,12 @@ class TrayManager(QObject):
         self.menu = QMenu()
 
         # Last transcription action
-        self.last_transcription_action = QAction("Last Transcription: (none)", self.menu)
-        self.last_transcription_action.triggered.connect(self._on_show_last_transcription)
+        self.last_transcription_action = QAction(
+            "Last Transcription: (none)", self.menu
+        )
+        self.last_transcription_action.triggered.connect(
+            self._on_show_last_transcription
+        )
         self.menu.addAction(self.last_transcription_action)
 
         self.menu.addSeparator()
@@ -71,6 +79,24 @@ class TrayManager(QObject):
         self.status_action = QAction("Status: Idle", self.menu)
         self.status_action.setEnabled(False)
         self.menu.addAction(self.status_action)
+
+        self.menu.addSeparator()
+
+        # Auto-paste option (Ctrl+V after copy)
+        self.auto_paste_action = QAction("Auto Paste (Ctrl+V)", self.menu)
+        self.auto_paste_action.setCheckable(True)
+        if self.settings:
+            self.auto_paste_action.setChecked(self.settings.auto_paste)
+        self.auto_paste_action.triggered.connect(self._on_auto_paste_changed)
+        self.menu.addAction(self.auto_paste_action)
+
+        # Auto-enter option (press Enter after paste)
+        self.auto_enter_action = QAction("Auto Enter", self.menu)
+        self.auto_enter_action.setCheckable(True)
+        if self.settings:
+            self.auto_enter_action.setChecked(self.settings.auto_enter)
+        self.auto_enter_action.triggered.connect(self._on_auto_enter_changed)
+        self.menu.addAction(self.auto_enter_action)
 
         self.menu.addSeparator()
 
@@ -108,7 +134,7 @@ class TrayManager(QObject):
                     "Last Transcription",
                     self.last_transcription,
                     QSystemTrayIcon.MessageIcon.Information,
-                    3000  # 3 seconds
+                    3000,  # 3 seconds
                 )
         else:
             if self.tray_icon:
@@ -116,7 +142,7 @@ class TrayManager(QObject):
                     "No Transcription",
                     "No transcription available yet",
                     QSystemTrayIcon.MessageIcon.Information,
-                    2000
+                    2000,
                 )
 
     @Slot()
@@ -124,6 +150,26 @@ class TrayManager(QObject):
         """Handle quit action."""
         print("Quit requested from tray menu")
         self.quit_requested.emit()
+
+    @Slot()
+    def _on_auto_paste_changed(self):
+        """Handle auto-paste toggle."""
+        checked = self.auto_paste_action.isChecked()
+        print(f"Auto-paste {'enabled' if checked else 'disabled'}")
+        if self.settings:
+            self.settings.auto_paste = checked
+            self.settings.save()
+        self.auto_paste_changed.emit(checked)
+
+    @Slot()
+    def _on_auto_enter_changed(self):
+        """Handle auto-enter toggle."""
+        checked = self.auto_enter_action.isChecked()
+        print(f"Auto-enter {'enabled' if checked else 'disabled'}")
+        if self.settings:
+            self.settings.auto_enter = checked
+            self.settings.save()
+        self.auto_enter_changed.emit(checked)
 
     @Slot(str)
     def update_last_transcription(self, text: str):

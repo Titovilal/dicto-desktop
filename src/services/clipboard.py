@@ -1,6 +1,7 @@
 """
 Clipboard manager service using pyperclip.
 """
+
 import pyperclip
 
 

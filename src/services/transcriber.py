@@ -1,57 +1,78 @@
 """
-Transcription service using OpenAI Whisper API.
+Transcription service using Groq or OpenAI Whisper API.
 """
+
 import httpx
 import time
 from pathlib import Path
-from typing import Optional, Tuple
 
 
 class TranscriptionError(Exception):
     """Base exception for transcription errors."""
+
     pass
 
 
 class APIKeyError(TranscriptionError):
     """API key is invalid or missing."""
+
     pass
 
 
 class RateLimitError(TranscriptionError):
     """API rate limit exceeded."""
+
     pass
 
 
 class AudioTooShortError(TranscriptionError):
     """Audio file is too short."""
+
     pass
 
 
 class AudioTooLongError(TranscriptionError):
     """Audio file is too long."""
+
     pass
 
 
 class Transcriber:
-    """Handles audio transcription using OpenAI Whisper API."""
+    """Handles audio transcription using Groq or OpenAI Whisper API."""
 
-    WHISPER_API_URL = "https://api.openai.com/v1/audio/transcriptions"
+    PROVIDERS = {
+        "groq": {
+            "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+            "model": "whisper-large-v3-turbo",
+        },
+        "openai": {
+            "url": "https://api.openai.com/v1/audio/transcriptions",
+            "model": "whisper-1",
+        },
+    }
     MAX_RETRIES = 3
     RETRY_DELAY = 2  # seconds
 
-    def __init__(self, api_key: str, language: str = "auto"):
+    def __init__(self, api_key: str, language: str = "auto", provider: str = "groq"):
         """
         Initialize transcriber.
 
         Args:
-            api_key: OpenAI API key
+            api_key: API key for the transcription provider
             language: Language code (e.g., 'en', 'es') or 'auto' for automatic detection
+            provider: Transcription provider ('groq' or 'openai')
         """
         if not api_key:
-            raise APIKeyError("OpenAI API key is required")
+            raise APIKeyError(f"{provider.upper()} API key is required")
+
+        if provider not in self.PROVIDERS:
+            raise TranscriptionError(f"Unknown provider: {provider}. Use 'groq' or 'openai'")
 
         self.api_key = api_key
         self.language = None if language == "auto" else language
+        self.provider = provider
+        self.api_url = self.PROVIDERS[provider]["url"]
+        self.model = self.PROVIDERS[provider]["model"]
         self.client = httpx.Client(timeout=30.0)
 
     def transcribe(self, audio_file_path: str) -> str:
@@ -75,7 +96,9 @@ class Transcriber:
         # Check file size
         file_size_mb = audio_path.stat().st_size / (1024 * 1024)
         if file_size_mb > 25:
-            raise AudioTooLongError(f"Audio file too large: {file_size_mb:.1f}MB (max 25MB)")
+            raise AudioTooLongError(
+                f"Audio file too large: {file_size_mb:.1f}MB (max 25MB)"
+            )
 
         if file_size_mb < 0.001:
             raise AudioTooShortError("Audio file too small (likely no audio recorded)")
@@ -90,8 +113,10 @@ class Transcriber:
             except RateLimitError as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
-                    delay = self.RETRY_DELAY * (2 ** attempt)  # Exponential backoff
-                    print(f"Rate limit hit, retrying in {delay}s... (attempt {attempt + 1}/{self.MAX_RETRIES})")
+                    delay = self.RETRY_DELAY * (2**attempt)  # Exponential backoff
+                    print(
+                        f"Rate limit hit, retrying in {delay}s... (attempt {attempt + 1}/{self.MAX_RETRIES})"
+                    )
                     time.sleep(delay)
                 continue
 
@@ -102,8 +127,10 @@ class Transcriber:
             except TranscriptionError as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
-                    delay = self.RETRY_DELAY * (2 ** attempt)
-                    print(f"Transcription failed, retrying in {delay}s... (attempt {attempt + 1}/{self.MAX_RETRIES})")
+                    delay = self.RETRY_DELAY * (2**attempt)
+                    print(
+                        f"Transcription failed, retrying in {delay}s... (attempt {attempt + 1}/{self.MAX_RETRIES})"
+                    )
                     time.sleep(delay)
                 continue
 
@@ -125,18 +152,12 @@ class Transcriber:
         """
         try:
             # Prepare request
-            headers = {
-                "Authorization": f"Bearer {self.api_key}"
-            }
+            headers = {"Authorization": f"Bearer {self.api_key}"}
 
             # Prepare form data
-            files = {
-                "file": (audio_path.name, open(audio_path, "rb"), "audio/wav")
-            }
+            files = {"file": (audio_path.name, open(audio_path, "rb"), "audio/wav")}
 
-            data = {
-                "model": "whisper-1"
-            }
+            data = {"model": self.model}
 
             # Add language if specified
             if self.language:
@@ -144,10 +165,7 @@ class Transcriber:
 
             # Make request
             response = self.client.post(
-                self.WHISPER_API_URL,
-                headers=headers,
-                files=files,
-                data=data
+                self.api_url, headers=headers, files=files, data=data
             )
 
             # Close file
@@ -169,7 +187,9 @@ class Transcriber:
 
             else:
                 error_msg = self._parse_error_message(response)
-                raise TranscriptionError(f"API error ({response.status_code}): {error_msg}")
+                raise TranscriptionError(
+                    f"API error ({response.status_code}): {error_msg}"
+                )
 
         except httpx.TimeoutException:
             raise TranscriptionError("Request timeout - API took too long to respond")
