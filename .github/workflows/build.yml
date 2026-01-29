@@ -59,11 +59,11 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact_name: Dicto.exe
-            asset_name: dicto-windows.exe
+            artifact_name: dicto-windows-amd64.exe
+            asset_name: dicto-windows-amd64.exe
           - os: ubuntu-latest
-            artifact_name: dicto
-            asset_name: dicto-linux
+            artifact_name: dicto-linux-amd64
+            asset_name: dicto-linux-amd64
 
     runs-on: ${{ matrix.os }}
 
@@ -116,14 +116,19 @@ jobs:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: dicto-windows.exe
+          name: dicto-windows-amd64.exe
           path: dist/
 
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
-          name: dicto-linux
+          name: dicto-linux-amd64
           path: dist/
+
+      - name: Rename artifacts
+        run: |
+          mv dist/Dicto.exe dist/dicto-windows-amd64.exe
+          mv dist/dicto dist/dicto-linux-amd64
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -131,8 +136,8 @@ jobs:
           tag_name: v${{ needs.version.outputs.version }}
           name: v${{ needs.version.outputs.version }}
           files: |
-            dist/Dicto.exe
-            dist/dicto
+            dist/dicto-windows-amd64.exe
+            dist/dicto-linux-amd64
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
