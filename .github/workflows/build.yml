@@ -46,6 +46,9 @@ jobs:
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "Tag push detected"
             echo "should_release=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "Push to main with new version v$VERSION - auto release"
+            echo "should_release=true" >> $GITHUB_OUTPUT
           else
             echo "No release needed"
             echo "should_release=false" >> $GITHUB_OUTPUT
