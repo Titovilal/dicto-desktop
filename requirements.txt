@@ -1,0 +1,19 @@
+# Voice to Clipboard - Python Dependencies
+
+# GUI Framework
+PySide6>=6.5.0
+
+# Hotkey listener
+pynput>=1.7.6
+
+# Audio recording
+pyaudio>=0.2.13
+
+# Clipboard operations
+pyperclip>=1.8.2
+
+# HTTP client for API calls
+httpx>=0.24.0
+
+# Configuration file parsing
+pyyaml>=6.0

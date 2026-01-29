@@ -1,0 +1,18 @@
+hotkey:
+  modifiers: ["ctrl", "shift"]
+  key: "space"
+
+overlay:
+  position: "top-right"  # top-left, top-right, bottom-left, bottom-right, center
+  size: 100
+  opacity: 0.9
+
+transcription:
+  provider: "openai"
+  api_key: ""  # Or set OPENAI_API_KEY environment variable
+  language: "auto"  # or ISO code like "es", "en"
+
+audio:
+  sample_rate: 16000
+  max_duration: 120  # maximum recording duration in seconds
+  channels: 1  # mono
