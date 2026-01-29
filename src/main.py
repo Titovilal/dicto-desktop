@@ -13,17 +13,21 @@ from dotenv import load_dotenv
 # Load .env file before importing other modules that use settings
 load_dotenv()
 
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QTimer, Slot
+from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtCore import QTimer, Slot  # noqa: E402
 
-from src.config.settings import get_settings
-from src.controller import Controller, AppState
-from src.ui.tray import TrayManager
-from src.ui.overlay import OverlayWindow
+from src.config.settings import get_settings  # noqa: E402
+from src.controller import Controller, AppState  # noqa: E402
+from src.ui.tray import TrayManager  # noqa: E402
+from src.ui.overlay import OverlayWindow  # noqa: E402
 
 
 class VoiceToClipboardApp:
     """Main application class."""
+
+    controller: Controller | None
+    tray_manager: TrayManager | None
+    overlay: OverlayWindow | None
 
     def __init__(self):
         """Initialize application."""
@@ -88,6 +92,10 @@ class VoiceToClipboardApp:
 
     def _connect_signals(self):
         """Connect signals between components."""
+        assert self.controller is not None
+        assert self.tray_manager is not None
+        assert self.overlay is not None
+
         # Controller state changes -> Update UI
         self.controller.state_changed.connect(self._on_state_changed)
 
@@ -103,13 +111,17 @@ class VoiceToClipboardApp:
         self.tray_manager.quit_requested.connect(self.quit)
 
         # Auto-return to idle after success/error overlay hides
-        QTimer.singleShot(0, lambda: self.controller.return_to_idle)
+        controller = self.controller
+        QTimer.singleShot(0, lambda: controller.return_to_idle)
 
         print("Signals connected")
 
     @Slot(AppState)
     def _on_state_changed(self, state: AppState):
         """Handle application state changes."""
+        assert self.tray_manager is not None
+        assert self.overlay is not None
+
         # Update tray status
         self.tray_manager.update_status(state.value)
 
@@ -136,6 +148,10 @@ class VoiceToClipboardApp:
     @Slot(str)
     def _on_transcription_completed(self, text: str):
         """Handle successful transcription."""
+        assert self.controller is not None
+        assert self.tray_manager is not None
+        assert self.overlay is not None
+
         # Update tray with last transcription
         self.tray_manager.update_last_transcription(text)
 
@@ -152,6 +168,10 @@ class VoiceToClipboardApp:
     @Slot(str)
     def _on_error(self, error_message: str):
         """Handle error."""
+        assert self.controller is not None
+        assert self.tray_manager is not None
+        assert self.overlay is not None
+
         # Show error overlay
         short_message = (
             error_message[:30] + "..." if len(error_message) > 30 else error_message
@@ -171,6 +191,8 @@ class VoiceToClipboardApp:
 
     def run(self):
         """Start the application."""
+        assert self.controller is not None
+
         print("\n" + "=" * 60)
         print("Voice to Clipboard started!")
         print("=" * 60)

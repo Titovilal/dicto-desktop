@@ -3,18 +3,36 @@ System tray manager for Voice to Clipboard application.
 """
 
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu
-from PySide6.QtGui import QIcon, QAction
+from PySide6.QtGui import QIcon, QAction, QActionGroup
 from PySide6.QtCore import QObject, Signal, Slot
 
 
 class TrayManager(QObject):
     """Manages the system tray icon and menu."""
 
+    tray_icon: QSystemTrayIcon | None
+    menu: QMenu | None
+
+    # Available languages for transcription
+    LANGUAGES = {
+        "auto": "Auto-detect",
+        "es": "Español",
+        "en": "English",
+        "fr": "Français",
+        "de": "Deutsch",
+        "it": "Italiano",
+        "pt": "Português",
+        "zh": "中文",
+        "ja": "日本語",
+        "ko": "한국어",
+    }
+
     # Signals
     quit_requested = Signal()
     show_last_transcription = Signal()
     auto_paste_changed = Signal(bool)
     auto_enter_changed = Signal(bool)
+    language_changed = Signal(str)
 
     def __init__(self, app, settings=None):
         """
@@ -100,13 +118,38 @@ class TrayManager(QObject):
 
         self.menu.addSeparator()
 
+        # Language submenu
+        self.language_menu = QMenu("Language", self.menu)
+        self.language_action_group = QActionGroup(self.language_menu)
+        self.language_action_group.setExclusive(True)
+        self.language_actions = {}
+
+        current_language = (
+            self.settings.transcription_language if self.settings else "auto"
+        )
+
+        for code, name in self.LANGUAGES.items():
+            action = QAction(name, self.language_menu)
+            action.setCheckable(True)
+            action.setChecked(code == current_language)
+            action.setData(code)
+            action.triggered.connect(self._on_language_changed)
+            self.language_action_group.addAction(action)
+            self.language_menu.addAction(action)
+            self.language_actions[code] = action
+
+        self.menu.addMenu(self.language_menu)
+
+        self.menu.addSeparator()
+
         # Quit action
         quit_action = QAction("Quit", self.menu)
         quit_action.triggered.connect(self._on_quit)
         self.menu.addAction(quit_action)
 
         # Set context menu
-        self.tray_icon.setContextMenu(self.menu)
+        if self.tray_icon is not None:
+            self.tray_icon.setContextMenu(self.menu)
 
     def _get_default_icon(self) -> QIcon:
         """
@@ -170,6 +213,19 @@ class TrayManager(QObject):
             self.settings.auto_enter = checked
             self.settings.save()
         self.auto_enter_changed.emit(checked)
+
+    @Slot()
+    def _on_language_changed(self):
+        """Handle language selection."""
+        action = self.language_action_group.checkedAction()
+        if action:
+            language_code = action.data()
+            language_name = self.LANGUAGES.get(language_code, language_code)
+            print(f"Language changed to: {language_name} ({language_code})")
+            if self.settings:
+                self.settings.transcription_language = language_code
+                self.settings.save()
+            self.language_changed.emit(language_code)
 
     @Slot(str)
     def update_last_transcription(self, text: str):

@@ -35,6 +35,10 @@ class Controller(QObject):
     transcription_completed = Signal(str)  # transcribed text
     error_occurred = Signal(str)  # error message
 
+    hotkey_listener: HotkeyListener | None
+    recorder: AudioRecorder | None
+    transcriber: Transcriber | None
+
     def __init__(self, settings: Settings):
         """
         Initialize controller.
@@ -156,6 +160,10 @@ class Controller(QObject):
 
     def _start_recording(self):
         """Start audio recording."""
+        if self.recorder is None:
+            self._handle_error("Audio recorder not initialized")
+            return
+
         try:
             self._set_state(AppState.RECORDING)
             self.recording_started.emit()
@@ -172,6 +180,10 @@ class Controller(QObject):
 
     def _stop_recording_and_process(self):
         """Stop recording and start transcription process."""
+        if self.recorder is None:
+            self._handle_error("Audio recorder not initialized")
+            return
+
         try:
             # Stop recording
             audio_file_path = self.recorder.stop_recording()

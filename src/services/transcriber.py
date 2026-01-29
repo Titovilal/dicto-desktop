@@ -66,7 +66,9 @@ class Transcriber:
             raise APIKeyError(f"{provider.upper()} API key is required")
 
         if provider not in self.PROVIDERS:
-            raise TranscriptionError(f"Unknown provider: {provider}. Use 'groq' or 'openai'")
+            raise TranscriptionError(
+                f"Unknown provider: {provider}. Use 'groq' or 'openai'"
+            )
 
         self.api_key = api_key
         self.language = None if language == "auto" else language
@@ -211,7 +213,7 @@ class Transcriber:
                     return error_data["error"].get("message", str(error_data["error"]))
                 return str(error_data["error"])
             return response.text[:200]  # First 200 chars
-        except:
+        except Exception:
             return response.text[:200]
 
     def close(self):

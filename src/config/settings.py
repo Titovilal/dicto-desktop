@@ -5,7 +5,7 @@ Configuration management for Voice to Clipboard application.
 import os
 import yaml
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, cast
 
 
 class Settings:
@@ -19,7 +19,10 @@ class Settings:
         "behavior": {"auto_paste": False, "auto_enter": False},
     }
 
-    def __init__(self, config_path: str = None):
+    config_path: Path
+    config: Dict[str, Any]
+
+    def __init__(self, config_path: str | None = None):
         """
         Initialize settings.
 
@@ -27,11 +30,9 @@ class Settings:
             config_path: Path to config.yaml file. If None, looks in current directory.
         """
         if config_path is None:
-            config_path = Path.cwd() / "config.yaml"
+            self.config_path = Path.cwd() / "config.yaml"
         else:
-            config_path = Path(config_path)
-
-        self.config_path = config_path
+            self.config_path = Path(config_path)
         self.config = self._load_config()
         self._apply_env_overrides()
 
@@ -81,66 +82,71 @@ class Settings:
     @property
     def hotkey_modifiers(self) -> List[str]:
         """Get hotkey modifiers (e.g., ['ctrl', 'shift'])."""
-        return self.config["hotkey"]["modifiers"]
+        return cast(List[str], self.config["hotkey"]["modifiers"])
 
     @property
     def hotkey_key(self) -> str:
         """Get hotkey key (e.g., 'space')."""
-        return self.config["hotkey"]["key"]
+        return cast(str, self.config["hotkey"]["key"])
 
     # Overlay settings
     @property
     def overlay_position(self) -> str:
         """Get overlay position on screen."""
-        return self.config["overlay"]["position"]
+        return cast(str, self.config["overlay"]["position"])
 
     @property
     def overlay_size(self) -> int:
         """Get overlay size in pixels."""
-        return self.config["overlay"]["size"]
+        return cast(int, self.config["overlay"]["size"])
 
     @property
     def overlay_opacity(self) -> float:
         """Get overlay opacity (0.0 to 1.0)."""
-        return self.config["overlay"]["opacity"]
+        return cast(float, self.config["overlay"]["opacity"])
 
     # Transcription settings
     @property
     def transcription_provider(self) -> str:
         """Get transcription provider (e.g., 'openai')."""
-        return self.config["transcription"]["provider"]
+        return cast(str, self.config["transcription"]["provider"])
 
     @property
     def transcription_api_key(self) -> str:
         """Get transcription API key."""
-        return self.config["transcription"]["api_key"]
+        return cast(str, self.config["transcription"]["api_key"])
 
     @property
     def transcription_language(self) -> str:
         """Get transcription language (e.g., 'auto', 'es', 'en')."""
-        return self.config["transcription"]["language"]
+        return cast(str, self.config["transcription"]["language"])
+
+    @transcription_language.setter
+    def transcription_language(self, value: str) -> None:
+        """Set transcription language."""
+        self.config["transcription"]["language"] = value
 
     # Audio settings
     @property
     def audio_sample_rate(self) -> int:
         """Get audio sample rate in Hz."""
-        return self.config["audio"]["sample_rate"]
+        return cast(int, self.config["audio"]["sample_rate"])
 
     @property
     def audio_max_duration(self) -> int:
         """Get maximum recording duration in seconds."""
-        return self.config["audio"]["max_duration"]
+        return cast(int, self.config["audio"]["max_duration"])
 
     @property
     def audio_channels(self) -> int:
         """Get number of audio channels (1 for mono, 2 for stereo)."""
-        return self.config["audio"]["channels"]
+        return cast(int, self.config["audio"]["channels"])
 
     # Behavior settings
     @property
     def auto_paste(self) -> bool:
         """Get auto-paste setting (Ctrl+V after copy)."""
-        return self.config.get("behavior", {}).get("auto_paste", False)
+        return cast(bool, self.config.get("behavior", {}).get("auto_paste", False))
 
     @auto_paste.setter
     def auto_paste(self, value: bool) -> None:
@@ -152,7 +158,7 @@ class Settings:
     @property
     def auto_enter(self) -> bool:
         """Get auto-enter setting (press Enter after paste)."""
-        return self.config.get("behavior", {}).get("auto_enter", False)
+        return cast(bool, self.config.get("behavior", {}).get("auto_enter", False))
 
     @auto_enter.setter
     def auto_enter(self, value: bool) -> None:
@@ -182,7 +188,7 @@ class Settings:
 _settings_instance = None
 
 
-def get_settings(config_path: str = None) -> Settings:
+def get_settings(config_path: str | None = None) -> Settings:
     """
     Get the global settings instance.
 

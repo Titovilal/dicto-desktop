@@ -29,8 +29,8 @@ class HotkeyListener:
         self,
         modifiers: List[str],
         key: str,
-        on_press: Callable = None,
-        on_release: Callable = None,
+        on_press: Callable | None = None,
+        on_release: Callable | None = None,
     ):
         """
         Initialize hotkey listener.
