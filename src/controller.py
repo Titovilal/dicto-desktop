@@ -35,6 +35,11 @@ class Controller(QObject):
     transcription_completed = Signal(str)  # transcribed text
     error_occurred = Signal(str)  # error message
 
+    # Internal signals for thread-safe timer scheduling
+    # (QTimer.singleShot must be called from the Qt main thread)
+    _auto_paste_requested = Signal()
+    _auto_enter_requested = Signal()
+
     hotkey_listener: HotkeyListener | None
     recorder: AudioRecorder | None
     transcriber: Transcriber | None
@@ -56,6 +61,10 @@ class Controller(QObject):
         self.recorder = None
         self.transcriber = None
         self.keyboard_controller = keyboard.Controller()
+
+        # Connect internal signals for thread-safe timer scheduling
+        self._auto_paste_requested.connect(self._schedule_auto_paste)
+        self._auto_enter_requested.connect(self._schedule_auto_enter)
 
         self._init_services()
 
@@ -257,8 +266,18 @@ class Controller(QObject):
     def _perform_auto_actions(self):
         """Perform auto-paste (Ctrl+V) and auto-enter if enabled."""
         if self.settings.auto_paste:
-            # Small delay to ensure clipboard is ready, then paste
-            QTimer.singleShot(100, self._do_auto_paste)
+            # Emit signal to schedule timer on Qt main thread
+            self._auto_paste_requested.emit()
+
+    @Slot()
+    def _schedule_auto_paste(self):
+        """Schedule auto-paste with delay (runs on Qt main thread)."""
+        QTimer.singleShot(100, self._do_auto_paste)
+
+    @Slot()
+    def _schedule_auto_enter(self):
+        """Schedule auto-enter with delay (runs on Qt main thread)."""
+        QTimer.singleShot(50, self._do_auto_enter)
 
     def _do_auto_paste(self):
         """Execute Ctrl+V keystroke."""
@@ -270,8 +289,8 @@ class Controller(QObject):
             print("Auto-paste: Ctrl+V executed")
 
             if self.settings.auto_enter:
-                # Small delay before Enter
-                QTimer.singleShot(50, self._do_auto_enter)
+                # Emit signal to schedule timer on Qt main thread
+                self._auto_enter_requested.emit()
 
         except Exception as e:
             print(f"Error performing auto-paste: {e}")

@@ -8,6 +8,13 @@ import sys
 import signal
 from pathlib import Path
 
+# Set Windows AppUserModelID for proper notification branding
+# Must be done before creating QApplication
+if sys.platform == "win32":
+    import ctypes
+    app_id = "voicetoclipboard.dicto.desktop.1.0"
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+
 from dotenv import load_dotenv
 
 # Load .env file before importing other modules that use settings
