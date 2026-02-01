@@ -22,6 +22,7 @@ load_dotenv()
 
 from PySide6.QtWidgets import QApplication  # noqa: E402
 from PySide6.QtCore import QTimer, Slot  # noqa: E402
+from PySide6.QtGui import QIcon  # noqa: E402
 
 from src.config.settings import get_settings  # noqa: E402
 from src.controller import Controller, AppState  # noqa: E402
@@ -30,6 +31,7 @@ from src.ui.overlay import OverlayWindow  # noqa: E402
 from src.ui.main_window import MainWindow  # noqa: E402
 from src.ui.splash import SplashWindow  # noqa: E402
 from src.utils.logger import setup_logging, get_logger  # noqa: E402
+from src.utils.icons import get_icon_path  # noqa: E402
 
 logger = get_logger(__name__)
 
@@ -49,6 +51,11 @@ class DictoApp:
         self.app = QApplication(sys.argv)
         self.app.setApplicationName("Dicto")
         self.app.setQuitOnLastWindowClosed(False)  # Keep running in tray
+
+        # Set application icon (taskbar and default window icon)
+        icon_path = get_icon_path()
+        if icon_path:
+            self.app.setWindowIcon(QIcon(str(icon_path)))
 
         # Show splash window while loading
         self.splash = SplashWindow()

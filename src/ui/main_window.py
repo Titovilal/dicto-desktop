@@ -22,6 +22,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Signal, Slot, Qt
 from PySide6.QtGui import QIcon
 
+from src.utils.icons import get_icon_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,6 +70,11 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Dicto")
         self.setMinimumSize(400, 350)
         self.resize(450, 400)
+
+        # Set window icon
+        icon_path = get_icon_path()
+        if icon_path:
+            self.setWindowIcon(QIcon(str(icon_path)))
 
         # Central widget
         central_widget = QWidget()

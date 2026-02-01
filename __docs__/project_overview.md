@@ -25,6 +25,10 @@ Desktop application that transcribes voice to text. Use a global hotkey (press a
 - `src/config/settings.py` - Configuration management (loads config.yaml, applies env overrides)
 - `src/utils/logger.py` - Logging setup for the application
 
+### Assets
+- `assets/icons/icon.ico` - Application icon for Windows (multi-resolution)
+- `assets/icons/icon.png` - Application icon for Linux (256x256)
+
 ### Project Files
 - `config.yaml` - User configuration (hotkey, overlay, transcription, audio settings)
 - `config.yaml.example` - Example config template

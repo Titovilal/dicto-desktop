@@ -7,6 +7,8 @@ from PySide6.QtWidgets import QSystemTrayIcon, QMenu
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import QObject, Signal, Slot
 
+from src.utils.icons import get_icon_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,10 +48,7 @@ class TrayManager(QObject):
         # Create tray icon
         self.tray_icon = QSystemTrayIcon(self.app)
 
-        # Set icon (using default for now, can be customized)
-        # For now we'll use a simple built-in icon
-        # In production, you'd want to use custom icons from assets folder
-        icon = self._get_default_icon()
+        icon = self._get_icon()
         self.tray_icon.setIcon(icon)
 
         # Set tooltip
@@ -94,20 +93,22 @@ class TrayManager(QObject):
         if self.tray_icon is not None:
             self.tray_icon.setContextMenu(self.menu)
 
-    def _get_default_icon(self) -> QIcon:
+    def _get_icon(self) -> QIcon:
         """
-        Get default icon for tray.
+        Get icon for tray.
 
         Returns:
             QIcon instance
         """
-        # For now, use a standard system icon
-        # In production, load custom icon from assets/icons/
+        icon_path = get_icon_path()
+        if icon_path:
+            return QIcon(str(icon_path))
+
+        # Fallback to system icon
         from PySide6.QtWidgets import QStyle
 
         style = self.app.style()
-        icon = style.standardIcon(QStyle.StandardPixmap.SP_MediaVolume)
-        return icon
+        return style.standardIcon(QStyle.StandardPixmap.SP_MediaVolume)
 
     @Slot()
     def _on_show_window(self):

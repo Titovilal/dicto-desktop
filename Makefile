@@ -15,7 +15,7 @@ type:
 
 build:
 	uv pip install -e ".[dev]"
-	pyinstaller --name "Dicto" --onefile --windowed --noconfirm src/main.py
+	pyinstaller --name "Dicto" --onefile --windowed --noconfirm --add-data "assets;assets" --icon "assets/icons/icon.ico" src/main.py
 
 # Create release using version from pyproject.toml
 release:

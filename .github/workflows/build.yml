@@ -90,12 +90,12 @@ jobs:
       - name: Build with PyInstaller (Windows)
         if: runner.os == 'Windows'
         run: |
-          pyinstaller --name "Dicto" --onefile --windowed --noconfirm src/main.py
+          pyinstaller --name "Dicto" --onefile --windowed --noconfirm --add-data "assets;assets" --icon "assets/icons/icon.ico" src/main.py
 
       - name: Build with PyInstaller (Linux)
         if: runner.os == 'Linux'
         run: |
-          pyinstaller --name "dicto" --onefile --windowed --noconfirm src/main.py
+          pyinstaller --name "dicto" --onefile --windowed --noconfirm --add-data "assets:assets" src/main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
