@@ -3,8 +3,8 @@ System tray manager for Dicto application.
 """
 
 import logging
-from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
-from PySide6.QtGui import QIcon, QAction, QActionGroup
+from PySide6.QtWidgets import QSystemTrayIcon, QMenu
+from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import QObject, Signal, Slot
 
 logger = logging.getLogger(__name__)
@@ -16,39 +16,23 @@ class TrayManager(QObject):
     tray_icon: QSystemTrayIcon | None
     menu: QMenu | None
 
-    # Available languages for transcription
-    LANGUAGES = {
-        "auto": "Auto-detect",
-        "es": "Español",
-        "en": "English",
-        "fr": "Français",
-        "de": "Deutsch",
-        "it": "Italiano",
-        "pt": "Português",
-        "zh": "中文",
-        "ja": "日本語",
-        "ko": "한국어",
-    }
-
     # Signals
     quit_requested = Signal()
     show_window_requested = Signal()
+    open_config_requested = Signal()
 
-    def __init__(self, app, settings=None):
+    def __init__(self, app):
         """
         Initialize tray manager.
 
         Args:
             app: QApplication instance
-            settings: Settings instance for persisting preferences
         """
         super().__init__()
 
         self.app = app
-        self.settings = settings
         self.tray_icon = None
         self.menu = None
-        self.last_transcription = ""
 
         self._create_tray_icon()
 
@@ -87,16 +71,10 @@ class TrayManager(QObject):
         show_window_action.triggered.connect(self._on_show_window)
         self.menu.addAction(show_window_action)
 
-        self.menu.addSeparator()
-
-        # Last transcription action
-        self.last_transcription_action = QAction(
-            "Last Transcription: (none)", self.menu
-        )
-        self.last_transcription_action.triggered.connect(
-            self._on_show_last_transcription
-        )
-        self.menu.addAction(self.last_transcription_action)
+        # Open config action
+        open_config_action = QAction("Open Config", self.menu)
+        open_config_action.triggered.connect(self._on_open_config)
+        self.menu.addAction(open_config_action)
 
         self.menu.addSeparator()
 
@@ -104,63 +82,6 @@ class TrayManager(QObject):
         self.status_action = QAction("Status: Idle", self.menu)
         self.status_action.setEnabled(False)
         self.menu.addAction(self.status_action)
-
-        self.menu.addSeparator()
-
-        # Auto-paste option (Ctrl+V after copy)
-        self.auto_paste_action = QAction("Auto Paste (Ctrl+V)", self.menu)
-        self.auto_paste_action.setCheckable(True)
-        if self.settings:
-            self.auto_paste_action.setChecked(self.settings.auto_paste)
-        self.auto_paste_action.triggered.connect(self._on_auto_paste_changed)
-        self.menu.addAction(self.auto_paste_action)
-
-        # Auto-enter option (press Enter after paste)
-        self.auto_enter_action = QAction("Auto Enter", self.menu)
-        self.auto_enter_action.setCheckable(True)
-        if self.settings:
-            self.auto_enter_action.setChecked(self.settings.auto_enter)
-        self.auto_enter_action.triggered.connect(self._on_auto_enter_changed)
-        self.menu.addAction(self.auto_enter_action)
-
-        # Show success notifications option
-        self.show_success_notifications_action = QAction("Show Success Notifications", self.menu)
-        self.show_success_notifications_action.setCheckable(True)
-        if self.settings:
-            self.show_success_notifications_action.setChecked(self.settings.show_success_notifications)
-        self.show_success_notifications_action.triggered.connect(self._on_show_success_notifications_changed)
-        self.menu.addAction(self.show_success_notifications_action)
-
-        self.menu.addSeparator()
-
-        # Language submenu
-        self.language_menu = QMenu("Language", self.menu)
-        self.language_action_group = QActionGroup(self.language_menu)
-        self.language_action_group.setExclusive(True)
-        self.language_actions = {}
-
-        current_language = (
-            self.settings.transcription_language if self.settings else "auto"
-        )
-
-        for code, name in self.LANGUAGES.items():
-            action = QAction(name, self.language_menu)
-            action.setCheckable(True)
-            action.setChecked(code == current_language)
-            action.setData(code)
-            action.triggered.connect(self._on_language_changed)
-            self.language_action_group.addAction(action)
-            self.language_menu.addAction(action)
-            self.language_actions[code] = action
-
-        self.menu.addMenu(self.language_menu)
-
-        self.menu.addSeparator()
-
-        # Paste Groq API Key from clipboard
-        self.paste_api_key_action = QAction("Paste Groq API Key", self.menu)
-        self.paste_api_key_action.triggered.connect(self._on_paste_api_key)
-        self.menu.addAction(self.paste_api_key_action)
 
         self.menu.addSeparator()
 
@@ -195,107 +116,16 @@ class TrayManager(QObject):
         self.show_window_requested.emit()
 
     @Slot()
-    def _on_show_last_transcription(self):
-        """Handle show last transcription action."""
-        if self.last_transcription:
-            if self.tray_icon:
-                self.tray_icon.showMessage(
-                    "Last Transcription",
-                    self.last_transcription,
-                    QSystemTrayIcon.MessageIcon.Information,
-                    3000,  # 3 seconds
-                )
-        else:
-            if self.tray_icon:
-                self.tray_icon.showMessage(
-                    "No Transcription",
-                    "No transcription available yet",
-                    QSystemTrayIcon.MessageIcon.Information,
-                    2000,
-                )
+    def _on_open_config(self):
+        """Handle open config action."""
+        logger.info("Open config requested from tray menu")
+        self.open_config_requested.emit()
 
     @Slot()
     def _on_quit(self):
         """Handle quit action."""
         logger.info("Quit requested from tray menu")
         self.quit_requested.emit()
-
-    @Slot()
-    def _on_auto_paste_changed(self):
-        """Handle auto-paste toggle."""
-        checked = self.auto_paste_action.isChecked()
-        logger.info(f"Auto-paste {'enabled' if checked else 'disabled'}")
-        if self.settings:
-            self.settings.auto_paste = checked
-            self.settings.save()
-
-    @Slot()
-    def _on_auto_enter_changed(self):
-        """Handle auto-enter toggle."""
-        checked = self.auto_enter_action.isChecked()
-        logger.info(f"Auto-enter {'enabled' if checked else 'disabled'}")
-        if self.settings:
-            self.settings.auto_enter = checked
-            self.settings.save()
-
-    @Slot()
-    def _on_show_success_notifications_changed(self):
-        """Handle show success notifications toggle."""
-        checked = self.show_success_notifications_action.isChecked()
-        logger.info(f"Show success notifications {'enabled' if checked else 'disabled'}")
-        if self.settings:
-            self.settings.show_success_notifications = checked
-            self.settings.save()
-
-    @Slot()
-    def _on_language_changed(self):
-        """Handle language selection."""
-        action = self.language_action_group.checkedAction()
-        if action:
-            language_code = action.data()
-            language_name = self.LANGUAGES.get(language_code, language_code)
-            logger.info(f"Language changed to: {language_name} ({language_code})")
-            if self.settings:
-                self.settings.transcription_language = language_code
-                self.settings.save()
-
-    @Slot()
-    def _on_paste_api_key(self):
-        """Handle paste Groq API key from clipboard."""
-        clipboard = QApplication.clipboard()
-        api_key = clipboard.text().strip() if clipboard else ""
-
-        if not api_key:
-            self.show_error("Clipboard is empty")
-            return
-
-        # Basic validation: Groq API keys start with "gsk_"
-        if not api_key.startswith("gsk_"):
-            self.show_error("Invalid Groq API key (should start with 'gsk_')")
-            return
-
-        if self.settings:
-            self.settings.transcription_api_key = api_key
-            self.settings.save()
-            # Show masked key in notification
-            masked_key = api_key[:7] + "..." + api_key[-4:]
-            self.show_success(f"API Key updated: {masked_key}")
-            logger.info("Groq API key updated from clipboard")
-        else:
-            self.show_error("Settings not available")
-
-    @Slot(str)
-    def update_last_transcription(self, text: str):
-        """
-        Update last transcription text.
-
-        Args:
-            text: Transcribed text
-        """
-        self.last_transcription = text
-        # Update menu item
-        preview = text[:50] + "..." if len(text) > 50 else text
-        self.last_transcription_action.setText(f"Last: {preview}")
 
     @Slot(str)
     def update_status(self, status: str):

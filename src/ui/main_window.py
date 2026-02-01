@@ -418,6 +418,14 @@ class MainWindow(QMainWindow):
         self.last_transcription = text
         self.transcription_text.setText(text)
 
+    @Slot()
+    def show_settings_tab(self):
+        """Show the window and switch to settings tab."""
+        self.tab_widget.setCurrentIndex(1)
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
     def closeEvent(self, event):
         """Handle window close event - minimize to tray instead of closing."""
         event.ignore()

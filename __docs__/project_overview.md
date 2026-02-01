@@ -19,7 +19,7 @@ Desktop application that transcribes voice to text. Use a global hotkey (press a
 - `src/ui/splash.py` - Splash window shown during app startup
 - `src/ui/main_window.py` - Main window with record/copy buttons and settings tab
 - `src/ui/overlay.py` - Visual feedback overlay (recording, processing, success/error)
-- `src/ui/tray.py` - System tray icon and menu
+- `src/ui/tray.py` - System tray icon with basic menu (show window, open config, quit)
 
 ### Config & Utils
 - `src/config/settings.py` - Configuration management (loads config.yaml, applies env overrides)
@@ -67,7 +67,7 @@ DictoApp (main.py)
 - **ERROR** - Something went wrong
 
 ## Configuration
-Settings loaded from `config.yaml` with environment variable overrides. Behavior settings can also be changed via main window Settings tab or tray menu.
+Settings loaded from `config.yaml` with environment variable overrides. Behavior settings can be changed via main window Settings tab (accessible from tray menu via "Open Config").
 - **hotkey** - Modifier keys and trigger key
 - **overlay** - Position, size, opacity
 - **transcription** - Provider (openai/groq), API key, language

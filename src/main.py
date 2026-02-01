@@ -99,7 +99,7 @@ class DictoApp:
             self.controller = Controller(self.settings)
 
             # Initialize tray manager
-            self.tray_manager = TrayManager(self.app, self.settings)
+            self.tray_manager = TrayManager(self.app)
 
             # Initialize overlay window
             self.overlay = OverlayWindow(
@@ -147,6 +147,7 @@ class DictoApp:
         # Tray actions
         self.tray_manager.quit_requested.connect(self.quit)
         self.tray_manager.show_window_requested.connect(self._show_main_window)
+        self.tray_manager.open_config_requested.connect(self.main_window.show_settings_tab)
 
         logger.info("Signals connected")
 
@@ -187,9 +188,6 @@ class DictoApp:
         assert self.tray_manager is not None
         assert self.overlay is not None
         assert self.main_window is not None
-
-        # Update tray with last transcription
-        self.tray_manager.update_last_transcription(text)
 
         # Update main window with transcription
         self.main_window.update_transcription(text)
