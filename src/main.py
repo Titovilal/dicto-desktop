@@ -27,6 +27,8 @@ from src.config.settings import get_settings  # noqa: E402
 from src.controller import Controller, AppState  # noqa: E402
 from src.ui.tray import TrayManager  # noqa: E402
 from src.ui.overlay import OverlayWindow  # noqa: E402
+from src.ui.main_window import MainWindow  # noqa: E402
+from src.ui.splash import SplashWindow  # noqa: E402
 from src.utils.logger import setup_logging, get_logger  # noqa: E402
 
 logger = get_logger(__name__)
@@ -38,6 +40,8 @@ class DictoApp:
     controller: Controller | None
     tray_manager: TrayManager | None
     overlay: OverlayWindow | None
+    main_window: MainWindow | None
+    splash: SplashWindow | None
 
     def __init__(self):
         """Initialize application."""
@@ -45,6 +49,11 @@ class DictoApp:
         self.app = QApplication(sys.argv)
         self.app.setApplicationName("Dicto")
         self.app.setQuitOnLastWindowClosed(False)  # Keep running in tray
+
+        # Show splash window while loading
+        self.splash = SplashWindow()
+        self.splash.show()
+        self.app.processEvents()
 
         # Load settings
         logger.info("Loading settings...")
@@ -65,9 +74,14 @@ class DictoApp:
         self.controller = None
         self.tray_manager = None
         self.overlay = None
+        self.main_window = None
 
         self._init_components()
         self._connect_signals()
+
+        # Close splash window
+        self.splash.close()
+        self.splash = None
 
         # Setup signal handlers for clean exit
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -94,6 +108,10 @@ class DictoApp:
                 opacity=self.settings.overlay_opacity,
             )
 
+            # Initialize main window
+            self.main_window = MainWindow(self.settings)
+            self.main_window.show()
+
             logger.info("All components initialized successfully")
 
         except Exception as e:
@@ -105,6 +123,7 @@ class DictoApp:
         assert self.controller is not None
         assert self.tray_manager is not None
         assert self.overlay is not None
+        assert self.main_window is not None
 
         # Controller state changes -> Update UI
         self.controller.state_changed.connect(self._on_state_changed)
@@ -117,8 +136,17 @@ class DictoApp:
         )
         self.controller.error_occurred.connect(self._on_error)
 
+        # Controller events -> Update main window
+        self.controller.recording_started.connect(self.main_window.set_recording_state)
+        self.controller.transcription_completed.connect(self.main_window.update_transcription)
+
+        # Main window actions -> Controller
+        self.main_window.play_clicked.connect(self.controller.start_recording_manual)
+        self.main_window.stop_clicked.connect(self.controller.stop_recording_manual)
+
         # Tray actions
         self.tray_manager.quit_requested.connect(self.quit)
+        self.tray_manager.show_window_requested.connect(self._show_main_window)
 
         logger.info("Signals connected")
 
@@ -127,20 +155,25 @@ class DictoApp:
         """Handle application state changes."""
         assert self.tray_manager is not None
         assert self.overlay is not None
+        assert self.main_window is not None
 
         # Update tray status
         self.tray_manager.update_status(state.value)
 
+        # Update main window status
+        self.main_window.update_status(state.value)
+
         # Update overlay based on state
         if state == AppState.PROCESSING:
             self.overlay.show_processing()
+            self.main_window.set_processing_state()
 
         elif state == AppState.IDLE:
-            pass  # Overlay auto-hides after success/error
+            self.main_window.set_idle_state()
 
         elif state == AppState.ERROR:
             # Overlay will be updated by error_occurred signal
-            pass
+            self.main_window.set_idle_state()
 
     @Slot(float)
     def _on_recording_stopped(self, duration: float):
@@ -153,9 +186,13 @@ class DictoApp:
         assert self.controller is not None
         assert self.tray_manager is not None
         assert self.overlay is not None
+        assert self.main_window is not None
 
         # Update tray with last transcription
         self.tray_manager.update_last_transcription(text)
+
+        # Update main window with transcription
+        self.main_window.update_transcription(text)
 
         # Show success overlay
         self.overlay.show_success()
@@ -186,6 +223,14 @@ class DictoApp:
 
         # Return to idle after overlay hides
         QTimer.singleShot(3000, self.controller.return_to_idle)
+
+    @Slot()
+    def _show_main_window(self):
+        """Show and bring main window to front."""
+        if self.main_window:
+            self.main_window.show()
+            self.main_window.raise_()
+            self.main_window.activateWindow()
 
     def _signal_handler(self, signum, frame):
         """Handle system signals for clean shutdown."""
@@ -239,6 +284,10 @@ class DictoApp:
         # Close overlay
         if self.overlay:
             self.overlay.close()
+
+        # Close main window
+        if self.main_window:
+            self.main_window.close()
 
         # Quit Qt application
         self.app.quit()

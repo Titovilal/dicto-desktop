@@ -32,6 +32,7 @@ class TrayManager(QObject):
 
     # Signals
     quit_requested = Signal()
+    show_window_requested = Signal()
 
     def __init__(self, app, settings=None):
         """
@@ -80,6 +81,13 @@ class TrayManager(QObject):
     def _create_menu(self):
         """Create context menu for tray icon."""
         self.menu = QMenu()
+
+        # Show window action
+        show_window_action = QAction("Show Window", self.menu)
+        show_window_action.triggered.connect(self._on_show_window)
+        self.menu.addAction(show_window_action)
+
+        self.menu.addSeparator()
 
         # Last transcription action
         self.last_transcription_action = QAction(
@@ -179,6 +187,12 @@ class TrayManager(QObject):
         style = self.app.style()
         icon = style.standardIcon(QStyle.StandardPixmap.SP_MediaVolume)
         return icon
+
+    @Slot()
+    def _on_show_window(self):
+        """Handle show window action."""
+        logger.info("Show window requested from tray menu")
+        self.show_window_requested.emit()
 
     @Slot()
     def _on_show_last_transcription(self):

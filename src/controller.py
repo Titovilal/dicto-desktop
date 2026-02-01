@@ -327,3 +327,15 @@ class Controller(QObject):
     def return_to_idle(self):
         """Return to idle state (called after success or error display)."""
         self._set_state(AppState.IDLE)
+
+    @Slot()
+    def start_recording_manual(self):
+        """Start recording manually (from UI button)."""
+        if self.current_state == AppState.IDLE:
+            self._start_recording()
+
+    @Slot()
+    def stop_recording_manual(self):
+        """Stop recording manually (from UI button)."""
+        if self.current_state == AppState.RECORDING:
+            self._stop_recording_and_process()
