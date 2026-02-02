@@ -59,10 +59,10 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact_name: dicto-windows-amd64.exe
+            artifact_name: Dicto.exe
             asset_name: dicto-windows-amd64.exe
           - os: ubuntu-latest
-            artifact_name: dicto-linux-amd64
+            artifact_name: dicto
             asset_name: dicto-linux-amd64
 
     runs-on: ${{ matrix.os }}
