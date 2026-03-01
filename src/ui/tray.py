@@ -71,7 +71,7 @@ class TrayManager(QObject):
         self.menu.addAction(show_window_action)
 
         # Open config action
-        open_config_action = QAction("Open Config", self.menu)
+        open_config_action = QAction("Open Settings", self.menu)
         open_config_action.triggered.connect(self._on_open_config)
         self.menu.addAction(open_config_action)
 

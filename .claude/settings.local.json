@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(uvx ruff:*)",
-      "Bash(uvx ty check:*)"
+      "Bash(uvx ty check:*)",
+      "Bash(timeout 8 uv run:*)"
     ]
   }
 }
