@@ -187,6 +187,10 @@ class MainWindow(QMainWindow):
         self.show_notifications_checkbox.stateChanged.connect(self._on_show_notifications_changed)
         behavior_layout.addWidget(self.show_notifications_checkbox)
 
+        self.always_on_top_checkbox = QCheckBox("Always on Top")
+        self.always_on_top_checkbox.stateChanged.connect(self._on_always_on_top_changed)
+        behavior_layout.addWidget(self.always_on_top_checkbox)
+
         layout.addWidget(behavior_group)
 
         # Language settings group
@@ -240,6 +244,11 @@ class MainWindow(QMainWindow):
         self.auto_enter_checkbox.setChecked(self.settings.auto_enter)
         self.show_notifications_checkbox.setChecked(self.settings.show_success_notifications)
 
+        # Always on top
+        self.always_on_top_checkbox.setChecked(self.settings.always_on_top)
+        if self.settings.always_on_top:
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+
         # Language
         current_language = self.settings.transcription_language
         index = self.language_combo.findData(current_language)
@@ -284,6 +293,17 @@ class MainWindow(QMainWindow):
         logger.info(f"Auto-enter {'enabled' if checked else 'disabled'}")
         if self.settings:
             self.settings.auto_enter = checked
+            self.settings.save()
+
+    @Slot(int)
+    def _on_always_on_top_changed(self, state: int):
+        """Handle always on top checkbox change."""
+        checked = state == Qt.CheckState.Checked.value
+        logger.info(f"Always on top {'enabled' if checked else 'disabled'}")
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, checked)
+        self.show()
+        if self.settings:
+            self.settings.always_on_top = checked
             self.settings.save()
 
     @Slot(int)

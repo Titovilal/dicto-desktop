@@ -34,7 +34,7 @@ class Settings:
         "overlay": {"position": "top-right", "size": 100, "opacity": 0.9},
         "transcription": {"provider": "groq", "api_key": "", "language": "auto"},
         "audio": {"sample_rate": 16000, "max_duration": 120, "channels": 1},
-        "behavior": {"auto_paste": False, "auto_enter": False, "show_success_notifications": True},
+        "behavior": {"auto_paste": False, "auto_enter": False, "show_success_notifications": True, "always_on_top": False},
     }
 
     config_path: Path
@@ -201,6 +201,18 @@ class Settings:
         if "behavior" not in self.config:
             self.config["behavior"] = {}
         self.config["behavior"]["show_success_notifications"] = value
+
+    @property
+    def always_on_top(self) -> bool:
+        """Get always on top setting."""
+        return cast(bool, self.config.get("behavior", {}).get("always_on_top", False))
+
+    @always_on_top.setter
+    def always_on_top(self, value: bool) -> None:
+        """Set always on top setting."""
+        if "behavior" not in self.config:
+            self.config["behavior"] = {}
+        self.config["behavior"]["always_on_top"] = value
 
     def save(self) -> None:
         """Save current configuration to yaml file."""
