@@ -32,6 +32,8 @@ class Controller(QObject):
     recording_started = Signal()
     recording_stopped = Signal(float)
     transcription_completed = Signal(str)
+    transform_completed = Signal(str, str)  # (format_id, transformed_text)
+    transform_failed = Signal(str, str)     # (format_id, error_message)
     error_occurred = Signal(str)
 
     # Internal signals to bounce results back to the main thread
@@ -244,3 +246,23 @@ class Controller(QObject):
     def stop_recording_manual(self):
         if self.current_state == AppState.RECORDING:
             self._stop_recording_and_process()
+
+    # ── Transform ─────────────────────────────────────────────
+
+    @Slot(str, str, str)
+    def request_transform(self, format_id: str, text: str, instructions: str):
+        """Request a text transformation in the background thread pool."""
+        if not self.transcriber:
+            self.transform_failed.emit(format_id, "Transcriber not initialized")
+            return
+
+        transcription_id = self.transcriber.last_transcription_id
+
+        def _do_transform():
+            try:
+                result = self.transcriber.transform(text, instructions, transcription_id)
+                self.transform_completed.emit(format_id, result)
+            except Exception as e:
+                self.transform_failed.emit(format_id, str(e))
+
+        self._pool.submit(_do_transform)

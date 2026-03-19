@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QScrollArea,
 )
-from PySide6.QtCore import Signal, Slot, Qt, QSize, QUrl, QTimer
+from PySide6.QtCore import Signal, Slot, Qt, QSize, QUrl, QTimer, QEvent
 from PySide6.QtGui import QIcon, QFont, QPainter, QColor, QPixmap, QDesktopServices, QMouseEvent
 
 from src.utils.icons import get_icon_path
@@ -75,14 +75,23 @@ logger = logging.getLogger(__name__)
 def _make_icon(svg_data: str, size: int, color: str) -> QIcon:
     """Create a QIcon from inline SVG data with a given color."""
     from PySide6.QtSvg import QSvgRenderer
+    from PySide6.QtWidgets import QApplication
+
+    scale = 2
+    app = QApplication.instance()
+    if app:
+        screen = app.primaryScreen()
+        if screen:
+            scale = max(2, int(screen.devicePixelRatio()))
 
     colored = svg_data.replace("currentColor", color)
     renderer = QSvgRenderer(colored.encode())
-    px = QPixmap(QSize(size, size))
+    px = QPixmap(QSize(size * scale, size * scale))
     px.fill(QColor(0, 0, 0, 0))
     painter = QPainter(px)
     renderer.render(painter)
     painter.end()
+    px.setDevicePixelRatio(scale)
     icon = QIcon()
     icon.addPixmap(px)
     return icon
@@ -151,10 +160,17 @@ class MainWindow(QMainWindow):
         "ko": "한국어",
     }
 
+    FORMAT_INSTRUCTIONS = {
+        "email": "Reescribe el siguiente texto como un correo electrónico profesional. Mantén el idioma original del texto.",
+        "notes": "Convierte el siguiente texto en notas organizadas con viñetas. Mantén el idioma original del texto.",
+        "tweet": "Reescribe el siguiente texto como un post corto para redes sociales. Mantén el idioma original del texto.",
+    }
+
     # Signals
     play_clicked = Signal()
     stop_clicked = Signal()
     copy_clicked = Signal()
+    transform_requested = Signal(str, str, str)  # (format_id, text, instructions)
     persistent_overlay_changed = Signal(bool)
 
     def __init__(self, settings=None):
@@ -167,6 +183,8 @@ class MainWindow(QMainWindow):
         self._elapsed_seconds = 0
         self._copied = False
         self._settings_open = False
+        self._format_cache: dict[str, str] = {}  # format_id -> transformed text
+        self._transforming_format: str | None = None
         self._setup_ui()
         self._load_settings()
 
@@ -235,7 +253,7 @@ class MainWindow(QMainWindow):
 
         # Title
         title = QLabel("dicto")
-        title.setStyleSheet(f"font-size: 13px; font-weight: 600; color: {TEXT}; letter-spacing: -0.5px;")
+        title.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {TEXT}; letter-spacing: -0.5px;")
         layout.addWidget(title)
 
         layout.addStretch()
@@ -250,19 +268,22 @@ class MainWindow(QMainWindow):
         web_btn = QPushButton()
         web_btn.setFixedSize(28, 28)
         web_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        web_btn.setIcon(_make_icon(SVG_EXTERNAL, 14, TEXT_DIM))
-        web_btn.setIconSize(QSize(14, 14))
+        web_btn.setIcon(_make_icon(SVG_EXTERNAL, 16, TEXT_DIM))
+        web_btn.setIconSize(QSize(16, 16))
         web_btn.setStyleSheet(HEADER_BUTTON)
         web_btn.setToolTip("Ir a la web")
         web_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(os.environ.get("DICTO_WEB_URL", "https://app.dicto.io"))))
+        web_btn._icon_normal = _make_icon(SVG_EXTERNAL, 16, TEXT_DIM)
+        web_btn._icon_hover = _make_icon(SVG_EXTERNAL, 16, TEXT)
+        web_btn.installEventFilter(self)
         layout.addWidget(web_btn)
 
         # Settings button
         self.settings_button = QPushButton()
         self.settings_button.setFixedSize(28, 28)
         self.settings_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.settings_button.setIcon(_make_icon(SVG_SETTINGS, 14, TEXT_DIM))
-        self.settings_button.setIconSize(QSize(14, 14))
+        self.settings_button.setIcon(_make_icon(SVG_SETTINGS, 16, TEXT_DIM))
+        self.settings_button.setIconSize(QSize(16, 16))
         self.settings_button.setStyleSheet(HEADER_BUTTON)
         self.settings_button.setToolTip("Ajustes")
         self.settings_button.clicked.connect(self._toggle_settings)
@@ -272,11 +293,14 @@ class MainWindow(QMainWindow):
         close_btn = QPushButton()
         close_btn.setFixedSize(28, 28)
         close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        close_btn.setIcon(_make_icon(SVG_CLOSE, 14, TEXT_DIM))
-        close_btn.setIconSize(QSize(14, 14))
+        close_btn.setIcon(_make_icon(SVG_CLOSE, 16, TEXT_DIM))
+        close_btn.setIconSize(QSize(16, 16))
         close_btn.setStyleSheet(HEADER_BUTTON_CLOSE)
         close_btn.setToolTip("Cerrar")
         close_btn.clicked.connect(self.close)
+        close_btn._icon_normal = _make_icon(SVG_CLOSE, 16, TEXT_DIM)
+        close_btn._icon_hover = _make_icon(SVG_CLOSE, 16, RED)
+        close_btn.installEventFilter(self)
         layout.addWidget(close_btn)
 
         parent_layout.addWidget(header)
@@ -302,7 +326,7 @@ class MainWindow(QMainWindow):
         for fid, label in formats:
             btn = QPushButton(label)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setStyleSheet(TAB_BUTTON_DISABLED)
+            btn.setStyleSheet(TAB_BUTTON_ACTIVE if fid == "raw" else TAB_BUTTON_DISABLED)
             btn.setProperty("format_id", fid)
             btn.clicked.connect(lambda checked, b=btn: self._on_format_clicked(b))
             self.format_tabs.append(btn)
@@ -322,19 +346,60 @@ class MainWindow(QMainWindow):
     def _update_tabs_enabled(self, enabled: bool):
         for btn in self.format_tabs:
             fid = btn.property("format_id")
-            if enabled:
-                if fid == self._active_format:
-                    btn.setStyleSheet(TAB_BUTTON_ACTIVE)
-                else:
-                    btn.setStyleSheet(TAB_BUTTON)
+            if fid == self._active_format:
+                btn.setStyleSheet(TAB_BUTTON_ACTIVE)
+            elif enabled:
+                btn.setStyleSheet(TAB_BUTTON)
             else:
                 btn.setStyleSheet(TAB_BUTTON_DISABLED)
 
     def _on_format_clicked(self, btn):
         fid = btn.property("format_id")
+        if fid == self._active_format:
+            return
         self._active_format = fid
         self._update_tabs_enabled(True)
-        # TODO: connect to format transformation service
+
+        if not self.last_transcription:
+            return
+
+        if fid == "raw":
+            self.transcription_text.setText(self.last_transcription)
+            self.copy_button.show()
+            return
+
+        # Check cache
+        if fid in self._format_cache:
+            self.transcription_text.setText(self._format_cache[fid])
+            self.copy_button.show()
+            return
+
+        # Request transform
+        self._transforming_format = fid
+        self.transcription_text.setText("")
+        self.processing_label.setText("TRANSFORMANDO")
+        self.processing_label.show()
+        self.copy_button.hide()
+
+        instructions = self.FORMAT_INSTRUCTIONS.get(fid, "")
+        self.transform_requested.emit(fid, self.last_transcription, instructions)
+
+    @Slot(str, str)
+    def on_transform_completed(self, format_id: str, text: str):
+        self._format_cache[format_id] = text
+        self._transforming_format = None
+        if self._active_format == format_id:
+            self.processing_label.hide()
+            self.transcription_text.setText(text)
+            self.copy_button.show()
+
+    @Slot(str, str)
+    def on_transform_failed(self, format_id: str, error: str):
+        self._transforming_format = None
+        if self._active_format == format_id:
+            self.processing_label.hide()
+            self.transcription_text.setText(f"Error: {error}")
+            self.copy_button.hide()
 
     # ── Idle Page ───────────────────────────────────────────
 
@@ -447,37 +512,20 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        scroll.setStyleSheet(f"QScrollArea {{ background: {MUTED}; border: none; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }} QWidget {{ background: transparent; }} QScrollBar:vertical {{ width: 6px; background: {MUTED}; }} QScrollBar::handle:vertical {{ background: rgba(255,255,255,0.15); border-radius: 3px; }} QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}")
+        scroll.setStyleSheet(f"""
+            QScrollArea {{ background-color: {MUTED}; border: none; }}
+            QScrollArea > QWidget > QWidget {{ background-color: {MUTED}; }}
+            QScrollBar:vertical {{ width: 6px; background-color: {MUTED}; }}
+            QScrollBar::handle:vertical {{ background-color: rgba(255,255,255,0.15); border-radius: 3px; }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: none; }}
+        """)
 
         scroll_content = QWidget()
+        scroll_content.setStyleSheet(f"background-color: {MUTED};")
         layout = QVBoxLayout(scroll_content)
         layout.setContentsMargins(24, 16, 24, 16)
         layout.setSpacing(0)
-
-        # Header with back button
-        header = QHBoxLayout()
-        header.setContentsMargins(0, 0, 0, 0)
-
-        back_btn = QPushButton()
-        back_btn.setFixedSize(28, 28)
-        back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        back_btn.setIcon(_make_icon(SVG_BACK, 16, TEXT_DIM))
-        back_btn.setIconSize(QSize(16, 16))
-        back_btn.setStyleSheet(ICON_BUTTON)
-        back_btn.clicked.connect(self._close_settings)
-        header.addWidget(back_btn)
-
-        title = QLabel("Ajustes")
-        title_font = QFont()
-        title_font.setPointSize(14)
-        title_font.setWeight(QFont.Weight.DemiBold)
-        title.setFont(title_font)
-        title.setStyleSheet(SETTINGS_TITLE)
-        header.addWidget(title)
-
-        header.addStretch()
-        layout.addLayout(header)
-        layout.addSpacing(16)
 
         # Behavior section
         layout.addWidget(self._section_label("Comportamiento"))
@@ -512,6 +560,8 @@ class MainWindow(QMainWindow):
         layout.addSpacing(8)
 
         self.language_combo = QComboBox()
+        self.language_combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.language_combo.wheelEvent = lambda e: e.ignore()
         for code, name in self.LANGUAGES.items():
             self.language_combo.addItem(name, code)
         self.language_combo.currentIndexChanged.connect(self._on_language_changed)
@@ -526,6 +576,8 @@ class MainWindow(QMainWindow):
         layout.addSpacing(8)
 
         self.model_combo = QComboBox()
+        self.model_combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.model_combo.wheelEvent = lambda e: e.ignore()
         self.model_combo.addItem("Whisper V3 Turbo (rápido)", "v3-turbo")
         self.model_combo.addItem("Whisper V3 (preciso)", "v3")
         self.model_combo.currentIndexChanged.connect(self._on_model_changed)
@@ -623,6 +675,14 @@ class MainWindow(QMainWindow):
         sep.setStyleSheet(SEPARATOR)
         return sep
 
+    def eventFilter(self, obj, event):
+        if hasattr(obj, '_icon_hover'):
+            if event.type() == QEvent.Type.Enter:
+                obj.setIcon(obj._icon_hover)
+            elif event.type() == QEvent.Type.Leave:
+                obj.setIcon(obj._icon_normal)
+        return super().eventFilter(obj, event)
+
     def _format_elapsed(self) -> str:
         m = self._elapsed_seconds // 60
         s = self._elapsed_seconds % 60
@@ -652,6 +712,7 @@ class MainWindow(QMainWindow):
         self._settings_open = True
         self._prev_page = self.content_stack.currentIndex()
         self.content_stack.setCurrentIndex(3)  # settings page
+        self.settings_button.setIcon(_make_icon(SVG_SETTINGS, 16, TEXT))
         self.settings_button.setStyleSheet(HEADER_BUTTON_ACTIVE)
         self.footer.hide()
         self.footer_sep.hide()
@@ -661,6 +722,7 @@ class MainWindow(QMainWindow):
     def _close_settings(self):
         self._settings_open = False
         self.content_stack.setCurrentIndex(getattr(self, '_prev_page', 0))
+        self.settings_button.setIcon(_make_icon(SVG_SETTINGS, 16, TEXT_DIM))
         self.settings_button.setStyleSheet(HEADER_BUTTON)
         self.footer.show()
         self.footer_sep.show()
@@ -721,16 +783,23 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_copy_clicked(self):
-        if self.last_transcription:
+        text_to_copy = self._get_current_text()
+        if text_to_copy:
             clipboard = QApplication.clipboard()
             if clipboard:
-                clipboard.setText(self.last_transcription)
+                clipboard.setText(text_to_copy)
                 self._copied = True
                 self.copy_button.setText("Copiado")
                 self.copy_button.setStyleSheet(FOOTER_TEXT_BUTTON_SUCCESS)
                 QTimer.singleShot(2000, self._reset_copy_button)
                 logger.info("Last transcription copied to clipboard")
         self.copy_clicked.emit()
+
+    def _get_current_text(self) -> str:
+        """Return the text currently displayed (raw or transformed)."""
+        if self._active_format == "raw":
+            return self.last_transcription
+        return self._format_cache.get(self._active_format, self.last_transcription)
 
     def _reset_copy_button(self):
         self._copied = False
@@ -919,6 +988,8 @@ class MainWindow(QMainWindow):
     def update_transcription(self, text: str):
         self.last_transcription = text
         self.is_processing = False
+        self._format_cache.clear()
+        self._transforming_format = None
 
         # Show done page with text
         self.content_stack.setCurrentIndex(2)

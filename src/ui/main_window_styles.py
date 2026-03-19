@@ -10,7 +10,7 @@ SECONDARY = "#27272a"       # zinc-800  --secondary / --border
 BORDER = "#27272a"          # zinc-800  --border
 TEXT = "#f4f4f5"            # zinc-100  --foreground
 TEXT_DIM = "#71717a"        # zinc-500  --muted-foreground
-PRIMARY = "#f4f4f5"         # zinc-100  --primary
+PRIMARY = "#d4d4d8"         # zinc-300  --primary
 PRIMARY_FG = "#18181b"      # zinc-900  --primary-foreground
 RED = "#ef4444"             # red-500
 RED_HOVER = "#dc2626"       # red-600
@@ -33,7 +33,7 @@ GLOBAL_STYLE = f"""
         background-color: transparent;
         color: {TEXT};
         font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
-        font-size: 13px;
+        font-size: 14px;
     }}
     QLabel {{
         background: transparent;
@@ -72,6 +72,13 @@ GLOBAL_STYLE = f"""
     QComboBox::drop-down {{
         border: none;
         width: 24px;
+    }}
+    QComboBox::down-arrow {{
+        image: none;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 5px solid {TEXT};
+        margin-right: 8px;
     }}
     QComboBox QAbstractItemView {{
         background-color: {BG};
@@ -151,7 +158,7 @@ TAB_BUTTON = f"""
         border: none;
         border-radius: 3px;
         color: {TEXT_DIM};
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 500;
         padding: 2px 8px;
     }}
@@ -167,7 +174,7 @@ TAB_BUTTON_ACTIVE = f"""
         border: none;
         border-radius: 3px;
         color: {PRIMARY_FG};
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 500;
         padding: 2px 8px;
     }}
@@ -179,7 +186,7 @@ TAB_BUTTON_DISABLED = f"""
         border: none;
         border-radius: 3px;
         color: rgba(113, 113, 122, 0.5);
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 500;
         padding: 2px 8px;
     }}
@@ -191,19 +198,19 @@ CONTENT_TEXT = f"""
         background-color: transparent;
         border: none;
         color: {TEXT};
-        font-size: 13px;
+        font-size: 14px;
         padding: 0;
     }}
 """
 
-IDLE_TEXT = f"color: {TEXT_DIM}; font-size: 13px;"
-IDLE_TEXT_BOLD = f"color: {TEXT}; font-size: 13px; font-weight: 500;"
+IDLE_TEXT = f"color: {TEXT_DIM}; font-size: 14px;"
+IDLE_TEXT_BOLD = f"color: {TEXT}; font-size: 14px; font-weight: 500;"
 
-RECORDING_LABEL = f"color: {RED}; font-size: 13px; font-weight: 500;"
-PROCESSING_LABEL = f"color: {AMBER}; font-size: 13px; font-weight: 500;"
+RECORDING_LABEL = f"color: {RED}; font-size: 14px; font-weight: 500;"
+PROCESSING_LABEL = f"color: {AMBER}; font-size: 14px; font-weight: 500;"
 
-TIMER_RECORDING = f"color: #f87171; font-size: 13px;"
-TIMER_PROCESSING = f"color: {AMBER}; font-size: 13px;"
+TIMER_RECORDING = f"color: #f87171; font-size: 14px;"
+TIMER_PROCESSING = f"color: {AMBER}; font-size: 14px;"
 
 # -- Footer --
 RECORD_BUTTON_IDLE = f"""
@@ -212,7 +219,7 @@ RECORD_BUTTON_IDLE = f"""
         border: none;
         border-radius: 4px;
         color: {PRIMARY_FG};
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 500;
         padding: 6px 12px;
     }}
@@ -227,7 +234,7 @@ RECORD_BUTTON_RECORDING = f"""
         border: none;
         border-radius: 4px;
         color: white;
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 500;
         padding: 6px 12px;
     }}
@@ -242,7 +249,7 @@ RECORD_BUTTON_PROCESSING = f"""
         border: none;
         border-radius: 4px;
         color: {PRIMARY_FG};
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 500;
         padding: 6px 12px;
     }}
@@ -253,7 +260,7 @@ FOOTER_TEXT_BUTTON = f"""
         background: transparent;
         border: none;
         color: {TEXT_DIM};
-        font-size: 13px;
+        font-size: 14px;
         padding: 6px 8px;
     }}
     QPushButton:hover {{
@@ -266,14 +273,14 @@ FOOTER_TEXT_BUTTON_SUCCESS = f"""
         background: transparent;
         border: none;
         color: {GREEN};
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 500;
         padding: 6px 8px;
     }}
 """
 
 # -- Settings --
-SECTION_LABEL = f"color: {TEXT_DIM}; font-size: 10px; font-weight: bold; letter-spacing: 1px;"
+SECTION_LABEL = f"color: {TEXT_DIM}; font-size: 11px; font-weight: bold; letter-spacing: 1px;"
 SETTINGS_TITLE = f"color: {TEXT}; padding-left: 4px;"
 
 ICON_BUTTON = f"""
@@ -293,7 +300,7 @@ FLAT_BUTTON = f"""
         border: 1px solid {BORDER};
         border-radius: 4px;
         color: {TEXT};
-        font-size: 12px;
+        font-size: 13px;
         padding: 0 12px;
     }}
     QPushButton:hover {{
@@ -307,7 +314,7 @@ ACCENT_BUTTON = f"""
         border: none;
         border-radius: 4px;
         color: {PRIMARY_FG};
-        font-size: 12px;
+        font-size: 13px;
         font-weight: bold;
         padding: 0 16px;
     }}
@@ -326,7 +333,7 @@ TRAY_MENU_STYLE = f"""
         border-radius: 8px;
         padding: 4px;
         font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
-        font-size: 13px;
+        font-size: 14px;
     }}
     QMenu::item {{
         background-color: transparent;

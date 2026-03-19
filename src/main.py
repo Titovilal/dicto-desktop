@@ -52,6 +52,16 @@ class DictoApp:
         self.app.setApplicationName("Dicto")
         self.app.setQuitOnLastWindowClosed(False)  # Keep running in tray
 
+        # Load bundled fonts
+        self._load_fonts()
+
+        # Enable font antialiasing
+        from PySide6.QtGui import QFont
+        font = QFont("JetBrains Mono")
+        font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+        font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
+        self.app.setFont(font)
+
         # Set application icon (taskbar and default window icon)
         icon_path = get_icon_path()
         if icon_path:
@@ -98,6 +108,18 @@ class DictoApp:
         self.timer = QTimer()
         self.timer.timeout.connect(lambda: None)
         self.timer.start(500)
+
+    def _load_fonts(self):
+        """Load bundled JetBrains Mono font files."""
+        from PySide6.QtGui import QFontDatabase
+        fonts_dir = Path(__file__).parent.parent / "assets" / "fonts"
+        if fonts_dir.is_dir():
+            for font_file in fonts_dir.glob("*.ttf"):
+                font_id = QFontDatabase.addApplicationFont(str(font_file))
+                if font_id < 0:
+                    logger.warning(f"Failed to load font: {font_file.name}")
+                else:
+                    logger.debug(f"Loaded font: {font_file.name}")
 
     def _init_components(self):
         """Initialize all application components."""
@@ -150,6 +172,11 @@ class DictoApp:
         # Main window actions -> Controller
         self.main_window.play_clicked.connect(self.controller.start_recording_manual)
         self.main_window.stop_clicked.connect(self.controller.stop_recording_manual)
+        self.main_window.transform_requested.connect(self.controller.request_transform)
+
+        # Controller transform results -> Main window
+        self.controller.transform_completed.connect(self.main_window.on_transform_completed)
+        self.controller.transform_failed.connect(self.main_window.on_transform_failed)
 
         # Overlay actions -> Controller
         self.overlay.record_clicked.connect(self.controller.start_recording_manual)

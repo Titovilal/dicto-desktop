@@ -52,22 +52,8 @@ class TrayManager(QObject):
         self.menu = QMenu()
         self.menu.setStyleSheet(TRAY_MENU_STYLE)
 
-        # Title (disabled, just branding)
-        title_action = QAction("  dicto", self.menu)
-        title_action.setEnabled(False)
-        self.menu.addAction(title_action)
-
-        self.menu.addSeparator()
-
-        # Status
-        self.status_action = QAction("Listo", self.menu)
-        self.status_action.setEnabled(False)
-        self.menu.addAction(self.status_action)
-
-        self.menu.addSeparator()
-
         # Show window
-        show_action = QAction("Abrir ventana", self.menu)
+        show_action = QAction("Abrir Dicto", self.menu)
         show_action.triggered.connect(self._on_show_window)
         self.menu.addAction(show_action)
 
@@ -112,9 +98,6 @@ class TrayManager(QObject):
 
     @Slot(str)
     def update_status(self, status: str):
-        if self.status_action:
-            label = STATUS_LABELS.get(status, status.capitalize())
-            self.status_action.setText(label)
         if self.tray_icon:
             self.tray_icon.setToolTip(f"Dicto — {STATUS_LABELS.get(status, status)}")
 
