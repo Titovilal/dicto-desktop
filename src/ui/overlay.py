@@ -1,306 +1,360 @@
 """
 Overlay window for visual feedback during recording and processing.
+Draggable, optionally persistent, with record/stop button.
 """
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
-from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, Property
-from PySide6.QtGui import QPainter, QColor, QPen
+import math
+
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QPainter, QColor, QMouseEvent
+
+from src.ui.main_window_styles import (
+    MUTED, BORDER, SECONDARY, TEXT, TEXT_DIM, PRIMARY, PRIMARY_FG,
+    RED, RED_HOVER, AMBER, GREEN,
+    SVG_AUDIO_LINES,
+)
+
+
+class OverlayWaveformWidget(QWidget):
+    def __init__(self, color: str = RED, parent=None):
+        super().__init__(parent)
+        self.bar_count = 12
+        self.bar_heights = [0.3] * self.bar_count
+        self.color = color
+        self.setFixedSize(48, 16)
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._update_bars)
+        self._tick = 0
+
+    def start(self):
+        self._tick = 0
+        self._timer.start(50)
+
+    def stop(self):
+        self._timer.stop()
+
+    def _update_bars(self):
+        self._tick += 1
+        for i in range(self.bar_count):
+            phase = i * 0.7 + self._tick * 0.15
+            self.bar_heights[i] = 0.2 + 0.8 * abs(math.sin(phase))
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        total_width = self.bar_count * 4 - 2
+        start_x = (self.width() - total_width) // 2
+        max_h = self.height()
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(self.color))
+        for i in range(self.bar_count):
+            h = max(2, int(self.bar_heights[i] * max_h))
+            x = start_x + i * 4
+            y = (max_h - h) // 2
+            painter.drawRoundedRect(x, y, 2, h, 1, 1)
+        painter.end()
+
+
+FONT = '"JetBrains Mono", "Cascadia Code", "Consolas", monospace'
+LABEL_BASE = f"font-family: {FONT}; background: transparent; letter-spacing: -0.5px;"
+
+OVERLAY_BTN = f"""
+    QPushButton {{
+        background-color: {PRIMARY};
+        border: none;
+        border-radius: 4px;
+        color: {PRIMARY_FG};
+        font-family: {FONT};
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 10px;
+    }}
+    QPushButton:hover {{
+        background-color: rgba(244, 244, 245, 0.8);
+    }}
+"""
+
+OVERLAY_BTN_RECORDING = f"""
+    QPushButton {{
+        background-color: {RED};
+        border: none;
+        border-radius: 4px;
+        color: white;
+        font-family: {FONT};
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 10px;
+    }}
+    QPushButton:hover {{
+        background-color: {RED_HOVER};
+    }}
+"""
 
 
 class OverlayWindow(QWidget):
-    """Frameless, transparent overlay window showing application state."""
+    """Draggable overlay with record/stop button. Can stay visible permanently."""
 
-    def __init__(
-        self, position: str = "top-right", size: int = 100, opacity: float = 0.9
-    ):
-        """
-        Initialize overlay window.
+    record_clicked = Signal()
+    stop_clicked = Signal()
 
-        Args:
-            position: Screen position (top-left, top-right, bottom-left, bottom-right, center)
-            size: Window size in pixels
-            opacity: Window opacity (0.0 to 1.0)
-        """
+    def __init__(self, position: str = "top-right", size: int = 100, opacity: float = 0.9):
         super().__init__()
-
         self.position_name = position
-        self.window_size = size
         self.window_opacity = opacity
+        self._persistent = False
+        self._drag_pos = None
 
-        # Animation properties
-        self._pulse_value = 0.0
-        self.pulse_animation = None
+        self._dots_count = 0
+        self._dots_timer = QTimer(self)
+        self._dots_timer.timeout.connect(self._animate_dots)
 
-        self._setup_window()
+        self._dot_visible = True
+        self._dot_pulse_timer = QTimer(self)
+        self._dot_pulse_timer.timeout.connect(self._pulse_dot)
+
         self._setup_ui()
+        self._setup_window()
+
+    # ── Window setup ─────────────────────────────────────────
 
     def _setup_window(self):
-        """Configure window properties."""
-        # Frameless, always on top, tool window (doesn't appear in taskbar)
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
+            | Qt.WindowType.WindowDoesNotAcceptFocus
         )
-
-        # Transparent background
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-
-        # Don't take focus
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-
-        # Set size
-        self.setFixedSize(self.window_size, self.window_size)
-
-        # Set opacity
-        self.setWindowOpacity(self.window_opacity)
-
-        # Position window
+        self.setFixedSize(240, 64)
         self._position_window()
-
-        # Hide by default
         self.hide()
 
     def _position_window(self):
-        """Position window on screen according to configuration."""
         from PySide6.QtWidgets import QApplication
-
         screen = QApplication.primaryScreen().geometry()
-        margin = 20  # Margin from screen edges
-
-        if self.position_name == "top-left":
-            x = margin
-            y = margin
-        elif self.position_name == "top-right":
-            x = screen.width() - self.window_size - margin
-            y = margin
-        elif self.position_name == "bottom-left":
-            x = margin
-            y = screen.height() - self.window_size - margin
-        elif self.position_name == "bottom-right":
-            x = screen.width() - self.window_size - margin
-            y = screen.height() - self.window_size - margin
-        elif self.position_name == "center":
-            x = (screen.width() - self.window_size) // 2
-            y = (screen.height() - self.window_size) // 2
-        else:
-            # Default to top-right
-            x = screen.width() - self.window_size - margin
-            y = margin
-
+        margin = 20
+        w, h = self.width(), self.height()
+        positions = {
+            "top-left": (margin, margin),
+            "top-right": (screen.width() - w - margin, margin),
+            "bottom-left": (margin, screen.height() - h - margin),
+            "bottom-right": (screen.width() - w - margin, screen.height() - h - margin),
+            "center": ((screen.width() - w) // 2, (screen.height() - h) // 2),
+        }
+        x, y = positions.get(self.position_name, positions["top-right"])
         self.move(x, y)
 
+    # ── UI ───────────────────────────────────────────────────
+
     def _setup_ui(self):
-        """Setup UI components."""
-        layout = QVBoxLayout()
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Status label
-        self.status_label = QLabel("")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet("""
-            QLabel {
-                color: white;
-                font-size: 12px;
-                font-weight: bold;
-                background: transparent;
-            }
-        """)
-
-        layout.addWidget(self.status_label)
-        self.setLayout(layout)
-
-        # Current state
         self.current_state = "idle"
 
-    def paintEvent(self, event):
-        """Custom paint event for drawing the overlay."""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Draw based on current state
+        self.card = QWidget()
+        self.card.setObjectName("overlayCard")
+        self._set_card_style()
+
+        card_layout = QHBoxLayout(self.card)
+        card_layout.setContentsMargins(12, 10, 12, 10)
+        card_layout.setSpacing(8)
+
+        # Status dot
+        self.status_dot = QWidget()
+        self.status_dot.setFixedSize(8, 8)
+        self.status_dot.setStyleSheet(f"background-color: {TEXT_DIM}; border-radius: 4px;")
+        card_layout.addWidget(self.status_dot, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        # Text column
+        text_col = QVBoxLayout()
+        text_col.setContentsMargins(0, 0, 0, 0)
+        text_col.setSpacing(1)
+
+        self.status_label = QLabel("Listo")
+        self.status_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: 600; {LABEL_BASE}")
+        text_col.addWidget(self.status_label)
+
+        self.sub_label = QLabel("")
+        self.sub_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px; {LABEL_BASE}")
+        self.sub_label.hide()
+        text_col.addWidget(self.sub_label)
+
+        card_layout.addLayout(text_col, 1)
+
+        # Waveform
+        self.waveform = OverlayWaveformWidget(RED)
+        self.waveform.hide()
+        card_layout.addWidget(self.waveform, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        # Record/stop button
+        self.action_button = QPushButton("Grabar")
+        self.action_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.action_button.setFixedHeight(26)
+        self.action_button.setStyleSheet(OVERLAY_BTN)
+        self.action_button.clicked.connect(self._on_action_clicked)
+        card_layout.addWidget(self.action_button, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        main_layout.addWidget(self.card)
+
+    def _set_card_style(self, border_accent: str = BORDER):
+        self.card.setStyleSheet(
+            f"QWidget#overlayCard {{ "
+            f"background-color: {MUTED}; "
+            f"border: 1px solid {border_accent}; "
+            f"border-radius: 12px; "
+            f"}}"
+        )
+
+    # ── Dragging ─────────────────────────────────────────────
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self._drag_pos and event.buttons() & Qt.MouseButton.LeftButton:
+            self.move(event.globalPosition().toPoint() - self._drag_pos)
+            event.accept()
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        self._drag_pos = None
+
+    # ── Persistent mode ──────────────────────────────────────
+
+    def set_persistent(self, enabled: bool):
+        self._persistent = enabled
+        if enabled:
+            self.show_idle()
+            self.show()
+        elif self.current_state == "idle":
+            super().hide()
+
+    # ── Button action ────────────────────────────────────────
+
+    def _on_action_clicked(self):
         if self.current_state == "recording":
-            self._draw_recording(painter)
+            self.stop_clicked.emit()
+        elif self.current_state in ("idle", "success"):
+            self.record_clicked.emit()
+
+    # ── Animations ───────────────────────────────────────────
+
+    def _pulse_dot(self):
+        self._dot_visible = not self._dot_visible
+        if self._dot_visible:
+            color = RED if self.current_state == "recording" else AMBER
+            self.status_dot.setStyleSheet(f"background-color: {color}; border-radius: 4px;")
+        else:
+            self.status_dot.setStyleSheet(f"background-color: transparent; border-radius: 4px;")
+
+    def _animate_dots(self):
+        self._dots_count = (self._dots_count + 1) % 4
+        dots = "." * self._dots_count + "\u00A0" * (3 - self._dots_count)
+        if self.current_state == "recording":
+            self.status_label.setText(f"Grabando{dots}")
         elif self.current_state == "processing":
-            self._draw_processing(painter)
-        elif self.current_state == "success":
-            self._draw_success(painter)
-        elif self.current_state == "error":
-            self._draw_error(painter)
+            self.status_label.setText(f"Transcribiendo{dots}")
 
-    def _draw_recording(self, painter: QPainter):
-        """Draw recording state (pulsing red circle)."""
-        # Background circle
-        bg_color = QColor(40, 40, 40, 200)
-        painter.setBrush(bg_color)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(10, 10, self.window_size - 20, self.window_size - 20)
+    def _stop_animations(self):
+        self._dot_pulse_timer.stop()
+        self._dots_timer.stop()
+        self.waveform.stop()
 
-        # Pulsing red circle in center
-        center_x = self.window_size // 2
-        center_y = self.window_size // 2
-        base_radius = 20
-        pulse_radius = base_radius + int(self._pulse_value * 10)
+    # ── State methods ────────────────────────────────────────
 
-        red_color = QColor(255, 50, 50, 200)
-        painter.setBrush(red_color)
-        painter.drawEllipse(
-            center_x - pulse_radius,
-            center_y - pulse_radius,
-            pulse_radius * 2,
-            pulse_radius * 2,
-        )
-
-    def _draw_processing(self, painter: QPainter):
-        """Draw processing state (spinner)."""
-        # Background circle
-        bg_color = QColor(40, 40, 40, 200)
-        painter.setBrush(bg_color)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(10, 10, self.window_size - 20, self.window_size - 20)
-
-        # Spinner arc (simplified - just a circle for now)
-        center_x = self.window_size // 2
-        center_y = self.window_size // 2
-        radius = 25
-
-        blue_color = QColor(50, 150, 255, 200)
-        pen = QPen(blue_color, 4)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawEllipse(
-            center_x - radius, center_y - radius, radius * 2, radius * 2
-        )
-
-    def _draw_success(self, painter: QPainter):
-        """Draw success state (green checkmark)."""
-        # Background circle
-        bg_color = QColor(40, 40, 40, 200)
-        painter.setBrush(bg_color)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(10, 10, self.window_size - 20, self.window_size - 20)
-
-        # Green circle
-        center_x = self.window_size // 2
-        center_y = self.window_size // 2
-        radius = 30
-
-        green_color = QColor(50, 255, 50, 200)
-        painter.setBrush(green_color)
-        painter.drawEllipse(
-            center_x - radius, center_y - radius, radius * 2, radius * 2
-        )
-
-        # Simple checkmark (simplified as "✓" text for now)
-        painter.setPen(QColor(255, 255, 255))
-
-    def _draw_error(self, painter: QPainter):
-        """Draw error state (red X)."""
-        # Background circle
-        bg_color = QColor(40, 40, 40, 200)
-        painter.setBrush(bg_color)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(10, 10, self.window_size - 20, self.window_size - 20)
-
-        # Red circle
-        center_x = self.window_size // 2
-        center_y = self.window_size // 2
-        radius = 30
-
-        red_color = QColor(255, 50, 50, 200)
-        painter.setBrush(red_color)
-        painter.drawEllipse(
-            center_x - radius, center_y - radius, radius * 2, radius * 2
-        )
-
-        # X mark (simplified)
-        painter.setPen(QPen(QColor(255, 255, 255), 3))
-        offset = 15
-        painter.drawLine(
-            center_x - offset, center_y - offset, center_x + offset, center_y + offset
-        )
-        painter.drawLine(
-            center_x + offset, center_y - offset, center_x - offset, center_y + offset
-        )
-
-    # Property for pulse animation
-    def get_pulse_value(self):
-        return self._pulse_value
-
-    def set_pulse_value(self, value):
-        self._pulse_value = value
-        self.update()  # Trigger repaint
-
-    pulse_value = Property(float, get_pulse_value, set_pulse_value)
+    def show_idle(self):
+        self.current_state = "idle"
+        self._stop_animations()
+        self.status_label.setText("Listo")
+        self.status_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: 600; {LABEL_BASE}")
+        self.sub_label.hide()
+        self.status_dot.setStyleSheet(f"background-color: {TEXT_DIM}; border-radius: 4px;")
+        self._set_card_style()
+        self.waveform.hide()
+        self.action_button.setText("Grabar")
+        self.action_button.setStyleSheet(OVERLAY_BTN)
+        self.action_button.show()
 
     def show_recording(self):
-        """Show recording state with pulsing animation."""
         self.current_state = "recording"
-        self.status_label.setText("Recording...")
+        self.status_label.setText("Grabando")
+        self.status_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: 600; {LABEL_BASE}")
+        self.sub_label.setText("Suelta para transcribir")
+        self.sub_label.show()
+        self.status_dot.setStyleSheet(f"background-color: {RED}; border-radius: 4px;")
+        self._set_card_style()
+        self.waveform.show()
+        self.waveform.start()
+        self._dot_pulse_timer.start(500)
+        self._dots_timer.start(400)
+        self.action_button.setText("Detener")
+        self.action_button.setStyleSheet(OVERLAY_BTN_RECORDING)
+        self.action_button.show()
         self.show()
 
-        # Start pulse animation
-        self._start_pulse_animation()
-
     def show_processing(self):
-        """Show processing state."""
         self.current_state = "processing"
-        self.status_label.setText("Transcribing...")
-        self._stop_pulse_animation()
-        self.update()
+        self.status_label.setText("Transcribiendo")
+        self.status_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: 600; {LABEL_BASE}")
+        self.sub_label.setText("Procesando audio...")
+        self.sub_label.show()
+        self.status_dot.setStyleSheet(f"background-color: {AMBER}; border-radius: 4px;")
+        self._set_card_style()
+        self.waveform.stop()
+        self.waveform.hide()
+        self._dot_pulse_timer.start(500)
+        self._dots_timer.start(400)
+        self.action_button.hide()
 
     def show_success(self, auto_hide_delay: int = 1500):
-        """
-        Show success state.
-
-        Args:
-            auto_hide_delay: Milliseconds before auto-hiding
-        """
         self.current_state = "success"
-        self.status_label.setText("Success!")
-        self._stop_pulse_animation()
-        self.update()
+        self._stop_animations()
+        self.status_label.setText("Copiado al portapapeles")
+        self.status_label.setStyleSheet(f"color: {GREEN}; font-size: 13px; font-weight: 600; {LABEL_BASE}")
+        self.sub_label.hide()
+        self.status_dot.setStyleSheet(f"background-color: {GREEN}; border-radius: 4px;")
+        self._set_card_style()
+        self.waveform.stop()
+        self.waveform.hide()
+        self.action_button.setText("Grabar")
+        self.action_button.setStyleSheet(OVERLAY_BTN)
+        self.action_button.show()
 
-        # Auto-hide after delay
-        QTimer.singleShot(auto_hide_delay, self.hide)
+        if not self._persistent:
+            QTimer.singleShot(auto_hide_delay, self._auto_hide)
+        else:
+            QTimer.singleShot(auto_hide_delay, self.show_idle)
 
     def show_error(self, message: str = "Error", auto_hide_delay: int = 3000):
-        """
-        Show error state.
-
-        Args:
-            message: Error message to display
-            auto_hide_delay: Milliseconds before auto-hiding
-        """
         self.current_state = "error"
-        self.status_label.setText(message)
-        self._stop_pulse_animation()
-        self.update()
+        self._stop_animations()
+        self.status_label.setText("Error")
+        self.status_label.setStyleSheet(f"color: {RED}; font-size: 13px; font-weight: 600; {LABEL_BASE}")
+        self.sub_label.setText(message)
+        self.sub_label.show()
+        self.status_dot.setStyleSheet(f"background-color: {RED}; border-radius: 4px;")
+        self._set_card_style()
+        self.waveform.stop()
+        self.waveform.hide()
+        self.action_button.hide()
 
-        # Auto-hide after delay
-        QTimer.singleShot(auto_hide_delay, self.hide)
+        if not self._persistent:
+            QTimer.singleShot(auto_hide_delay, self._auto_hide)
+        else:
+            QTimer.singleShot(auto_hide_delay, self.show_idle)
 
-    def _start_pulse_animation(self):
-        """Start pulse animation for recording state."""
-        if self.pulse_animation:
-            self.pulse_animation.stop()
+    # ── Hide logic ───────────────────────────────────────────
 
-        self.pulse_animation = QPropertyAnimation(self, b"pulse_value")
-        self.pulse_animation.setDuration(1000)  # 1 second
-        self.pulse_animation.setStartValue(0.0)
-        self.pulse_animation.setEndValue(1.0)
-        self.pulse_animation.setEasingCurve(QEasingCurve.Type.InOutSine)
-        self.pulse_animation.setLoopCount(-1)  # Infinite loop
-        self.pulse_animation.start()
-
-    def _stop_pulse_animation(self):
-        """Stop pulse animation."""
-        if self.pulse_animation:
-            self.pulse_animation.stop()
-            self.pulse_animation = None
+    def _auto_hide(self):
+        if not self._persistent:
+            self.hide()
 
     def hide(self):
-        """Override hide to stop animations."""
-        self._stop_pulse_animation()
-        super().hide()
+        self._stop_animations()
+        if self._persistent:
+            self.show_idle()
+        else:
+            super().hide()

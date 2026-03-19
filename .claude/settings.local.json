@@ -3,7 +3,8 @@
     "allow": [
       "Bash(uvx ruff:*)",
       "Bash(uvx ty check:*)",
-      "Bash(timeout 8 uv run:*)"
+      "Bash(timeout 8 uv run:*)",
+      "Bash(.venv/Scripts/python.exe -c \"from src.ui.main_window import MainWindow; print\\('OK'\\)\" 2>&1)"
     ]
   }
 }

@@ -8,9 +8,8 @@ overlay:
   opacity: 0.9
 
 transcription:
-  provider: "openai"
-  api_key: ""  # Or set OPENAI_API_KEY environment variable
-  language: "auto"  # or ISO code like "es", "en"
+  api_key: ""  # Or set DICTO_API_KEY environment variable. Get yours at https://app.dicto.io/api-keys
+  language: "es"  # ISO code like "es", "en", "fr"
 
 audio:
   sample_rate: 16000

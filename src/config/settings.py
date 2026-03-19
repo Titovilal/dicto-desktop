@@ -32,9 +32,9 @@ class Settings:
     DEFAULT_CONFIG = {
         "hotkey": {"modifiers": ["ctrl", "shift"], "key": "space"},
         "overlay": {"position": "top-right", "size": 100, "opacity": 0.9},
-        "transcription": {"provider": "groq", "api_key": "", "language": "auto"},
+        "transcription": {"api_key": "", "language": "es", "model": "v3-turbo"},
         "audio": {"sample_rate": 16000, "max_duration": 120, "channels": 1},
-        "behavior": {"auto_paste": False, "auto_enter": False, "show_success_notifications": True, "always_on_top": False},
+        "behavior": {"auto_paste": False, "auto_enter": False, "show_success_notifications": True, "always_on_top": False, "persistent_overlay": False},
     }
 
     config_path: Path
@@ -83,16 +83,7 @@ class Settings:
 
     def _apply_env_overrides(self) -> None:
         """Apply environment variable overrides."""
-        # API key from environment (check provider-specific key first, then generic)
-        provider = self.config["transcription"]["provider"]
-
-        if provider == "groq":
-            api_key_env = os.environ.get("GROQ_API_KEY")
-        elif provider == "openai":
-            api_key_env = os.environ.get("OPENAI_API_KEY")
-        else:
-            api_key_env = None
-
+        api_key_env = os.environ.get("DICTO_API_KEY")
         if api_key_env:
             self.config["transcription"]["api_key"] = api_key_env
 
@@ -125,11 +116,6 @@ class Settings:
 
     # Transcription settings
     @property
-    def transcription_provider(self) -> str:
-        """Get transcription provider (e.g., 'openai')."""
-        return cast(str, self.config["transcription"]["provider"])
-
-    @property
     def transcription_api_key(self) -> str:
         """Get transcription API key."""
         return cast(str, self.config["transcription"]["api_key"])
@@ -146,8 +132,15 @@ class Settings:
 
     @transcription_language.setter
     def transcription_language(self, value: str) -> None:
-        """Set transcription language."""
         self.config["transcription"]["language"] = value
+
+    @property
+    def transcription_model(self) -> str:
+        return cast(str, self.config.get("transcription", {}).get("model", "v3-turbo"))
+
+    @transcription_model.setter
+    def transcription_model(self, value: str) -> None:
+        self.config["transcription"]["model"] = value
 
     # Audio settings
     @property
@@ -209,10 +202,19 @@ class Settings:
 
     @always_on_top.setter
     def always_on_top(self, value: bool) -> None:
-        """Set always on top setting."""
         if "behavior" not in self.config:
             self.config["behavior"] = {}
         self.config["behavior"]["always_on_top"] = value
+
+    @property
+    def persistent_overlay(self) -> bool:
+        return cast(bool, self.config.get("behavior", {}).get("persistent_overlay", False))
+
+    @persistent_overlay.setter
+    def persistent_overlay(self, value: bool) -> None:
+        if "behavior" not in self.config:
+            self.config["behavior"] = {}
+        self.config["behavior"]["persistent_overlay"] = value
 
     def save(self) -> None:
         """Save current configuration to yaml file."""

@@ -1,227 +1,233 @@
 """
-Transcription service using Groq or OpenAI Whisper API.
+Transcription and transformation service using the Dicto API.
+
+API Base: https://terturionsland.dev
+- POST /api/transcribe  — audio to text
+- POST /api/transform   — text transformation (format conversion)
 """
 
 import logging
-import httpx
 import time
 from pathlib import Path
 
+import os
+
+import httpx
+
 logger = logging.getLogger(__name__)
+
+BASE_URL = os.environ.get("DICTO_API_URL", "https://terturionsland.dev")
 
 
 class TranscriptionError(Exception):
     """Base exception for transcription errors."""
-
     pass
 
 
 class APIKeyError(TranscriptionError):
     """API key is invalid or missing."""
-
     pass
 
 
 class RateLimitError(TranscriptionError):
-    """API rate limit exceeded."""
-
+    """API rate limit / spending limit exceeded."""
     pass
 
 
 class AudioTooShortError(TranscriptionError):
     """Audio file is too short."""
-
     pass
 
 
 class AudioTooLongError(TranscriptionError):
     """Audio file is too long."""
-
     pass
 
 
 class Transcriber:
-    """Handles audio transcription using Groq or OpenAI Whisper API."""
+    """Handles audio transcription and text transformation via the Dicto API."""
 
-    PROVIDERS = {
-        "groq": {
-            "url": "https://api.groq.com/openai/v1/audio/transcriptions",
-            "model": "whisper-large-v3-turbo",
-        },
-        "openai": {
-            "url": "https://api.openai.com/v1/audio/transcriptions",
-            "model": "whisper-1",
-        },
-    }
     MAX_RETRIES = 3
     RETRY_DELAY = 2  # seconds
 
-    def __init__(self, api_key: str, language: str = "auto", provider: str = "groq"):
-        """
-        Initialize transcriber.
-
-        Args:
-            api_key: API key for the transcription provider
-            language: Language code (e.g., 'en', 'es') or 'auto' for automatic detection
-            provider: Transcription provider ('groq' or 'openai')
-        """
+    def __init__(self, api_key: str, language: str = "es", model: str = "v3-turbo"):
         if not api_key:
-            raise APIKeyError(f"{provider.upper()} API key is required")
-
-        if provider not in self.PROVIDERS:
-            raise TranscriptionError(
-                f"Unknown provider: {provider}. Use 'groq' or 'openai'"
-            )
+            raise APIKeyError("Dicto API key is required")
 
         self.api_key = api_key
-        self.language = None if language == "auto" else language
-        self.provider = provider
-        self.api_url = self.PROVIDERS[provider]["url"]
-        self.model = self.PROVIDERS[provider]["model"]
+        self.language = language if language != "auto" else "es"
+        self.model = model
         self.client = httpx.Client(timeout=30.0)
+        self._last_transcription_id: int | None = None
+
+    @property
+    def last_transcription_id(self) -> int | None:
+        return self._last_transcription_id
+
+    # ── Transcribe ──────────────────────────────────────────
 
     def transcribe(self, audio_file_path: str) -> str:
-        """
-        Transcribe audio file to text.
-
-        Args:
-            audio_file_path: Path to audio file (WAV format)
-
-        Returns:
-            Transcribed text
-
-        Raises:
-            TranscriptionError: If transcription fails
-        """
         audio_path = Path(audio_file_path)
 
         if not audio_path.exists():
             raise TranscriptionError(f"Audio file not found: {audio_file_path}")
 
-        # Check file size
         file_size_mb = audio_path.stat().st_size / (1024 * 1024)
         if file_size_mb > 25:
-            raise AudioTooLongError(
-                f"Audio file too large: {file_size_mb:.1f}MB (max 25MB)"
-            )
-
+            raise AudioTooLongError(f"Audio file too large: {file_size_mb:.1f}MB (max 25MB)")
         if file_size_mb < 0.001:
             raise AudioTooShortError("Audio file too small (likely no audio recorded)")
 
-        # Attempt transcription with retries
         last_error = None
         for attempt in range(self.MAX_RETRIES):
             try:
-                text = self._transcribe_request(audio_path)
-                return text.strip()
-
+                return self._transcribe_request(audio_path)
             except RateLimitError as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
-                    delay = self.RETRY_DELAY * (2**attempt)  # Exponential backoff
-                    logger.warning(
-                        f"Rate limit hit, retrying in {delay}s... (attempt {attempt + 1}/{self.MAX_RETRIES})"
-                    )
+                    delay = self.RETRY_DELAY * (2 ** attempt)
+                    logger.warning(f"Rate limit hit, retrying in {delay}s… (attempt {attempt + 1}/{self.MAX_RETRIES})")
                     time.sleep(delay)
-                continue
-
             except APIKeyError:
-                # Don't retry on auth errors
                 raise
-
             except TranscriptionError as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
-                    delay = self.RETRY_DELAY * (2**attempt)
-                    logger.warning(
-                        f"Transcription failed, retrying in {delay}s... (attempt {attempt + 1}/{self.MAX_RETRIES})"
-                    )
+                    delay = self.RETRY_DELAY * (2 ** attempt)
+                    logger.warning(f"Transcription failed, retrying in {delay}s… (attempt {attempt + 1}/{self.MAX_RETRIES})")
                     time.sleep(delay)
-                continue
 
-        # All retries failed
         raise last_error or TranscriptionError("Transcription failed after all retries")
 
     def _transcribe_request(self, audio_path: Path) -> str:
-        """
-        Make a single transcription API request.
-
-        Args:
-            audio_path: Path to audio file
-
-        Returns:
-            Transcribed text
-
-        Raises:
-            TranscriptionError: If request fails
-        """
         try:
-            # Prepare request
             headers = {"Authorization": f"Bearer {self.api_key}"}
 
-            data = {"model": self.model}
+            # Guess MIME type from extension
+            suffix = audio_path.suffix.lower()
+            mime_types = {
+                ".wav": "audio/wav",
+                ".mp3": "audio/mpeg",
+                ".webm": "audio/webm",
+                ".m4a": "audio/m4a",
+                ".ogg": "audio/ogg",
+            }
+            mime = mime_types.get(suffix, "audio/wav")
 
-            # Add language if specified
+            data = {"source": "mic_app", "model": self.model}
             if self.language:
                 data["language"] = self.language
 
-            # Use context manager to ensure file is always closed
             with open(audio_path, "rb") as audio_file:
-                files = {"file": (audio_path.name, audio_file, "audio/wav")}
-
-                # Make request
+                files = {"file": (audio_path.name, audio_file, mime)}
                 response = self.client.post(
-                    self.api_url, headers=headers, files=files, data=data
+                    f"{BASE_URL}/api/transcribe",
+                    headers=headers,
+                    files=files,
+                    data=data,
                 )
 
-            # Handle response
             if response.status_code == 200:
                 result = response.json()
                 text = result.get("text", "")
                 if not text:
                     raise TranscriptionError("API returned empty transcription")
-                return text
+                self._last_transcription_id = result.get("id")
+                logger.info(f"Transcription OK (id={self._last_transcription_id}, lang={result.get('language')}, duration={result.get('duration')}s)")
+                return text.strip()
 
-            elif response.status_code == 401:
-                raise APIKeyError("Invalid API key")
-
-            elif response.status_code == 429:
-                raise RateLimitError("API rate limit exceeded")
-
-            else:
-                error_msg = self._parse_error_message(response)
-                raise TranscriptionError(
-                    f"API error ({response.status_code}): {error_msg}"
-                )
+            self._handle_error_response(response)
 
         except httpx.TimeoutException:
-            raise TranscriptionError("Request timeout - API took too long to respond")
-
+            raise TranscriptionError("Request timeout — API took too long to respond")
         except httpx.RequestError as e:
             raise TranscriptionError(f"Network error: {e}")
-
+        except TranscriptionError:
+            raise
         except Exception as e:
-            if isinstance(e, TranscriptionError):
-                raise
             raise TranscriptionError(f"Unexpected error: {e}")
 
-    def _parse_error_message(self, response: httpx.Response) -> str:
-        """Extract error message from API response."""
+    # ── Transform ───────────────────────────────────────────
+
+    def transform(self, text: str, instructions: str, transcription_id: int | None = None) -> str:
+        """
+        Transform text using the Dicto /api/transform endpoint (Dicto format).
+
+        Args:
+            text: The text to transform
+            instructions: System prompt / instructions for transformation
+            transcription_id: Optional transcription ID to link the result
+
+        Returns:
+            Transformed text
+        """
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+
+            payload: dict = {
+                "text": text,
+                "instructions": instructions,
+            }
+            if transcription_id is not None:
+                payload["transcriptionId"] = transcription_id
+
+            response = self.client.post(
+                f"{BASE_URL}/api/transform",
+                headers=headers,
+                json=payload,
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                choices = result.get("choices", [])
+                if choices:
+                    content = choices[0].get("message", {}).get("content", "")
+                    if content:
+                        return content.strip()
+                raise TranscriptionError("Transform API returned empty result")
+
+            self._handle_error_response(response)
+
+        except httpx.TimeoutException:
+            raise TranscriptionError("Transform request timeout")
+        except httpx.RequestError as e:
+            raise TranscriptionError(f"Network error: {e}")
+        except TranscriptionError:
+            raise
+        except Exception as e:
+            raise TranscriptionError(f"Unexpected error during transform: {e}")
+
+    # ── Error handling ──────────────────────────────────────
+
+    def _handle_error_response(self, response: httpx.Response):
+        """Parse error response and raise appropriate exception."""
+        if response.status_code == 401:
+            raise APIKeyError("Invalid or missing API key")
+        elif response.status_code == 429:
+            raise RateLimitError("Spending limit reached")
+        else:
+            msg = self._parse_error_message(response)
+            raise TranscriptionError(f"API error ({response.status_code}): {msg}")
+
+    @staticmethod
+    def _parse_error_message(response: httpx.Response) -> str:
         try:
             error_data = response.json()
             if "error" in error_data:
-                if isinstance(error_data["error"], dict):
-                    return error_data["error"].get("message", str(error_data["error"]))
-                return str(error_data["error"])
-            return response.text[:200]  # First 200 chars
+                err = error_data["error"]
+                if isinstance(err, dict):
+                    return err.get("message", str(err))
+                return str(err)
+            return response.text[:200]
         except Exception:
             return response.text[:200]
 
     def close(self):
-        """Close HTTP client."""
         if self.client:
             self.client.close()
 
     def __del__(self):
-        """Destructor to ensure cleanup."""
         self.close()

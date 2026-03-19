@@ -1,37 +1,38 @@
 """
 Styles and theme for the main window UI.
+Dark mode using zinc scale from the web app's globals.css.
 """
 
-# -- Color Palette --
-BG = "#1a1a1a"
-BG_SECONDARY = "#232323"
-BG_HOVER = "#2a2a2a"
-BORDER = "#333333"
-TEXT = "#e0e0e0"
-TEXT_DIM = "#777777"
-TEXT_MUTED = "#555555"
-ACCENT = "#6c8cbf"
-ACCENT_HOVER = "#7d9dd0"
-RED = "#c45c5c"
-RED_HOVER = "#d46c6c"
-GREEN = "#5c9a6c"
+# -- Color Palette (zinc dark mode) --
+BG = "#09090b"              # zinc-950  --background
+MUTED = "#18181b"           # zinc-900  --muted / --accent
+SECONDARY = "#27272a"       # zinc-800  --secondary / --border
+BORDER = "#27272a"          # zinc-800  --border
+TEXT = "#f4f4f5"            # zinc-100  --foreground
+TEXT_DIM = "#71717a"        # zinc-500  --muted-foreground
+PRIMARY = "#f4f4f5"         # zinc-100  --primary
+PRIMARY_FG = "#18181b"      # zinc-900  --primary-foreground
+RED = "#ef4444"             # red-500
+RED_HOVER = "#dc2626"       # red-600
+AMBER = "#fbbf24"           # amber-400
+GREEN = "#34d399"           # emerald-400
 
-# -- SVG Icons (Lucide-style) --
-SVG_MIC = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>'
-SVG_SQUARE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>'
-SVG_COPY = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+# -- SVG Icons --
 SVG_SETTINGS = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>'
+SVG_CLOSE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>'
+SVG_EXTERNAL = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
+SVG_AUDIO_LINES = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>'
 SVG_BACK = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>'
 
 # -- Global stylesheet --
 GLOBAL_STYLE = f"""
     QMainWindow {{
-        background-color: {BG};
+        background-color: transparent;
     }}
     QWidget {{
-        background-color: {BG};
+        background-color: transparent;
         color: {TEXT};
-        font-family: "Segoe UI", "Inter", "SF Pro Display", sans-serif;
+        font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
         font-size: 13px;
     }}
     QLabel {{
@@ -48,61 +49,53 @@ GLOBAL_STYLE = f"""
         height: 16px;
         border-radius: 3px;
         border: 1px solid {BORDER};
-        background-color: {BG_SECONDARY};
+        background-color: {BG};
     }}
     QCheckBox::indicator:checked {{
-        background-color: {ACCENT};
-        border-color: {ACCENT};
+        background-color: {PRIMARY};
+        border-color: {PRIMARY};
     }}
     QCheckBox:hover {{
         color: {TEXT};
     }}
     QComboBox {{
-        background-color: {BG_SECONDARY};
+        background-color: {BG};
         border: 1px solid {BORDER};
-        border-radius: 6px;
+        border-radius: 4px;
         padding: 6px 12px;
         color: {TEXT};
         min-height: 20px;
     }}
     QComboBox:hover {{
-        border-color: {TEXT_MUTED};
+        border-color: {TEXT_DIM};
     }}
     QComboBox::drop-down {{
         border: none;
         width: 24px;
     }}
     QComboBox QAbstractItemView {{
-        background-color: {BG_SECONDARY};
+        background-color: {BG};
         border: 1px solid {BORDER};
         color: {TEXT};
-        selection-background-color: {BG_HOVER};
+        selection-background-color: {MUTED};
     }}
     QLineEdit {{
-        background-color: {BG_SECONDARY};
+        background-color: {BG};
         border: 1px solid {BORDER};
-        border-radius: 6px;
-        padding: 8px 12px;
+        border-radius: 4px;
+        padding: 8px 10px;
         color: {TEXT};
     }}
     QLineEdit:focus {{
-        border-color: {ACCENT};
-    }}
-    QTextEdit {{
-        background-color: {BG_SECONDARY};
-        border: 1px solid {BORDER};
-        border-radius: 6px;
-        padding: 8px;
-        color: {TEXT};
-        selection-background-color: {ACCENT};
+        border-color: {TEXT_DIM};
     }}
     QScrollBar:vertical {{
-        background: {BG};
+        background: transparent;
         width: 6px;
         border: none;
     }}
     QScrollBar::handle:vertical {{
-        background: {BORDER};
+        background: {SECONDARY};
         border-radius: 3px;
         min-height: 20px;
     }}
@@ -111,109 +104,247 @@ GLOBAL_STYLE = f"""
     }}
 """
 
-# -- Component styles --
-TRANSCRIPTION_TEXT = f"""
+# -- Status dot --
+DOT_IDLE = f"background-color: {TEXT_DIM}; border-radius: 4px;"
+DOT_RECORDING = f"background-color: {RED}; border-radius: 4px;"
+DOT_PROCESSING = f"background-color: {AMBER}; border-radius: 4px;"
+DOT_SUCCESS = f"background-color: {GREEN}; border-radius: 4px;"
+
+# -- Header buttons --
+HEADER_BUTTON = f"""
+    QPushButton {{
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        padding: 4px;
+    }}
+    QPushButton:hover {{
+        background-color: {MUTED};
+    }}
+"""
+
+HEADER_BUTTON_CLOSE = f"""
+    QPushButton {{
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        padding: 4px;
+    }}
+    QPushButton:hover {{
+        background-color: rgba(239, 68, 68, 0.1);
+    }}
+"""
+
+HEADER_BUTTON_ACTIVE = f"""
+    QPushButton {{
+        background-color: {MUTED};
+        border: none;
+        border-radius: 4px;
+        padding: 4px;
+    }}
+"""
+
+# -- Format tabs --
+TAB_BUTTON = f"""
+    QPushButton {{
+        background: transparent;
+        border: none;
+        border-radius: 3px;
+        color: {TEXT_DIM};
+        font-size: 13px;
+        font-weight: 500;
+        padding: 2px 8px;
+    }}
+    QPushButton:hover {{
+        background-color: {MUTED};
+        color: {TEXT};
+    }}
+"""
+
+TAB_BUTTON_ACTIVE = f"""
+    QPushButton {{
+        background-color: {PRIMARY};
+        border: none;
+        border-radius: 3px;
+        color: {PRIMARY_FG};
+        font-size: 13px;
+        font-weight: 500;
+        padding: 2px 8px;
+    }}
+"""
+
+TAB_BUTTON_DISABLED = f"""
+    QPushButton {{
+        background: transparent;
+        border: none;
+        border-radius: 3px;
+        color: rgba(113, 113, 122, 0.5);
+        font-size: 13px;
+        font-weight: 500;
+        padding: 2px 8px;
+    }}
+"""
+
+# -- Content --
+CONTENT_TEXT = f"""
     QTextEdit {{
-        background-color: {BG_SECONDARY};
-        border: 1px solid {BORDER};
-        border-radius: 8px;
-        padding: 12px;
+        background-color: transparent;
+        border: none;
         color: {TEXT};
         font-size: 13px;
+        padding: 0;
     }}
 """
 
-ICON_BUTTON = f"""
-    QPushButton {{
-        background: transparent;
-        border: none;
-        border-radius: 6px;
-    }}
-    QPushButton:hover {{
-        background-color: {BG_HOVER};
-    }}
-"""
+IDLE_TEXT = f"color: {TEXT_DIM}; font-size: 13px;"
+IDLE_TEXT_BOLD = f"color: {TEXT}; font-size: 13px; font-weight: 500;"
 
-STATUS_LABEL = f"color: {TEXT_MUTED}; font-size: 11px;"
+RECORDING_LABEL = f"color: {RED}; font-size: 13px; font-weight: 500;"
+PROCESSING_LABEL = f"color: {AMBER}; font-size: 13px; font-weight: 500;"
 
-SECTION_LABEL = f"color: {TEXT_MUTED}; font-size: 10px; font-weight: bold; letter-spacing: 1px;"
+TIMER_RECORDING = f"color: #f87171; font-size: 13px;"
+TIMER_PROCESSING = f"color: {AMBER}; font-size: 13px;"
 
-SETTINGS_TITLE = f"color: {TEXT}; padding-left: 4px;"
-
-FLAT_BUTTON = f"""
-    QPushButton {{
-        background-color: {BG_SECONDARY};
-        border: 1px solid {BORDER};
-        border-radius: 6px;
-        color: {TEXT_DIM};
-        font-size: 12px;
-        padding: 0 16px;
-    }}
-    QPushButton:hover {{
-        background-color: {BG_HOVER};
-        color: {TEXT};
-    }}
-"""
-
-ACCENT_BUTTON = f"""
-    QPushButton {{
-        background-color: {ACCENT};
-        border: none;
-        border-radius: 6px;
-        color: #ffffff;
-        font-size: 12px;
-        font-weight: bold;
-        padding: 0 20px;
-    }}
-    QPushButton:hover {{
-        background-color: {ACCENT_HOVER};
-    }}
-"""
-
-TOOLBAR_BUTTON = f"""
-    QPushButton {{
-        background: transparent;
-        border: 1px solid {BORDER};
-        border-radius: 6px;
-        color: {TEXT_DIM};
-        font-size: 12px;
-        padding: 0 12px;
-    }}
-    QPushButton:hover {{
-        background-color: {BG_HOVER};
-        color: {TEXT};
-        border-color: {TEXT_MUTED};
-    }}
-"""
-
+# -- Footer --
 RECORD_BUTTON_IDLE = f"""
     QPushButton {{
-        background-color: {ACCENT};
+        background-color: {PRIMARY};
         border: none;
-        border-radius: 6px;
-        color: #ffffff;
-        font-size: 12px;
-        font-weight: bold;
-        padding: 0 12px;
+        border-radius: 4px;
+        color: {PRIMARY_FG};
+        font-size: 13px;
+        font-weight: 500;
+        padding: 6px 12px;
     }}
     QPushButton:hover {{
-        background-color: {ACCENT_HOVER};
+        background-color: rgba(244, 244, 245, 0.8);
     }}
 """
 
 RECORD_BUTTON_RECORDING = f"""
     QPushButton {{
-        background-color: {RED};
+        background-color: #dc2626;
         border: none;
-        border-radius: 6px;
-        color: #ffffff;
+        border-radius: 4px;
+        color: white;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 6px 12px;
+    }}
+    QPushButton:hover {{
+        background-color: #b91c1c;
+    }}
+"""
+
+RECORD_BUTTON_PROCESSING = f"""
+    QPushButton {{
+        background-color: {AMBER};
+        border: none;
+        border-radius: 4px;
+        color: {PRIMARY_FG};
+        font-size: 13px;
+        font-weight: 500;
+        padding: 6px 12px;
+    }}
+"""
+
+FOOTER_TEXT_BUTTON = f"""
+    QPushButton {{
+        background: transparent;
+        border: none;
+        color: {TEXT_DIM};
+        font-size: 13px;
+        padding: 6px 8px;
+    }}
+    QPushButton:hover {{
+        color: {TEXT};
+    }}
+"""
+
+FOOTER_TEXT_BUTTON_SUCCESS = f"""
+    QPushButton {{
+        background: transparent;
+        border: none;
+        color: {GREEN};
+        font-size: 13px;
+        font-weight: 500;
+        padding: 6px 8px;
+    }}
+"""
+
+# -- Settings --
+SECTION_LABEL = f"color: {TEXT_DIM}; font-size: 10px; font-weight: bold; letter-spacing: 1px;"
+SETTINGS_TITLE = f"color: {TEXT}; padding-left: 4px;"
+
+ICON_BUTTON = f"""
+    QPushButton {{
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+    }}
+    QPushButton:hover {{
+        background-color: {MUTED};
+    }}
+"""
+
+FLAT_BUTTON = f"""
+    QPushButton {{
+        background-color: {MUTED};
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        color: {TEXT};
         font-size: 12px;
-        font-weight: bold;
         padding: 0 12px;
     }}
     QPushButton:hover {{
-        background-color: {RED_HOVER};
+        background-color: {SECONDARY};
+    }}
+"""
+
+ACCENT_BUTTON = f"""
+    QPushButton {{
+        background-color: {PRIMARY};
+        border: none;
+        border-radius: 4px;
+        color: {PRIMARY_FG};
+        font-size: 12px;
+        font-weight: bold;
+        padding: 0 16px;
+    }}
+    QPushButton:hover {{
+        background-color: rgba(244, 244, 245, 0.8);
     }}
 """
 
 SEPARATOR = f"background-color: {BORDER};"
+
+# -- Tray menu --
+TRAY_MENU_STYLE = f"""
+    QMenu {{
+        background-color: {MUTED};
+        border: 1px solid {BORDER};
+        border-radius: 8px;
+        padding: 4px;
+        font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+        font-size: 13px;
+    }}
+    QMenu::item {{
+        background-color: transparent;
+        color: {TEXT};
+        padding: 6px 16px 6px 12px;
+        border-radius: 4px;
+        margin: 1px 2px;
+    }}
+    QMenu::item:selected {{
+        background-color: {SECONDARY};
+        color: {TEXT};
+    }}
+    QMenu::item:disabled {{
+        color: {TEXT_DIM};
+    }}
+    QMenu::separator {{
+        height: 1px;
+        background-color: {BORDER};
+        margin: 4px 8px;
+    }}
+"""

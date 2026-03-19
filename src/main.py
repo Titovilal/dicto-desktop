@@ -72,9 +72,9 @@ class DictoApp:
             logger.info("Creating default config.yaml...")
             self.settings.create_default_config()
             logger.info(
-                "Please edit config.yaml and set your OpenAI API key, then restart the app."
+                "Please edit config.yaml and set your Dicto API key, then restart the app."
             )
-            logger.info("You can also set OPENAI_API_KEY environment variable.")
+            logger.info("You can also set DICTO_API_KEY environment variable.")
 
         # Initialize components
         logger.info("Initializing components...")
@@ -150,6 +150,15 @@ class DictoApp:
         # Main window actions -> Controller
         self.main_window.play_clicked.connect(self.controller.start_recording_manual)
         self.main_window.stop_clicked.connect(self.controller.stop_recording_manual)
+
+        # Overlay actions -> Controller
+        self.overlay.record_clicked.connect(self.controller.start_recording_manual)
+        self.overlay.stop_clicked.connect(self.controller.stop_recording_manual)
+
+        # Persistent overlay setting
+        self.main_window.persistent_overlay_changed.connect(self.overlay.set_persistent)
+        if self.settings.persistent_overlay:
+            self.overlay.set_persistent(True)
 
         # Tray actions
         self.tray_manager.quit_requested.connect(self.quit)
