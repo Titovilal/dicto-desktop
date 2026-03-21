@@ -1,17 +1,17 @@
 # Services
 
 ## What It Does
-Backend services that handle audio capture, speech-to-text transcription, text transformation, clipboard access, and global hotkey detection.
+Backend services that handle audio recording, speech-to-text transcription, clipboard management, and global hotkey detection. These are the core engines that power Dicto's voice-to-text pipeline.
 
 ## Main Files
-- `src/services/recorder.py` - Records microphone audio via `sounddevice` into a temp WAV file
-- `src/services/transcriber.py` - Sends audio to the Dicto API (`POST /api/transcribe`) and supports text transformation (`POST /api/transform`)
-- `src/services/hotkey.py` - Global hotkey listener using `pynput`; tracks modifier+key combos with press/release callbacks
-- `src/services/clipboard.py` - Clipboard read/write via `pyperclip`
-- `src/services/__init__.py` - Package init
+- `src/services/recorder.py` - Records audio from the microphone using sounddevice, saves to temporary WAV files
+- `src/services/transcriber.py` - Sends audio to the Dicto API for transcription and supports text transformation
+- `src/services/clipboard.py` - Copies transcribed text to the system clipboard using pyperclip
+- `src/services/hotkey.py` - Listens for global hotkey combinations using pynput to trigger recording
+- `src/controller.py` - Orchestrates all services, manages app state (idle/recording/processing/success/error), and bridges UI signals
 
 ## Flow
-1. HotkeyListener detects the configured key combo and fires press/release callbacks to the Controller
-2. AudioRecorder streams microphone input in a background thread, saves to a temp WAV on stop
-3. Transcriber uploads the WAV to `https://terturionsland.dev/api/transcribe` with auth, retries on rate limits
-4. ClipboardManager copies the transcription text; Controller can then auto-paste via simulated Ctrl+V
+1. `HotkeyListener` detects a key press (default: Ctrl+Shift+Space) and notifies the `Controller`
+2. `Controller` tells `AudioRecorder` to start capturing microphone input on a background thread
+3. On hotkey release, the recording stops, audio is saved to a temp WAV file, and `Transcriber` sends it to the Dicto API
+4. The transcribed text is copied to clipboard via `ClipboardManager`, and optionally auto-pasted and auto-entered via simulated keypresses

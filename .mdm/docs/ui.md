@@ -1,19 +1,17 @@
 # User Interface
 
 ## What It Does
-Provides a frameless desktop window, a floating overlay, and a system tray icon — all built with PySide6 (Qt). The UI shows recording state, transcription results, format tabs (email/notes/tweet), and a settings panel.
+Provides the visual layer of the Dicto desktop app: a main window for transcription history and settings, a floating overlay for recording feedback, a system tray icon for background access, and a splash screen shown at startup.
 
 ## Main Files
-- `src/ui/main_window.py` - Frameless main window with idle/recording/done/settings pages, format tabs, waveform animation, and drag support
-- `src/ui/main_window_styles.py` - All style constants, colors, and inline SVG icons used across the UI
-- `src/ui/overlay.py` - Draggable always-on-top overlay showing recording/processing/success/error states with a record/stop button
-- `src/ui/tray.py` - System tray icon with context menu (open, settings, quit) and notification helpers
-- `src/ui/splash.py` - Brief splash screen shown during startup
-- `src/utils/icons.py` - Resolves the app icon path for both dev and PyInstaller builds
-- `assets/icons/` - App icons (ico, png, svg) used by the tray, window, and installer
-- `assets/fonts/` - Custom font (JetBrains Mono) loaded by the UI
+- `src/ui/main_window.py` - Main application window with transcription display, record/stop controls, settings tab, and text transformation UI
+- `src/ui/main_window_styles.py` - Shared style constants (colors, fonts, stylesheets) used across all UI components
+- `src/ui/overlay.py` - Draggable floating overlay that shows recording/processing/success/error states with waveform animation
+- `src/ui/tray.py` - System tray icon with context menu (open window, settings, quit) and notification support
+- `src/ui/splash.py` - Frameless splash window displayed while the app loads
+- `src/utils/icons.py` - Resolves icon file paths, supporting both development and PyInstaller-bundled modes
 
 ## Flow
-1. Main window starts on the idle page; user clicks "Grabar" or uses the hotkey to start recording
-2. During recording the window shows a waveform animation and elapsed timer; the overlay mirrors the state
-3. After transcription, the done page displays the text with format tabs for AI-powered reformatting (email, notes, tweet)
+1. On startup, `SplashWindow` is shown while components initialize, then replaced by `MainWindow`
+2. During recording, the `OverlayWindow` appears with a pulsing dot and waveform animation; it shows processing and success/error states afterward
+3. `TrayManager` keeps a system tray icon updated with current status and provides quick access to the window, settings, and quit
