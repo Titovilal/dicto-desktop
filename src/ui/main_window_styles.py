@@ -59,7 +59,7 @@ GLOBAL_STYLE = f"""
         color: {TEXT};
     }}
     QComboBox {{
-        background-color: {BG};
+        background-color: {MUTED};
         border: 1px solid {BORDER};
         border-radius: 4px;
         padding: 6px 12px;
@@ -81,10 +81,10 @@ GLOBAL_STYLE = f"""
         margin-right: 8px;
     }}
     QComboBox QAbstractItemView {{
-        background-color: {BG};
+        background-color: {MUTED};
         border: 1px solid {BORDER};
         color: {TEXT};
-        selection-background-color: {MUTED};
+        selection-background-color: {SECONDARY};
     }}
     QLineEdit {{
         background-color: {BG};
@@ -160,7 +160,7 @@ TAB_BUTTON = f"""
         color: {TEXT_DIM};
         font-size: 14px;
         font-weight: 500;
-        padding: 2px 8px;
+        padding: 4px 10px;
     }}
     QPushButton:hover {{
         background-color: {MUTED};
@@ -176,7 +176,7 @@ TAB_BUTTON_ACTIVE = f"""
         color: {PRIMARY_FG};
         font-size: 14px;
         font-weight: 500;
-        padding: 2px 8px;
+        padding: 4px 10px;
     }}
 """
 
@@ -188,7 +188,7 @@ TAB_BUTTON_DISABLED = f"""
         color: rgba(113, 113, 122, 0.5);
         font-size: 14px;
         font-weight: 500;
-        padding: 2px 8px;
+        padding: 4px 10px;
     }}
 """
 

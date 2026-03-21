@@ -34,6 +34,7 @@ class HotkeyListener:
         key: str,
         on_press: Callable | None = None,
         on_release: Callable | None = None,
+        mode: str = "hold",
     ):
         """
         Initialize hotkey listener.
@@ -43,11 +44,13 @@ class HotkeyListener:
             key: The main key (e.g., 'space')
             on_press: Callback function when hotkey is pressed
             on_release: Callback function when hotkey is released
+            mode: "hold" for press+release, "press" for single press trigger
         """
         self.modifiers = self._parse_modifiers(modifiers)
         self.key = self._parse_key(key)
         self.on_press_callback = on_press
         self.on_release_callback = on_release
+        self.mode = mode
 
         self.current_modifiers: Set = set()
         self.hotkey_pressed = False
@@ -125,9 +128,15 @@ class HotkeyListener:
         # Check if hotkey is pressed
         if not self.hotkey_pressed:
             if self._is_hotkey_combination(key):
-                self.hotkey_pressed = True
-                if self.on_press_callback:
-                    self.on_press_callback()
+                if self.mode == "press":
+                    # Single press mode: fire callback and reset immediately
+                    if self.on_press_callback:
+                        self.on_press_callback()
+                else:
+                    # Hold mode: track pressed state for release
+                    self.hotkey_pressed = True
+                    if self.on_press_callback:
+                        self.on_press_callback()
 
     def _on_release(self, key):
         """Internal callback for key release events."""

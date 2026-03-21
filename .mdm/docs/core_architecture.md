@@ -6,7 +6,7 @@ Defines the application entry point, configuration system, and utility foundatio
 ## Main Files
 - `src/main.py` - Entry point; creates the `DictoApp` class which initializes Qt, loads settings, wires up all components via signals, and runs the event loop
 - `src/config/settings.py` - Loads `config.yaml` (merged with defaults), applies environment variable overrides, and exposes typed properties for all settings
-- `config.yaml` - User-editable configuration file for hotkey, overlay, transcription, audio, and behavior settings
+- `config.yaml` - User-editable configuration file for hotkey, edit_hotkey, overlay, transcription, audio, behavior, and edit settings
 - `src/utils/logger.py` - Configures application-wide logging to stdout
 - `pyproject.toml` - Project metadata and build configuration
 - `Makefile` - Development commands (run, build, etc.)

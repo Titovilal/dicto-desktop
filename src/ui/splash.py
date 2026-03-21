@@ -6,6 +6,8 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QColor
 
+from src.i18n import t
+
 
 class SplashWindow(QWidget):
     """Frameless, centered splash window shown during app startup."""
@@ -42,7 +44,7 @@ class SplashWindow(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.label = QLabel("Loading Dicto...")
+        self.label = QLabel(t("loading"))
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setStyleSheet("""
             QLabel {

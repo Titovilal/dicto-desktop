@@ -9,16 +9,9 @@ from PySide6.QtCore import QObject, Signal, Slot
 
 from src.utils.icons import get_icon_path
 from src.ui.main_window_styles import TRAY_MENU_STYLE
+from src.i18n import t
 
 logger = logging.getLogger(__name__)
-
-STATUS_LABELS = {
-    "idle": "Listo",
-    "recording": "Grabando…",
-    "processing": "Transcribiendo…",
-    "success": "Completado",
-    "error": "Error",
-}
 
 
 class TrayManager(QObject):
@@ -53,19 +46,19 @@ class TrayManager(QObject):
         self.menu.setStyleSheet(TRAY_MENU_STYLE)
 
         # Show window
-        show_action = QAction("Abrir Dicto", self.menu)
+        show_action = QAction(t("open_dicto"), self.menu)
         show_action.triggered.connect(self._on_show_window)
         self.menu.addAction(show_action)
 
         # Settings
-        settings_action = QAction("Ajustes", self.menu)
+        settings_action = QAction(t("settings"), self.menu)
         settings_action.triggered.connect(self._on_open_config)
         self.menu.addAction(settings_action)
 
         self.menu.addSeparator()
 
         # Quit
-        quit_action = QAction("Salir", self.menu)
+        quit_action = QAction(t("quit"), self.menu)
         quit_action.triggered.connect(self._on_quit)
         self.menu.addAction(quit_action)
 
@@ -99,7 +92,14 @@ class TrayManager(QObject):
     @Slot(str)
     def update_status(self, status: str):
         if self.tray_icon:
-            self.tray_icon.setToolTip(f"Dicto — {STATUS_LABELS.get(status, status)}")
+            status_labels = {
+                "idle": t("status_idle"),
+                "recording": t("status_recording"),
+                "processing": t("status_processing"),
+                "success": t("status_success"),
+                "error": t("status_error"),
+            }
+            self.tray_icon.setToolTip(f"Dicto — {status_labels.get(status, status)}")
 
     def show_message(self, title: str, message: str, icon_type=None):
         if self.tray_icon:
@@ -108,7 +108,7 @@ class TrayManager(QObject):
             self.tray_icon.showMessage(title, message, icon_type, 3000)
 
     def show_error(self, message: str):
-        self.show_message("Dicto — Error", message, QSystemTrayIcon.MessageIcon.Critical)
+        self.show_message(f"Dicto — {t('error')}", message, QSystemTrayIcon.MessageIcon.Critical)
 
     def show_success(self, message: str):
         self.show_message("Dicto", message, QSystemTrayIcon.MessageIcon.Information)

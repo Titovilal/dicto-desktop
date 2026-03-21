@@ -34,7 +34,10 @@ class Settings:
         "overlay": {"position": "top-right", "size": 100, "opacity": 0.9},
         "transcription": {"api_key": "", "language": "es", "model": "v3-turbo"},
         "audio": {"sample_rate": 16000, "max_duration": 120, "channels": 1},
-        "behavior": {"auto_paste": False, "auto_enter": False, "show_success_notifications": True, "always_on_top": False, "persistent_overlay": False},
+        "behavior": {"auto_paste": False, "auto_enter": False, "always_on_top": False, "persistent_overlay": False},
+        "edit_hotkey": {"modifiers": ["ctrl", "alt"], "key": "space"},
+        "edit": {"auto_paste": True, "auto_enter": False},
+        "ui_language": "es",
     }
 
     config_path: Path
@@ -93,10 +96,20 @@ class Settings:
         """Get hotkey modifiers (e.g., ['ctrl', 'shift'])."""
         return cast(List[str], self.config["hotkey"]["modifiers"])
 
+    @hotkey_modifiers.setter
+    def hotkey_modifiers(self, value: List[str]) -> None:
+        """Set hotkey modifiers."""
+        self.config["hotkey"]["modifiers"] = value
+
     @property
     def hotkey_key(self) -> str:
         """Get hotkey key (e.g., 'space')."""
         return cast(str, self.config["hotkey"]["key"])
+
+    @hotkey_key.setter
+    def hotkey_key(self, value: str) -> None:
+        """Set hotkey key."""
+        self.config["hotkey"]["key"] = value
 
     # Overlay settings
     @property
@@ -184,18 +197,6 @@ class Settings:
         self.config["behavior"]["auto_enter"] = value
 
     @property
-    def show_success_notifications(self) -> bool:
-        """Get show success notifications setting."""
-        return cast(bool, self.config.get("behavior", {}).get("show_success_notifications", True))
-
-    @show_success_notifications.setter
-    def show_success_notifications(self, value: bool) -> None:
-        """Set show success notifications setting."""
-        if "behavior" not in self.config:
-            self.config["behavior"] = {}
-        self.config["behavior"]["show_success_notifications"] = value
-
-    @property
     def always_on_top(self) -> bool:
         """Get always on top setting."""
         return cast(bool, self.config.get("behavior", {}).get("always_on_top", False))
@@ -215,6 +216,52 @@ class Settings:
         if "behavior" not in self.config:
             self.config["behavior"] = {}
         self.config["behavior"]["persistent_overlay"] = value
+
+    # Edit hotkey settings
+    @property
+    def edit_hotkey_modifiers(self) -> List[str]:
+        return cast(List[str], self.config["edit_hotkey"]["modifiers"])
+
+    @edit_hotkey_modifiers.setter
+    def edit_hotkey_modifiers(self, value: List[str]) -> None:
+        self.config["edit_hotkey"]["modifiers"] = value
+
+    @property
+    def edit_hotkey_key(self) -> str:
+        return cast(str, self.config["edit_hotkey"]["key"])
+
+    @edit_hotkey_key.setter
+    def edit_hotkey_key(self, value: str) -> None:
+        self.config["edit_hotkey"]["key"] = value
+
+    # Edit behavior settings
+    @property
+    def edit_auto_paste(self) -> bool:
+        return cast(bool, self.config.get("edit", {}).get("auto_paste", True))
+
+    @edit_auto_paste.setter
+    def edit_auto_paste(self, value: bool) -> None:
+        if "edit" not in self.config:
+            self.config["edit"] = {}
+        self.config["edit"]["auto_paste"] = value
+
+    @property
+    def edit_auto_enter(self) -> bool:
+        return cast(bool, self.config.get("edit", {}).get("auto_enter", False))
+
+    @edit_auto_enter.setter
+    def edit_auto_enter(self, value: bool) -> None:
+        if "edit" not in self.config:
+            self.config["edit"] = {}
+        self.config["edit"]["auto_enter"] = value
+
+    @property
+    def ui_language(self) -> str:
+        return cast(str, self.config.get("ui_language", "es"))
+
+    @ui_language.setter
+    def ui_language(self, value: str) -> None:
+        self.config["ui_language"] = value
 
     def save(self) -> None:
         """Save current configuration to yaml file."""

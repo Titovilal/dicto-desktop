@@ -16,6 +16,12 @@ Dicto Desktop is a minimalist Windows desktop app for voice-to-text transcriptio
 2. On release, the audio is sent to the Dicto API for transcription in a background thread
 3. The transcribed text is copied to the clipboard (and optionally auto-pasted into the active window)
 
+### Edit Selection Flow
+1. User selects text in any application and holds the edit hotkey (default: Ctrl+Shift+E)
+2. On press: the app copies the selected text (simulates Ctrl+C), reads it from clipboard, and starts recording voice instructions from the microphone
+3. On release: stops recording, transcribes the voice to get text instructions, sends both the selected text and instructions to `/api/transform`
+4. The transformed text is copied to clipboard and optionally auto-pasted back
+
 ## Documentation available in `.mdm/docs/`
 - **`core_architecture.md`** — Entry point, configuration system, and utility foundations
 - **`services.md`** — Audio recording, transcription, clipboard, hotkey detection, and the controller

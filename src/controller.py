@@ -36,9 +36,16 @@ class Controller(QObject):
     transform_failed = Signal(str, str)     # (format_id, error_message)
     error_occurred = Signal(str)
 
+    # Edit selection signals
+    edit_started = Signal()
+    edit_completed = Signal(str)
+    edit_failed = Signal(str)
+
     # Internal signals to bounce results back to the main thread
     _transcription_done = Signal(str)
     _transcription_failed = Signal(str)
+    _edit_done = Signal(str)
+    _edit_failed_internal = Signal(str)
 
     def __init__(self, settings: Settings):
         super().__init__()
@@ -46,9 +53,12 @@ class Controller(QObject):
         self.current_state = AppState.IDLE
 
         self.hotkey_listener: HotkeyListener | None = None
+        self.edit_hotkey_listener: HotkeyListener | None = None
         self.recorder: AudioRecorder | None = None
         self.transcriber: Transcriber | None = None
         self.keyboard_controller = keyboard.Controller()
+
+        self._edit_selected_text: str = ""
 
         # Single persistent thread pool – no QThread lifecycle issues
         self._pool = ThreadPoolExecutor(max_workers=1)
@@ -56,6 +66,8 @@ class Controller(QObject):
         # Connect internal signals (thread-safe delivery to main thread)
         self._transcription_done.connect(self._on_transcribe_finished)
         self._transcription_failed.connect(self._on_transcribe_error)
+        self._edit_done.connect(self._on_edit_finished)
+        self._edit_failed_internal.connect(self._on_edit_error)
 
         self._init_services()
 
@@ -83,6 +95,14 @@ class Controller(QObject):
                 on_press=self._on_hotkey_press,
                 on_release=self._on_hotkey_release,
             )
+
+            self.edit_hotkey_listener = HotkeyListener(
+                modifiers=self.settings.edit_hotkey_modifiers,
+                key=self.settings.edit_hotkey_key,
+                on_press=self._on_edit_hotkey_press,
+                on_release=self._on_edit_hotkey_release,
+                mode="hold",
+            )
         except Exception as e:
             logger.error(f"Error initializing services: {e}")
             traceback.print_exc()
@@ -93,6 +113,8 @@ class Controller(QObject):
     def start(self):
         if self.hotkey_listener:
             self.hotkey_listener.start()
+        if self.edit_hotkey_listener:
+            self.edit_hotkey_listener.start()
         self._set_state(AppState.IDLE)
         logger.info("Controller started successfully")
 
@@ -100,6 +122,8 @@ class Controller(QObject):
         logger.info("Stopping controller...")
         if self.hotkey_listener:
             self.hotkey_listener.stop()
+        if self.edit_hotkey_listener:
+            self.edit_hotkey_listener.stop()
         if self.recorder and self.recorder.is_recording:
             self.recorder.stop_recording()
         self._pool.shutdown(wait=True, cancel_futures=True)
@@ -224,6 +248,126 @@ class Controller(QObject):
         except Exception as e:
             logger.error(f"Error performing auto-enter: {e}")
 
+    # ── Edit selection flow ────────────────────────────────────
+
+    def _on_edit_hotkey_press(self):
+        if self.current_state not in (AppState.IDLE, AppState.SUCCESS):
+            return
+        self._start_edit_flow()
+
+    def _on_edit_hotkey_release(self):
+        if self.current_state == AppState.RECORDING:
+            self._stop_edit_recording_and_process()
+
+    def _start_edit_flow(self):
+        """Copy selected text, then start recording voice instructions."""
+        if not self.transcriber:
+            self._handle_error("Transcriber not initialized")
+            return
+        if not self.recorder:
+            self._handle_error("Audio recorder not initialized")
+            return
+
+        self.edit_started.emit()
+
+        # Simulate Ctrl+C to copy selected text
+        try:
+            self.keyboard_controller.press(keyboard.Key.ctrl)
+            self.keyboard_controller.press("c")
+            self.keyboard_controller.release("c")
+            self.keyboard_controller.release(keyboard.Key.ctrl)
+        except Exception as e:
+            self._handle_error(f"Error simulating copy: {e}")
+            return
+
+        # Wait 150ms then read clipboard and start recording voice instructions
+        QTimer.singleShot(150, self._edit_read_clipboard_and_record)
+
+    def _edit_read_clipboard_and_record(self):
+        """Read clipboard content and start recording voice instructions."""
+        self._edit_selected_text = ClipboardManager.paste()
+        if not self._edit_selected_text.strip():
+            self._handle_error("No text selected (clipboard empty)")
+            return
+
+        logger.info(f"Edit selection: copied {len(self._edit_selected_text)} chars, recording voice instructions...")
+
+        # Start recording voice instructions
+        self._set_state(AppState.RECORDING)
+        self.recording_started.emit()
+        if not self.recorder.start_recording():
+            self._handle_error("Failed to start recording. Check microphone permissions.")
+
+    def _stop_edit_recording_and_process(self):
+        """Stop recording voice instructions, transcribe them, then transform the selected text."""
+        if not self.recorder:
+            self._handle_error("Audio recorder not initialized")
+            return
+
+        try:
+            audio_file_path = self.recorder.stop_recording()
+            duration = self.recorder.get_recording_duration()
+            self.recording_stopped.emit(duration)
+
+            if not audio_file_path:
+                self._handle_error("No audio recorded")
+                return
+
+            self._set_state(AppState.PROCESSING)
+            selected_text = self._edit_selected_text
+            logger.info(f"Edit selection: transcribing voice instructions ({duration:.1f}s)")
+
+            def _do_edit_with_voice():
+                try:
+                    # Step 1: Transcribe the voice instructions
+                    instructions = self.transcriber.transcribe(audio_file_path)
+                    if not instructions:
+                        self._edit_failed_internal.emit("Voice instructions transcription returned empty")
+                        return
+                    logger.info(f"Edit selection: voice instructions = '{instructions[:80]}'")
+
+                    # Step 2: Transform the selected text using the voice instructions
+                    result = self.transcriber.transform(selected_text, instructions)
+                    self._edit_done.emit(result)
+                except Exception as e:
+                    self._edit_failed_internal.emit(str(e))
+                finally:
+                    self.recorder.cleanup_temp_file()
+
+            self._pool.submit(_do_edit_with_voice)
+        except Exception as e:
+            self._handle_error(f"Error stopping edit recording: {e}")
+
+    @Slot(str)
+    def _on_edit_finished(self, text: str):
+        if ClipboardManager.copy(text):
+            self._set_state(AppState.SUCCESS)
+            self.edit_completed.emit(text)
+            logger.info(f"Edit selection successful: {text[:50]}")
+            self._perform_edit_auto_actions()
+        else:
+            self._handle_error("Failed to copy edited text to clipboard")
+
+    @Slot(str)
+    def _on_edit_error(self, error_message: str):
+        self.edit_failed.emit(error_message)
+        self._handle_error(error_message)
+
+    def _perform_edit_auto_actions(self):
+        if self.settings.edit_auto_paste:
+            QTimer.singleShot(100, self._do_edit_auto_paste)
+
+    def _do_edit_auto_paste(self):
+        try:
+            self.keyboard_controller.press(keyboard.Key.ctrl)
+            self.keyboard_controller.press("v")
+            self.keyboard_controller.release("v")
+            self.keyboard_controller.release(keyboard.Key.ctrl)
+            if self.settings.edit_auto_enter:
+                QTimer.singleShot(50, self._do_auto_enter)
+        except Exception as e:
+            logger.error(f"Error performing edit auto-paste: {e}")
+
     # ── Error handling ───────────────────────────────────────
 
     def _handle_error(self, error_message: str):
@@ -246,6 +390,35 @@ class Controller(QObject):
     def stop_recording_manual(self):
         if self.current_state == AppState.RECORDING:
             self._stop_recording_and_process()
+
+    # ── Hotkey updates ──────────────────────────────────────────
+
+    def update_recording_hotkey(self, modifiers: list[str], key: str):
+        """Stop old recording hotkey listener, create a new one, and start it."""
+        if self.hotkey_listener:
+            self.hotkey_listener.stop()
+        self.hotkey_listener = HotkeyListener(
+            modifiers=modifiers,
+            key=key,
+            on_press=self._on_hotkey_press,
+            on_release=self._on_hotkey_release,
+        )
+        self.hotkey_listener.start()
+        logger.info(f"Recording hotkey updated to {'+'.join(modifiers)}+{key}")
+
+    def update_edit_hotkey(self, modifiers: list[str], key: str):
+        """Stop old edit hotkey listener, create a new one, and start it."""
+        if self.edit_hotkey_listener:
+            self.edit_hotkey_listener.stop()
+        self.edit_hotkey_listener = HotkeyListener(
+            modifiers=modifiers,
+            key=key,
+            on_press=self._on_edit_hotkey_press,
+            on_release=self._on_edit_hotkey_release,
+            mode="hold",
+        )
+        self.edit_hotkey_listener.start()
+        logger.info(f"Edit hotkey updated to {'+'.join(modifiers)}+{key}")
 
     # ── Transform ─────────────────────────────────────────────
 
