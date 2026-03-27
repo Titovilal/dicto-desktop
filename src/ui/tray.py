@@ -74,7 +74,7 @@ class TrayManager(QObject):
 
     @Slot(QSystemTrayIcon.ActivationReason)
     def _on_tray_activated(self, reason):
-        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+        if reason in (QSystemTrayIcon.ActivationReason.Trigger, QSystemTrayIcon.ActivationReason.DoubleClick):
             self.show_window_requested.emit()
 
     @Slot()

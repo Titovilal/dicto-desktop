@@ -39,6 +39,11 @@ class AudioRecorder:
         self.recording_thread = None
         self.temp_file_path = None
         self.stream = None
+        self._audio_level_callback = None
+
+    def set_audio_level_callback(self, callback):
+        """Set a callback that receives audio level (0.0-1.0) for each chunk."""
+        self._audio_level_callback = callback
 
     def start_recording(self) -> bool:
         """
@@ -126,6 +131,10 @@ class AudioRecorder:
                 logger.warning(f"Audio stream status: {status}")
             if self.is_recording:
                 self.frames.append(indata.copy())
+                if self._audio_level_callback is not None:
+                    rms = np.sqrt(np.mean(indata.astype(np.float32) ** 2))
+                    level = min(1.0, rms / 400.0)
+                    self._audio_level_callback(level)
 
         try:
             with sd.InputStream(

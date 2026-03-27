@@ -7,7 +7,7 @@ import sys
 import logging
 import yaml
 from pathlib import Path
-from typing import Dict, Any, List, cast
+from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +19,39 @@ def get_app_dir() -> Path:
     When running as a script, returns the project root directory.
     """
     if getattr(sys, "frozen", False):
-        # Running as PyInstaller executable
         return Path(sys.executable).parent
     else:
-        # Running as script - go up from src/config/ to project root
         return Path(__file__).parent.parent.parent
+
+
+def _config_property(section: str, key: str, default=None):
+    """Create a property that reads/writes from a nested config dict.
+
+    Handles both flat keys (section=key, key=None) and nested keys (section.key).
+    Setters auto-create the section dict if missing.
+    """
+    def getter(self):
+        if section in self.config and isinstance(self.config[section], dict):
+            return self.config[section].get(key, default)
+        return default
+
+    def setter(self, value):
+        if section not in self.config:
+            self.config[section] = {}
+        self.config[section][key] = value
+
+    return property(getter, setter)
+
+
+def _flat_config_property(key: str, default=None):
+    """Property for top-level config keys."""
+    def getter(self):
+        return self.config.get(key, default)
+
+    def setter(self, value):
+        self.config[key] = value
+
+    return property(getter, setter)
 
 
 class Settings:
@@ -37,6 +65,8 @@ class Settings:
         "behavior": {"auto_paste": False, "auto_enter": False, "always_on_top": False, "persistent_overlay": False},
         "edit_hotkey": {"modifiers": ["ctrl", "alt"], "key": "space"},
         "edit": {"auto_paste": True, "auto_enter": False},
+        "transformation": {"model": "qwen/qwen3-32b"},
+        "edition": {"model": "qwen/qwen3-32b"},
         "ui_language": "es",
     }
 
@@ -44,12 +74,6 @@ class Settings:
     config: Dict[str, Any]
 
     def __init__(self, config_path: str | None = None):
-        """
-        Initialize settings.
-
-        Args:
-            config_path: Path to config.yaml file. If None, looks in current directory.
-        """
         if config_path is None:
             self.config_path = get_app_dir() / "config.yaml"
         else:
@@ -58,13 +82,10 @@ class Settings:
         self._apply_env_overrides()
 
     def _load_config(self) -> Dict[str, Any]:
-        """Load configuration from yaml file or use defaults."""
         if self.config_path.exists():
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     loaded_config = yaml.safe_load(f) or {}
-
-                # Merge with defaults
                 config = self.DEFAULT_CONFIG.copy()
                 self._deep_merge(config, loaded_config)
                 return config
@@ -77,7 +98,6 @@ class Settings:
             return self.DEFAULT_CONFIG.copy()
 
     def _deep_merge(self, base: Dict, override: Dict) -> None:
-        """Recursively merge override dict into base dict."""
         for key, value in override.items():
             if key in base and isinstance(base[key], dict) and isinstance(value, dict):
                 self._deep_merge(base[key], value)
@@ -85,186 +105,65 @@ class Settings:
                 base[key] = value
 
     def _apply_env_overrides(self) -> None:
-        """Apply environment variable overrides."""
         api_key_env = os.environ.get("DICTO_API_KEY")
         if api_key_env:
             self.config["transcription"]["api_key"] = api_key_env
 
-    # Hotkey settings
-    @property
-    def hotkey_modifiers(self) -> List[str]:
-        """Get hotkey modifiers (e.g., ['ctrl', 'shift'])."""
-        return cast(List[str], self.config["hotkey"]["modifiers"])
+    # ── Hotkey settings ──────────────────────────────────────
 
-    @hotkey_modifiers.setter
-    def hotkey_modifiers(self, value: List[str]) -> None:
-        """Set hotkey modifiers."""
-        self.config["hotkey"]["modifiers"] = value
+    hotkey_modifiers: List[str] = _config_property("hotkey", "modifiers", ["ctrl", "shift"])
+    hotkey_key: str = _config_property("hotkey", "key", "space")
 
-    @property
-    def hotkey_key(self) -> str:
-        """Get hotkey key (e.g., 'space')."""
-        return cast(str, self.config["hotkey"]["key"])
+    # ── Overlay settings ─────────────────────────────────────
 
-    @hotkey_key.setter
-    def hotkey_key(self, value: str) -> None:
-        """Set hotkey key."""
-        self.config["hotkey"]["key"] = value
+    overlay_position: str = _config_property("overlay", "position", "top-right")
+    overlay_size: int = _config_property("overlay", "size", 100)
+    overlay_opacity: float = _config_property("overlay", "opacity", 0.9)
 
-    # Overlay settings
-    @property
-    def overlay_position(self) -> str:
-        """Get overlay position on screen."""
-        return cast(str, self.config["overlay"]["position"])
+    # ── Transcription settings ───────────────────────────────
 
-    @property
-    def overlay_size(self) -> int:
-        """Get overlay size in pixels."""
-        return cast(int, self.config["overlay"]["size"])
+    transcription_api_key: str = _config_property("transcription", "api_key", "")
+    transcription_language: str = _config_property("transcription", "language", "es")
+    transcription_model: str = _config_property("transcription", "model", "v3-turbo")
 
-    @property
-    def overlay_opacity(self) -> float:
-        """Get overlay opacity (0.0 to 1.0)."""
-        return cast(float, self.config["overlay"]["opacity"])
+    # ── Audio settings ───────────────────────────────────────
 
-    # Transcription settings
-    @property
-    def transcription_api_key(self) -> str:
-        """Get transcription API key."""
-        return cast(str, self.config["transcription"]["api_key"])
+    audio_sample_rate: int = _config_property("audio", "sample_rate", 16000)
+    audio_max_duration: int = _config_property("audio", "max_duration", 120)
+    audio_channels: int = _config_property("audio", "channels", 1)
 
-    @transcription_api_key.setter
-    def transcription_api_key(self, value: str) -> None:
-        """Set transcription API key."""
-        self.config["transcription"]["api_key"] = value
+    # ── Behavior settings ────────────────────────────────────
 
-    @property
-    def transcription_language(self) -> str:
-        """Get transcription language (e.g., 'auto', 'es', 'en')."""
-        return cast(str, self.config["transcription"]["language"])
+    auto_paste: bool = _config_property("behavior", "auto_paste", False)
+    auto_enter: bool = _config_property("behavior", "auto_enter", False)
+    always_on_top: bool = _config_property("behavior", "always_on_top", False)
+    persistent_overlay: bool = _config_property("behavior", "persistent_overlay", False)
 
-    @transcription_language.setter
-    def transcription_language(self, value: str) -> None:
-        self.config["transcription"]["language"] = value
+    # ── Edit hotkey settings ─────────────────────────────────
 
-    @property
-    def transcription_model(self) -> str:
-        return cast(str, self.config.get("transcription", {}).get("model", "v3-turbo"))
+    edit_hotkey_modifiers: List[str] = _config_property("edit_hotkey", "modifiers", ["ctrl", "alt"])
+    edit_hotkey_key: str = _config_property("edit_hotkey", "key", "space")
 
-    @transcription_model.setter
-    def transcription_model(self, value: str) -> None:
-        self.config["transcription"]["model"] = value
+    # ── Edit behavior settings ───────────────────────────────
 
-    # Audio settings
-    @property
-    def audio_sample_rate(self) -> int:
-        """Get audio sample rate in Hz."""
-        return cast(int, self.config["audio"]["sample_rate"])
+    edit_auto_paste: bool = _config_property("edit", "auto_paste", True)
+    edit_auto_enter: bool = _config_property("edit", "auto_enter", False)
 
-    @property
-    def audio_max_duration(self) -> int:
-        """Get maximum recording duration in seconds."""
-        return cast(int, self.config["audio"]["max_duration"])
+    # ── Transformation model ──────────────────────────────────
 
-    @property
-    def audio_channels(self) -> int:
-        """Get number of audio channels (1 for mono, 2 for stereo)."""
-        return cast(int, self.config["audio"]["channels"])
+    transformation_model: str = _config_property("transformation", "model", "qwen/qwen3-32b")
 
-    # Behavior settings
-    @property
-    def auto_paste(self) -> bool:
-        """Get auto-paste setting (Ctrl+V after copy)."""
-        return cast(bool, self.config.get("behavior", {}).get("auto_paste", False))
+    # ── Edition model ─────────────────────────────────────────
 
-    @auto_paste.setter
-    def auto_paste(self, value: bool) -> None:
-        """Set auto-paste setting."""
-        if "behavior" not in self.config:
-            self.config["behavior"] = {}
-        self.config["behavior"]["auto_paste"] = value
+    edition_model: str = _config_property("edition", "model", "qwen/qwen3-32b")
 
-    @property
-    def auto_enter(self) -> bool:
-        """Get auto-enter setting (press Enter after paste)."""
-        return cast(bool, self.config.get("behavior", {}).get("auto_enter", False))
+    # ── UI settings ──────────────────────────────────────────
 
-    @auto_enter.setter
-    def auto_enter(self, value: bool) -> None:
-        """Set auto-enter setting."""
-        if "behavior" not in self.config:
-            self.config["behavior"] = {}
-        self.config["behavior"]["auto_enter"] = value
+    ui_language: str = _flat_config_property("ui_language", "es")
 
-    @property
-    def always_on_top(self) -> bool:
-        """Get always on top setting."""
-        return cast(bool, self.config.get("behavior", {}).get("always_on_top", False))
-
-    @always_on_top.setter
-    def always_on_top(self, value: bool) -> None:
-        if "behavior" not in self.config:
-            self.config["behavior"] = {}
-        self.config["behavior"]["always_on_top"] = value
-
-    @property
-    def persistent_overlay(self) -> bool:
-        return cast(bool, self.config.get("behavior", {}).get("persistent_overlay", False))
-
-    @persistent_overlay.setter
-    def persistent_overlay(self, value: bool) -> None:
-        if "behavior" not in self.config:
-            self.config["behavior"] = {}
-        self.config["behavior"]["persistent_overlay"] = value
-
-    # Edit hotkey settings
-    @property
-    def edit_hotkey_modifiers(self) -> List[str]:
-        return cast(List[str], self.config["edit_hotkey"]["modifiers"])
-
-    @edit_hotkey_modifiers.setter
-    def edit_hotkey_modifiers(self, value: List[str]) -> None:
-        self.config["edit_hotkey"]["modifiers"] = value
-
-    @property
-    def edit_hotkey_key(self) -> str:
-        return cast(str, self.config["edit_hotkey"]["key"])
-
-    @edit_hotkey_key.setter
-    def edit_hotkey_key(self, value: str) -> None:
-        self.config["edit_hotkey"]["key"] = value
-
-    # Edit behavior settings
-    @property
-    def edit_auto_paste(self) -> bool:
-        return cast(bool, self.config.get("edit", {}).get("auto_paste", True))
-
-    @edit_auto_paste.setter
-    def edit_auto_paste(self, value: bool) -> None:
-        if "edit" not in self.config:
-            self.config["edit"] = {}
-        self.config["edit"]["auto_paste"] = value
-
-    @property
-    def edit_auto_enter(self) -> bool:
-        return cast(bool, self.config.get("edit", {}).get("auto_enter", False))
-
-    @edit_auto_enter.setter
-    def edit_auto_enter(self, value: bool) -> None:
-        if "edit" not in self.config:
-            self.config["edit"] = {}
-        self.config["edit"]["auto_enter"] = value
-
-    @property
-    def ui_language(self) -> str:
-        return cast(str, self.config.get("ui_language", "es"))
-
-    @ui_language.setter
-    def ui_language(self, value: str) -> None:
-        self.config["ui_language"] = value
+    # ── Persistence ──────────────────────────────────────────
 
     def save(self) -> None:
-        """Save current configuration to yaml file."""
         try:
             with open(self.config_path, "w", encoding="utf-8") as f:
                 yaml.dump(self.config, f, default_flow_style=False)
@@ -273,7 +172,6 @@ class Settings:
             logger.error(f"Error saving configuration: {e}")
 
     def create_default_config(self) -> None:
-        """Create a default config.yaml file if it doesn't exist."""
         if not self.config_path.exists():
             self.config = self.DEFAULT_CONFIG.copy()
             self.save()
@@ -285,15 +183,6 @@ _settings_instance = None
 
 
 def get_settings(config_path: str | None = None) -> Settings:
-    """
-    Get the global settings instance.
-
-    Args:
-        config_path: Path to config file. Only used on first call.
-
-    Returns:
-        Settings instance
-    """
     global _settings_instance
     if _settings_instance is None:
         _settings_instance = Settings(config_path)

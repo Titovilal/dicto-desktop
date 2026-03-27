@@ -35,6 +35,7 @@ class HotkeyListener:
         on_press: Callable | None = None,
         on_release: Callable | None = None,
         mode: str = "hold",
+        suppress_key: bool = False,
     ):
         """
         Initialize hotkey listener.
@@ -45,12 +46,14 @@ class HotkeyListener:
             on_press: Callback function when hotkey is pressed
             on_release: Callback function when hotkey is released
             mode: "hold" for press+release, "press" for single press trigger
+            suppress_key: If True, suppress the hotkey so it doesn't reach other apps
         """
         self.modifiers = self._parse_modifiers(modifiers)
         self.key = self._parse_key(key)
         self.on_press_callback = on_press
         self.on_release_callback = on_release
         self.mode = mode
+        self.suppress_key = suppress_key
 
         self.current_modifiers: Set = set()
         self.hotkey_pressed = False
@@ -151,28 +154,72 @@ class HotkeyListener:
             self.current_modifiers.discard(keyboard.Key.cmd)
 
         # Check if hotkey is released
-        if self.hotkey_pressed and key == self.key:
+        if self.hotkey_pressed and self._key_matches(key):
             self.hotkey_pressed = False
             if self.on_release_callback:
                 self.on_release_callback()
 
     def _is_hotkey_combination(self, key) -> bool:
         """Check if current key combination matches the configured hotkey."""
-        # Check if the main key matches
-        if key != self.key:
+        if not self._key_matches(key):
             return False
 
         # Check if all required modifiers are pressed
         return self.modifiers.issubset(self.current_modifiers)
+
+    def _win32_filter(self, msg, data):
+        """With suppress=True, all keys are blocked by default.
+        We set _suppress=False to let everything through, except our hotkey combo."""
+        # Default: let the key through
+        self.listener._suppress = False
+
+        # Only check key events
+        if msg in (0x0100, 0x0104, 0x0101, 0x0105):
+            try:
+                key = keyboard.KeyCode.from_vk(data.vkCode)
+                if self.modifiers.issubset(self.current_modifiers) and self._key_matches(key):
+                    self.listener._suppress = True
+            except Exception:
+                pass
+        return True
+
+    @staticmethod
+    def _get_vk(key) -> int | None:
+        """Extract the virtual-key code from any pynput key representation."""
+        if hasattr(key, 'vk') and key.vk is not None:
+            return key.vk
+        # Key enum members (Key.space, etc.) store a KeyCode in .value
+        if hasattr(key, 'value') and hasattr(key.value, 'vk'):
+            return key.value.vk
+        # KeyCode.from_char('x') has char but no vk – derive it
+        if hasattr(key, 'char') and key.char:
+            return ord(key.char.upper())
+        return None
+
+    def _key_matches(self, key) -> bool:
+        """Check if a key matches our configured hotkey key."""
+        if key == self.key:
+            return True
+        key_vk = self._get_vk(key)
+        target_vk = self._get_vk(self.key)
+        if key_vk is not None and target_vk is not None:
+            return key_vk == target_vk
+        return False
 
     def start(self):
         """Start listening for hotkeys in a separate thread."""
         if self.listener is not None:
             return  # Already running
 
-        self.listener = keyboard.Listener(
-            on_press=self._on_press, on_release=self._on_release
+        kwargs = dict(
+            on_press=self._on_press,
+            on_release=self._on_release,
         )
+        if self.suppress_key:
+            kwargs["suppress"] = True
+            kwargs["win32_event_filter"] = self._win32_filter
+
+        self.listener = keyboard.Listener(**kwargs)
 
         # keyboard.Listener is already a threading.Thread subclass
         # Just call start() directly - it runs in its own daemon thread

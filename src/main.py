@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from PySide6.QtWidgets import QApplication  # noqa: E402
-from PySide6.QtCore import QTimer, Slot  # noqa: E402
+from PySide6.QtCore import Qt, QTimer, Slot  # noqa: E402
 from PySide6.QtGui import QIcon  # noqa: E402
 
 from src.config.settings import get_settings  # noqa: E402
@@ -94,6 +94,7 @@ class DictoApp:
         self.tray_manager = None
         self.overlay = None
         self.main_window = None
+        self._in_edit_flow = False
 
         self._init_components()
         self._connect_signals()
@@ -168,17 +169,26 @@ class DictoApp:
         self.controller.error_occurred.connect(self._on_error)
 
         # Controller events -> Update main window
-        self.controller.recording_started.connect(self.main_window.set_recording_state)
+        # recording_started -> main window is handled in _on_recording_started_overlay
         self.controller.transcription_completed.connect(self.main_window.update_transcription)
 
         # Main window actions -> Controller
         self.main_window.play_clicked.connect(self.controller.start_recording_manual)
         self.main_window.stop_clicked.connect(self.controller.stop_recording_manual)
+        self.main_window.cancel_clicked.connect(self.controller.cancel)
         self.main_window.transform_requested.connect(self.controller.request_transform)
 
         # Controller transform results -> Main window
         self.controller.transform_completed.connect(self.main_window.on_transform_completed)
         self.controller.transform_failed.connect(self.main_window.on_transform_failed)
+
+        # Audio level -> waveform widgets
+        self.controller.audio_level_changed.connect(
+            self.main_window.waveform.set_level, Qt.ConnectionType.QueuedConnection)
+        self.controller.audio_level_changed.connect(
+            self.overlay.waveform_recording.set_level, Qt.ConnectionType.QueuedConnection)
+        self.controller.audio_level_changed.connect(
+            self.overlay.waveform_editing.set_level, Qt.ConnectionType.QueuedConnection)
 
         # Edit selection signals -> UI state updates
         self.controller.edit_started.connect(self._on_edit_started)
@@ -188,6 +198,10 @@ class DictoApp:
         # Hotkey changes -> Controller
         self.main_window.recording_hotkey_changed.connect(self.controller.update_recording_hotkey)
         self.main_window.edit_hotkey_changed.connect(self.controller.update_edit_hotkey)
+
+        # Overlay record/stop buttons
+        self.overlay.record_requested.connect(self.controller.start_recording_manual)
+        self.overlay.stop_requested.connect(self.controller.stop_recording_manual)
 
         # Persistent overlay setting
         self.main_window.persistent_overlay_changed.connect(self.overlay.set_persistent)
@@ -203,9 +217,15 @@ class DictoApp:
 
     @Slot()
     def _on_recording_started_overlay(self):
-        """Show recording state on overlay."""
+        """Show recording state on overlay and main window."""
         assert self.overlay is not None
-        self.overlay.show_recording()
+        assert self.main_window is not None
+        if self._in_edit_flow:
+            self.overlay.show_editing()
+            self.main_window.set_editing_state()
+        else:
+            self.overlay.show_recording()
+            self.main_window.set_recording_state()
 
     @Slot(AppState)
     def _on_state_changed(self, state: AppState):
@@ -262,6 +282,7 @@ class DictoApp:
         assert self.tray_manager is not None
         assert self.overlay is not None
 
+        self._in_edit_flow = False
         # Show error overlay
         short_message = (
             error_message[:30] + "..." if len(error_message) > 30 else error_message
@@ -279,8 +300,8 @@ class DictoApp:
         """Handle edit selection started."""
         assert self.overlay is not None
         assert self.main_window is not None
-        self.overlay.show_processing()
-        self.main_window.set_processing_state()
+        self._in_edit_flow = True
+        self.overlay.show_editing()
 
     @Slot(str)
     def _on_edit_completed(self, text: str):
@@ -289,6 +310,7 @@ class DictoApp:
         assert self.overlay is not None
         assert self.tray_manager is not None
 
+        self._in_edit_flow = False
         self.overlay.show_success()
 
 
@@ -347,8 +369,9 @@ class DictoApp:
         """Clean shutdown of the application."""
         logger.info("Shutting down Dicto...")
 
-        # Stop controller
+        # Cancel any active operation, then stop controller
         if self.controller:
+            self.controller.cancel()
             self.controller.stop()
 
         # Clean up tray

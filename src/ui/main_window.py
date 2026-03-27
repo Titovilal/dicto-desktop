@@ -4,7 +4,6 @@ Redesigned to match the dicto web component aesthetic.
 """
 
 import logging
-import math
 import os
 
 from PySide6.QtWidgets import (
@@ -28,12 +27,14 @@ from PySide6.QtGui import QIcon, QFont, QPainter, QColor, QPixmap, QDesktopServi
 from src.utils.icons import get_icon_path
 from src.i18n import t, set_language, get_language
 from src.i18n.translations import UI_LANGUAGES
+from src.ui.waveform import WaveformWidget
 from src.ui.main_window_styles import (
     GLOBAL_STYLE,
     DOT_IDLE,
     DOT_RECORDING,
     DOT_PROCESSING,
     DOT_SUCCESS,
+    DOT_EDITING,
     HEADER_BUTTON,
     HEADER_BUTTON_CLOSE,
     HEADER_BUTTON_ACTIVE,
@@ -45,11 +46,14 @@ from src.ui.main_window_styles import (
     IDLE_TEXT_BOLD,
     RECORDING_LABEL,
     PROCESSING_LABEL,
+    EDITING_LABEL,
     TIMER_RECORDING,
     TIMER_PROCESSING,
+    TIMER_EDITING,
     RECORD_BUTTON_IDLE,
     RECORD_BUTTON_RECORDING,
     RECORD_BUTTON_PROCESSING,
+    RECORD_BUTTON_EDITING,
     FOOTER_TEXT_BUTTON,
     FOOTER_TEXT_BUTTON_SUCCESS,
     SECTION_LABEL,
@@ -63,6 +67,7 @@ from src.ui.main_window_styles import (
     SVG_EXTERNAL,
     SVG_AUDIO_LINES,
     SVG_BACK,
+    SVG_MODELS,
     BG,
     MUTED,
     BORDER,
@@ -72,6 +77,7 @@ from src.ui.main_window_styles import (
     RED_HOVER,
     AMBER,
     GREEN,
+    BLUE,
 )
 
 logger = logging.getLogger(__name__)
@@ -101,52 +107,6 @@ def _make_icon(svg_data: str, size: int, color: str) -> QIcon:
     icon.addPixmap(px)
     return icon
 
-
-class WaveformWidget(QWidget):
-    """Animated waveform bars for recording state."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.bar_count = 18
-        self.bar_heights = [0.3] * self.bar_count
-        self.setFixedHeight(28)
-
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self._update_bars)
-        self._tick = 0
-
-    def start(self):
-        self._tick = 0
-        self._timer.start(50)
-
-    def stop(self):
-        self._timer.stop()
-
-    def _update_bars(self):
-        self._tick += 1
-        for i in range(self.bar_count):
-            phase = (i * 0.7 + self._tick * 0.15)
-            self.bar_heights[i] = 0.2 + 0.8 * abs(math.sin(phase))
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        total_width = self.bar_count * 4 - 2  # 2px bar + 2px gap
-        start_x = (self.width() - total_width) // 2
-        max_h = self.height()
-
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(RED))
-
-        for i in range(self.bar_count):
-            h = max(2, int(self.bar_heights[i] * max_h))
-            x = start_x + i * 4
-            y = (max_h - h) // 2
-            painter.drawRoundedRect(x, y, 2, h, 1, 1)
-
-        painter.end()
 
 
 class HotkeyButton(QPushButton):
@@ -231,6 +191,10 @@ class HotkeyButton(QPushButton):
         # Determine key name
         if qt_key in self._KEY_MAP:
             key_name = self._KEY_MAP[qt_key]
+        elif Qt.Key.Key_A <= qt_key <= Qt.Key.Key_Z:
+            key_name = chr(qt_key).lower()
+        elif Qt.Key.Key_0 <= qt_key <= Qt.Key.Key_9:
+            key_name = chr(qt_key)
         else:
             key_name = event.text().lower().strip()
             if not key_name:
@@ -276,6 +240,7 @@ class MainWindow(QMainWindow):
     # Signals
     play_clicked = Signal()
     stop_clicked = Signal()
+    cancel_clicked = Signal()
     copy_clicked = Signal()
     transform_requested = Signal(str, str, str)  # (format_id, text, instructions)
     persistent_overlay_changed = Signal(bool)
@@ -294,6 +259,7 @@ class MainWindow(QMainWindow):
         self._elapsed_seconds = 0
         self._copied = False
         self._settings_open = False
+        self._models_open = False
         self._format_cache: dict[str, str] = {}  # format_id -> transformed text
         self._transforming_format: str | None = None
         self._setup_ui()
@@ -310,7 +276,7 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self):
         self.setWindowTitle("Dicto")
-        self.setFixedSize(420, 370)
+        self.setFixedSize(420, 390)
         self.setStyleSheet(GLOBAL_STYLE)
 
         # Frameless window with transparent background for rounded corners
@@ -340,6 +306,7 @@ class MainWindow(QMainWindow):
         self._create_recording_page()
         self._create_done_page()
         self._create_settings_page()
+        self._create_models_page()
 
         self._create_footer(main_layout)
 
@@ -367,15 +334,7 @@ class MainWindow(QMainWindow):
         title.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {TEXT}; letter-spacing: -0.5px;")
         layout.addWidget(title)
 
-        layout.addStretch()
-
-        # Timer label (hidden by default)
-        self.timer_label = QLabel("")
-        self.timer_label.setStyleSheet(TIMER_RECORDING)
-        self.timer_label.hide()
-        layout.addWidget(self.timer_label)
-
-        # Web button
+        # Web button (next to title)
         web_btn = QPushButton()
         web_btn.setFixedSize(28, 28)
         web_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -388,6 +347,28 @@ class MainWindow(QMainWindow):
         web_btn._icon_hover = _make_icon(SVG_EXTERNAL, 16, TEXT)
         web_btn.installEventFilter(self)
         layout.addWidget(web_btn)
+
+        layout.addStretch()
+
+        # Timer label (hidden by default)
+        self.timer_label = QLabel("")
+        self.timer_label.setStyleSheet(TIMER_RECORDING)
+        self.timer_label.hide()
+        layout.addWidget(self.timer_label)
+
+        # Models button
+        self.models_button = QPushButton()
+        self.models_button.setFixedSize(28, 28)
+        self.models_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.models_button.setIcon(_make_icon(SVG_MODELS, 16, TEXT_DIM))
+        self.models_button.setIconSize(QSize(16, 16))
+        self.models_button.setStyleSheet(HEADER_BUTTON)
+        self.models_button.setToolTip(t("models"))
+        self.models_button.clicked.connect(self._toggle_models)
+        self.models_button._icon_normal = _make_icon(SVG_MODELS, 16, TEXT_DIM)
+        self.models_button._icon_hover = _make_icon(SVG_MODELS, 16, TEXT)
+        self.models_button.installEventFilter(self)
+        layout.addWidget(self.models_button)
 
         # Settings button
         self.settings_button = QPushButton()
@@ -498,6 +479,8 @@ class MainWindow(QMainWindow):
         self.processing_label.setText(t("transforming"))
         self.processing_label.show()
         self.copy_button.hide()
+        self.cancel_button.show()
+        self._dots_timer.start(400)
 
         instructions = self._get_format_instructions().get(fid, "")
         self.transform_requested.emit(fid, self.last_transcription, instructions)
@@ -506,6 +489,8 @@ class MainWindow(QMainWindow):
     def on_transform_completed(self, format_id: str, text: str):
         self._format_cache[format_id] = text
         self._transforming_format = None
+        self._dots_timer.stop()
+        self.cancel_button.hide()
         if self._active_format == format_id:
             self.processing_label.hide()
             self.transcription_text.setText(text)
@@ -514,6 +499,8 @@ class MainWindow(QMainWindow):
     @Slot(str, str)
     def on_transform_failed(self, format_id: str, error: str):
         self._transforming_format = None
+        self._dots_timer.stop()
+        self.cancel_button.hide()
         if self._active_format == format_id:
             self.processing_label.hide()
             self.transcription_text.setText(f"Error: {error}")
@@ -582,7 +569,7 @@ class MainWindow(QMainWindow):
 
         layout.addStretch()
 
-        self.waveform = WaveformWidget()
+        self.waveform = WaveformWidget(bar_count=18, bar_width=2, bar_gap=2, height=28, mode="live")
         layout.addWidget(self.waveform, 0, Qt.AlignmentFlag.AlignCenter)
 
         layout.addStretch()
@@ -591,10 +578,16 @@ class MainWindow(QMainWindow):
     def _animate_dots(self):
         self._dots_count = (self._dots_count + 1) % 4
         dots = "." * self._dots_count + "\u00A0" * (3 - self._dots_count)
-        if self.is_recording:
+        if self.is_recording and getattr(self, '_is_editing', False):
             self.recording_label.setText(f"{t('listening')}{dots}")
+        elif self.is_recording:
+            self.recording_label.setText(f"{t('listening')}{dots}")
+        elif self.is_processing and getattr(self, '_is_editing', False):
+            self.processing_label.setText(f"{t('editing')}{dots}")
         elif self.is_processing:
             self.processing_label.setText(f"{t('processing')}{dots}")
+        elif self._transforming_format is not None:
+            self.processing_label.setText(f"{t('transforming')}{dots}")
 
     # ── Done Page ───────────────────────────────────────────
 
@@ -614,13 +607,58 @@ class MainWindow(QMainWindow):
         self.transcription_text.setReadOnly(True)
         self.transcription_text.setStyleSheet(CONTENT_TEXT)
         self.transcription_text.setFrameShape(QTextEdit.Shape.NoFrame)
+        self.transcription_text.verticalScrollBar().setSingleStep(15)
         layout.addWidget(self.transcription_text)
 
         self.content_stack.addWidget(page)
 
     # ── Settings Page ───────────────────────────────────────
 
-    def _create_settings_page(self):
+    def _add_checkbox(self, layout, label_key: str, callback) -> QCheckBox:
+        """Create a checkbox, connect its signal, add to layout, and return it."""
+        cb = QCheckBox(t(label_key))
+        cb.stateChanged.connect(callback)
+        layout.addWidget(cb)
+        return cb
+
+    def _add_combo(self, layout, items: dict, callback) -> QComboBox:
+        """Create a combo box with items, connect its signal, add to layout, and return it."""
+        combo = QComboBox()
+        combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        combo.wheelEvent = lambda e: e.ignore()
+        for value, label in items.items():
+            combo.addItem(label, value)
+        combo.currentIndexChanged.connect(callback)
+        layout.addWidget(combo)
+        return combo
+
+    def _add_section(self, layout, title_key: str):
+        """Add a section separator + label to layout."""
+        layout.addSpacing(12)
+        layout.addWidget(self._make_separator())
+        layout.addSpacing(12)
+        layout.addWidget(self._section_label(t(title_key)))
+        layout.addSpacing(6)
+
+    def _add_hotkey_row(self, layout, label_key: str, modifiers: list[str], key: str, callback) -> HotkeyButton:
+        """Create a labeled hotkey button row."""
+        row = QHBoxLayout()
+        row.setSpacing(8)
+        label = QLabel(t(label_key))
+        label.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+        label.setFixedWidth(120)
+        row.addWidget(label)
+
+        btn = HotkeyButton(modifiers, key)
+        btn.setFixedHeight(32)
+        btn.setStyleSheet(FLAT_BUTTON)
+        btn.hotkey_changed.connect(callback)
+        row.addWidget(btn)
+        layout.addLayout(row)
+        return btn
+
+    def _create_scroll_page(self):
+        """Create a scrollable page and return (page, layout) for adding content."""
         page = QWidget()
         page.setStyleSheet("background-color: transparent;")
         page_layout = QVBoxLayout(page)
@@ -638,174 +676,120 @@ class MainWindow(QMainWindow):
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
             QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: none; }}
         """)
+        scroll.verticalScrollBar().setSingleStep(15)
 
         scroll_content = QWidget()
-        scroll_content.setStyleSheet(f"background-color: transparent;")
+        scroll_content.setStyleSheet("background-color: transparent;")
         layout = QVBoxLayout(scroll_content)
         layout.setContentsMargins(24, 16, 24, 16)
         layout.setSpacing(0)
 
-        # UI Language section
-        layout.addWidget(self._section_label(t("ui_language")))
-        layout.addSpacing(8)
+        scroll.setWidget(scroll_content)
+        page_layout.addWidget(scroll)
+        return page, layout
 
-        self.ui_language_combo = QComboBox()
-        self.ui_language_combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.ui_language_combo.wheelEvent = lambda e: e.ignore()
-        for code, name in UI_LANGUAGES.items():
-            self.ui_language_combo.addItem(name, code)
-        self.ui_language_combo.currentIndexChanged.connect(self._on_ui_language_changed)
-        layout.addWidget(self.ui_language_combo)
+    def _create_settings_page(self):
+        page, layout = self._create_scroll_page()
 
-        layout.addSpacing(12)
-        layout.addWidget(self._make_separator())
-        layout.addSpacing(12)
-
-        # Behavior section
-        layout.addWidget(self._section_label(t("behavior")))
-        layout.addSpacing(6)
-
-        self.auto_paste_checkbox = QCheckBox(t("auto_paste_after_transcribe"))
-        self.auto_paste_checkbox.stateChanged.connect(self._on_auto_paste_changed)
-        layout.addWidget(self.auto_paste_checkbox)
-
-        self.auto_enter_checkbox = QCheckBox(t("press_enter_after_paste"))
-        self.auto_enter_checkbox.stateChanged.connect(self._on_auto_enter_changed)
-        layout.addWidget(self.auto_enter_checkbox)
-
-        self.always_on_top_checkbox = QCheckBox(t("always_on_top"))
-        self.always_on_top_checkbox.stateChanged.connect(self._on_always_on_top_changed)
-        layout.addWidget(self.always_on_top_checkbox)
-
-        self.persistent_overlay_checkbox = QCheckBox(t("persistent_overlay"))
-        self.persistent_overlay_checkbox.stateChanged.connect(self._on_persistent_overlay_changed)
-        layout.addWidget(self.persistent_overlay_checkbox)
-
-        layout.addSpacing(12)
-        layout.addWidget(self._make_separator())
-        layout.addSpacing(12)
-
-        # Edit selection section
-        layout.addWidget(self._section_label(t("edit_selection")))
-        layout.addSpacing(6)
-
-        self.edit_auto_paste_checkbox = QCheckBox(t("auto_paste_after_edit"))
-        self.edit_auto_paste_checkbox.stateChanged.connect(self._on_edit_auto_paste_changed)
-        layout.addWidget(self.edit_auto_paste_checkbox)
-
-        self.edit_auto_enter_checkbox = QCheckBox(t("press_enter_after_paste"))
-        self.edit_auto_enter_checkbox.stateChanged.connect(self._on_edit_auto_enter_changed)
-        layout.addWidget(self.edit_auto_enter_checkbox)
-
-        layout.addSpacing(12)
-        layout.addWidget(self._make_separator())
-        layout.addSpacing(12)
-
-        # Language section
-        layout.addWidget(self._section_label(t("language")))
-        layout.addSpacing(8)
-
-        self.language_combo = QComboBox()
-        self.language_combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.language_combo.wheelEvent = lambda e: e.ignore()
-        for code, name in self.LANGUAGES.items():
-            self.language_combo.addItem(name, code)
-        self.language_combo.currentIndexChanged.connect(self._on_language_changed)
-        layout.addWidget(self.language_combo)
-
-        layout.addSpacing(12)
-        layout.addWidget(self._make_separator())
-        layout.addSpacing(12)
-
-        # Model section
-        layout.addWidget(self._section_label(t("model")))
-        layout.addSpacing(8)
-
-        self.model_combo = QComboBox()
-        self.model_combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.model_combo.wheelEvent = lambda e: e.ignore()
-        self.model_combo.addItem(t("model_fast"), "v3-turbo")
-        self.model_combo.addItem(t("model_accurate"), "v3")
-        self.model_combo.currentIndexChanged.connect(self._on_model_changed)
-        layout.addWidget(self.model_combo)
-
-        layout.addSpacing(12)
-        layout.addWidget(self._make_separator())
-        layout.addSpacing(12)
-
-        # Hotkeys section
-        layout.addWidget(self._section_label(t("keyboard_shortcuts")))
-        layout.addSpacing(8)
-
-        rec_hk_row = QHBoxLayout()
-        rec_hk_row.setSpacing(8)
-        rec_hk_label = QLabel(t("hotkey_record"))
-        rec_hk_label.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
-        rec_hk_label.setFixedWidth(120)
-        rec_hk_row.addWidget(rec_hk_label)
-
-        rec_mods = self.settings.hotkey_modifiers if self.settings else ["ctrl", "shift"]
-        rec_key = self.settings.hotkey_key if self.settings else "space"
-        self.recording_hotkey_button = HotkeyButton(rec_mods, rec_key)
-        self.recording_hotkey_button.setFixedHeight(32)
-        self.recording_hotkey_button.setStyleSheet(FLAT_BUTTON)
-        self.recording_hotkey_button.hotkey_changed.connect(self._on_recording_hotkey_changed)
-        rec_hk_row.addWidget(self.recording_hotkey_button)
-        layout.addLayout(rec_hk_row)
-        layout.addSpacing(6)
-
-        edit_hk_row = QHBoxLayout()
-        edit_hk_row.setSpacing(8)
-        edit_hk_label = QLabel(t("hotkey_edit_selection"))
-        edit_hk_label.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
-        edit_hk_label.setFixedWidth(120)
-        edit_hk_row.addWidget(edit_hk_label)
-
-        edit_mods = self.settings.edit_hotkey_modifiers if self.settings else ["ctrl", "alt"]
-        edit_key = self.settings.edit_hotkey_key if self.settings else "space"
-        self.edit_hotkey_button = HotkeyButton(edit_mods, edit_key)
-        self.edit_hotkey_button.setFixedHeight(32)
-        self.edit_hotkey_button.setStyleSheet(FLAT_BUTTON)
-        self.edit_hotkey_button.hotkey_changed.connect(self._on_edit_hotkey_changed)
-        edit_hk_row.addWidget(self.edit_hotkey_button)
-        layout.addLayout(edit_hk_row)
-
-        layout.addSpacing(12)
-        layout.addWidget(self._make_separator())
-        layout.addSpacing(12)
-
-        # API Key section
+        # API Key (first — essential to get started)
         layout.addWidget(self._section_label(t("api_key")))
-        layout.addSpacing(8)
-
+        layout.addSpacing(6)
         self.api_key_input = QLineEdit()
         self.api_key_input.setPlaceholderText("sk-dicto-...")
         self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.api_key_input)
         layout.addSpacing(8)
 
-        api_row = QHBoxLayout()
-        api_row.setSpacing(8)
-
-        self.toggle_api_key_button = QPushButton(t("show"))
-        self.toggle_api_key_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.toggle_api_key_button.setFixedHeight(32)
-        self.toggle_api_key_button.setStyleSheet(FLAT_BUTTON)
-        self.toggle_api_key_button.clicked.connect(self._on_toggle_api_key_visibility)
-        api_row.addWidget(self.toggle_api_key_button)
-
-        self.save_api_key_button = QPushButton(t("save"))
+        self.save_api_key_button = QPushButton(t("save_key"))
         self.save_api_key_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.save_api_key_button.setFixedHeight(32)
         self.save_api_key_button.setStyleSheet(ACCENT_BUTTON)
         self.save_api_key_button.clicked.connect(self._on_save_api_key)
-        api_row.addWidget(self.save_api_key_button)
+        layout.addWidget(self.save_api_key_button)
 
-        layout.addLayout(api_row)
+        # Keyboard shortcuts
+        self._add_section(layout, "keyboard_shortcuts")
+        layout.addSpacing(2)
+        rec_mods = self.settings.hotkey_modifiers if self.settings else ["ctrl", "shift"]
+        rec_key = self.settings.hotkey_key if self.settings else "space"
+        self.recording_hotkey_button = self._add_hotkey_row(layout, "hotkey_record", rec_mods, rec_key, self._on_recording_hotkey_changed)
+        layout.addSpacing(6)
+        edit_mods = self.settings.edit_hotkey_modifiers if self.settings else ["ctrl", "alt"]
+        edit_key = self.settings.edit_hotkey_key if self.settings else "space"
+        self.edit_hotkey_button = self._add_hotkey_row(layout, "hotkey_edit_selection", edit_mods, edit_key, self._on_edit_hotkey_changed)
+
+        # Behavior (transcription + edit selection together)
+        self._add_section(layout, "behavior")
+        self.auto_paste_checkbox = self._add_checkbox(layout, "auto_paste_after_transcribe", self._on_auto_paste_changed)
+        self.auto_enter_checkbox = self._add_checkbox(layout, "press_enter_after_paste", self._on_auto_enter_changed)
+
+        # Edit selection
+        self._add_section(layout, "edit_selection")
+        self.edit_auto_paste_checkbox = self._add_checkbox(layout, "auto_paste_after_edit", self._on_edit_auto_paste_changed)
+        self.edit_auto_enter_checkbox = self._add_checkbox(layout, "press_enter_after_paste", self._on_edit_auto_enter_changed)
+
+        # Window (application + overlay merged)
+        self._add_section(layout, "application")
+        self.always_on_top_checkbox = self._add_checkbox(layout, "always_on_top", self._on_always_on_top_changed)
+        self.persistent_overlay_checkbox = self._add_checkbox(layout, "persistent_overlay", self._on_persistent_overlay_changed)
+
+        # UI Language (rarely changed)
+        self._add_section(layout, "ui_language")
+        self.ui_language_combo = self._add_combo(layout, UI_LANGUAGES, self._on_ui_language_changed)
+
         layout.addStretch()
+        self.content_stack.addWidget(page)
 
-        scroll.setWidget(scroll_content)
-        page_layout.addWidget(scroll)
+    def _create_models_page(self):
+        page, layout = self._create_scroll_page()
+
+        # Transcription model
+        layout.addWidget(self._section_label(t("transcription_model")))
+        layout.addSpacing(6)
+        self.model_combo = self._add_combo(
+            layout,
+            {
+                "v3-turbo": t("model_fast"),
+                "v3": t("model_accurate"),
+                "gemini-3-flash-preview": "Gemini 3 Flash",
+                "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
+            },
+            self._on_model_changed,
+        )
+
+        # Transcription language
+        self._add_section(layout, "transcription_language")
+        self.language_combo = self._add_combo(layout, self.LANGUAGES, self._on_language_changed)
+
+        # Transformation model
+        self._add_section(layout, "transformation_model")
+        self.transformation_model_combo = self._add_combo(
+            layout,
+            {
+                "qwen/qwen3-32b": "Qwen 3 32B",
+                "openai/gpt-oss-120b": "GPT OSS 120B",
+                "openai/gpt-oss-20b": "GPT OSS 20B",
+                "gemini-3-flash-preview": "Gemini 3 Flash",
+                "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
+            },
+            self._on_transformation_model_changed,
+        )
+
+        # Edition model
+        self._add_section(layout, "edition_model")
+        self.edition_model_combo = self._add_combo(
+            layout,
+            {
+                "qwen/qwen3-32b": "Qwen 3 32B",
+                "openai/gpt-oss-120b": "GPT OSS 120B",
+                "openai/gpt-oss-20b": "GPT OSS 20B",
+                "gemini-3-flash-preview": "Gemini 3 Flash",
+                "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
+            },
+            self._on_edition_model_changed,
+        )
+
+        layout.addStretch()
         self.content_stack.addWidget(page)
 
     # ── Footer ──────────────────────────────────────────────
@@ -836,6 +820,13 @@ class MainWindow(QMainWindow):
         self.copy_button.clicked.connect(self._on_copy_clicked)
         self.copy_button.hide()
         layout.addWidget(self.copy_button)
+
+        self.cancel_button = QPushButton(t("cancel"))
+        self.cancel_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.cancel_button.setStyleSheet(FOOTER_TEXT_BUTTON)
+        self.cancel_button.clicked.connect(self._on_cancel_clicked)
+        self.cancel_button.hide()
+        layout.addWidget(self.cancel_button)
 
         layout.addStretch()
 
@@ -891,9 +882,19 @@ class MainWindow(QMainWindow):
 
     def _toggle_settings(self):
         if self._settings_open:
-            self._close_settings()
+            self._close_panel()
         else:
+            if self._models_open:
+                self._close_panel()
             self._open_settings()
+
+    def _toggle_models(self):
+        if self._models_open:
+            self._close_panel()
+        else:
+            if self._settings_open:
+                self._close_panel()
+            self._open_models()
 
     def _open_settings(self):
         self._settings_open = True
@@ -906,11 +907,25 @@ class MainWindow(QMainWindow):
         self.tabs_bar.hide()
         self.tabs_sep.hide()
 
-    def _close_settings(self):
+    def _open_models(self):
+        self._models_open = True
+        self._prev_page = self.content_stack.currentIndex()
+        self.content_stack.setCurrentIndex(4)  # models page
+        self.models_button.setIcon(_make_icon(SVG_MODELS, 16, TEXT))
+        self.models_button.setStyleSheet(HEADER_BUTTON_ACTIVE)
+        self.footer.hide()
+        self.footer_sep.hide()
+        self.tabs_bar.hide()
+        self.tabs_sep.hide()
+
+    def _close_panel(self):
         self._settings_open = False
+        self._models_open = False
         self.content_stack.setCurrentIndex(getattr(self, '_prev_page', 0))
         self.settings_button.setIcon(_make_icon(SVG_SETTINGS, 16, TEXT_DIM))
         self.settings_button.setStyleSheet(HEADER_BUTTON)
+        self.models_button.setIcon(_make_icon(SVG_MODELS, 16, TEXT_DIM))
+        self.models_button.setStyleSheet(HEADER_BUTTON)
         self.footer.show()
         self.footer_sep.show()
         self.tabs_bar.show()
@@ -939,6 +954,16 @@ class MainWindow(QMainWindow):
         model_index = self.model_combo.findData(current_model)
         if model_index >= 0:
             self.model_combo.setCurrentIndex(model_index)
+
+        current_transform_model = self.settings.transformation_model
+        transform_index = self.transformation_model_combo.findData(current_transform_model)
+        if transform_index >= 0:
+            self.transformation_model_combo.setCurrentIndex(transform_index)
+
+        current_edition_model = self.settings.edition_model
+        edition_index = self.edition_model_combo.findData(current_edition_model)
+        if edition_index >= 0:
+            self.edition_model_combo.setCurrentIndex(edition_index)
 
         if self.settings.transcription_api_key:
             self.api_key_input.setText(self.settings.transcription_api_key)
@@ -977,6 +1002,10 @@ class MainWindow(QMainWindow):
             self.play_clicked.emit()
 
     @Slot()
+    def _on_cancel_clicked(self):
+        self.cancel_clicked.emit()
+
+    @Slot()
     def _on_copy_clicked(self):
         text_to_copy = self._get_current_text()
         if text_to_copy:
@@ -1001,57 +1030,37 @@ class MainWindow(QMainWindow):
         self.copy_button.setText(t("copy"))
         self.copy_button.setStyleSheet(FOOTER_TEXT_BUTTON)
 
-    @Slot(int)
+    def _save_setting(self, attr: str, value):
+        """Save a setting attribute and persist to disk."""
+        if self.settings:
+            setattr(self.settings, attr, value)
+            self.settings.save()
+
     def _on_auto_paste_changed(self, state: int):
-        checked = state == Qt.CheckState.Checked.value
-        if self.settings:
-            self.settings.auto_paste = checked
-            self.settings.save()
+        self._save_setting("auto_paste", state == Qt.CheckState.Checked.value)
 
-    @Slot(int)
     def _on_auto_enter_changed(self, state: int):
-        checked = state == Qt.CheckState.Checked.value
-        if self.settings:
-            self.settings.auto_enter = checked
-            self.settings.save()
+        self._save_setting("auto_enter", state == Qt.CheckState.Checked.value)
 
-    @Slot(int)
     def _on_always_on_top_changed(self, state: int):
         checked = state == Qt.CheckState.Checked.value
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, checked)
         self.show()
-        if self.settings:
-            self.settings.always_on_top = checked
-            self.settings.save()
+        self._save_setting("always_on_top", checked)
 
-    @Slot(int)
     def _on_language_changed(self, index: int):
-        language_code = self.language_combo.itemData(index)
-        if self.settings:
-            self.settings.transcription_language = language_code
-            self.settings.save()
+        self._save_setting("transcription_language", self.language_combo.itemData(index))
 
-    @Slot(int)
     def _on_persistent_overlay_changed(self, state: int):
         checked = state == Qt.CheckState.Checked.value
-        if self.settings:
-            self.settings.persistent_overlay = checked
-            self.settings.save()
+        self._save_setting("persistent_overlay", checked)
         self.persistent_overlay_changed.emit(checked)
 
-    @Slot(int)
     def _on_edit_auto_paste_changed(self, state: int):
-        checked = state == Qt.CheckState.Checked.value
-        if self.settings:
-            self.settings.edit_auto_paste = checked
-            self.settings.save()
+        self._save_setting("edit_auto_paste", state == Qt.CheckState.Checked.value)
 
-    @Slot(int)
     def _on_edit_auto_enter_changed(self, state: int):
-        checked = state == Qt.CheckState.Checked.value
-        if self.settings:
-            self.settings.edit_auto_enter = checked
-            self.settings.save()
+        self._save_setting("edit_auto_enter", state == Qt.CheckState.Checked.value)
 
     @Slot(int)
     def _on_ui_language_changed(self, index: int):
@@ -1067,22 +1076,31 @@ class MainWindow(QMainWindow):
         # Update settings page labels that we can easily reach
         self.record_button.setText(t("record"))
         self.copy_button.setText(t("copy"))
+        self.cancel_button.setText(t("cancel"))
         self.auto_paste_checkbox.setText(t("auto_paste_after_transcribe"))
         self.auto_enter_checkbox.setText(t("press_enter_after_paste"))
         self.always_on_top_checkbox.setText(t("always_on_top"))
         self.persistent_overlay_checkbox.setText(t("persistent_overlay"))
         self.edit_auto_paste_checkbox.setText(t("auto_paste_after_edit"))
         self.edit_auto_enter_checkbox.setText(t("press_enter_after_paste"))
-        self.toggle_api_key_button.setText(t("show") if self.api_key_input.echoMode() == QLineEdit.EchoMode.Password else t("hide"))
-        self.save_api_key_button.setText(t("save"))
+        self.save_api_key_button.setText(t("save_key"))
         self.settings_button.setToolTip(t("settings"))
+        self.models_button.setToolTip(t("models"))
 
-    @Slot(int)
     def _on_model_changed(self, index: int):
-        model = self.model_combo.itemData(index)
-        if self.settings:
-            self.settings.transcription_model = model
-            self.settings.save()
+        self._save_setting("transcription_model", self.model_combo.itemData(index))
+
+    def _on_transformation_model_changed(self, index: int):
+        value = self.transformation_model_combo.itemData(index)
+        self._save_setting("transformation_model", value)
+        if self.controller and self.controller.transcriber:
+            self.controller.transcriber.transformation_model = value
+
+    def _on_edition_model_changed(self, index: int):
+        value = self.edition_model_combo.itemData(index)
+        self._save_setting("edition_model", value)
+        if self.controller and self.controller.transcriber:
+            self.controller.transcriber.edition_model = value
 
     @Slot(list, str)
     def _on_recording_hotkey_changed(self, modifiers: list[str], key: str):
@@ -1115,15 +1133,6 @@ class MainWindow(QMainWindow):
             self.status_label.setText(t("api_key_saved"))
             logger.info("Dicto API key saved")
 
-    @Slot()
-    def _on_toggle_api_key_visibility(self):
-        if self.api_key_input.echoMode() == QLineEdit.EchoMode.Password:
-            self.api_key_input.setEchoMode(QLineEdit.EchoMode.Normal)
-            self.toggle_api_key_button.setText(t("hide"))
-        else:
-            self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.toggle_api_key_button.setText(t("show"))
-
     # ── State updates ───────────────────────────────────────
 
     @Slot(str)
@@ -1134,15 +1143,19 @@ class MainWindow(QMainWindow):
     def set_recording_state(self):
         self.is_recording = True
         self.is_processing = False
+        self._is_editing = False
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open:
+        if self._settings_open or self._models_open:
             self._prev_page = 1  # recording page
         else:
             self.content_stack.setCurrentIndex(1)  # recording page
+        self.recording_label.setText(t("listening"))
+        self.recording_label.setStyleSheet(RECORDING_LABEL)
         self.record_button.setText(t("stop"))
         self.record_button.setStyleSheet(RECORD_BUTTON_RECORDING)
         self.copy_button.hide()
+        self.cancel_button.show()
         self.status_label.setText("")
 
         # Status dot
@@ -1157,6 +1170,7 @@ class MainWindow(QMainWindow):
         self._elapsed_timer.start(1000)
 
         # Waveform
+        self.waveform.color = RED
         self.waveform.start()
 
         # Dots animation
@@ -1170,9 +1184,10 @@ class MainWindow(QMainWindow):
     def set_idle_state(self):
         self.is_recording = False
         self.is_processing = False
+        self._is_editing = False
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open:
+        if self._settings_open or self._models_open:
             self._prev_page = 2 if self.last_transcription else 0
         else:
             if self.last_transcription:
@@ -1182,6 +1197,7 @@ class MainWindow(QMainWindow):
 
         self.record_button.setText(t("record"))
         self.record_button.setStyleSheet(RECORD_BUTTON_IDLE)
+        self.cancel_button.hide()
         self.status_label.setText("")
 
         # Stop timers
@@ -1208,15 +1224,18 @@ class MainWindow(QMainWindow):
         self.is_processing = True
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open:
+        if self._settings_open or self._models_open:
             self._prev_page = 2  # done page
         else:
             self.content_stack.setCurrentIndex(2)  # done page
         self.transcription_text.clear()
+        self.processing_label.setText(t("processing"))
+        self.processing_label.setStyleSheet(PROCESSING_LABEL)
         self.processing_label.show()
         self.record_button.setText(t("processing_ellipsis"))
         self.record_button.setStyleSheet(RECORD_BUTTON_PROCESSING)
         self.copy_button.hide()
+        self.cancel_button.show()
 
         # Stop recording animations
         self.waveform.stop()
@@ -1230,6 +1249,81 @@ class MainWindow(QMainWindow):
 
         # Dot
         self.status_dot.setStyleSheet(DOT_PROCESSING)
+        self._dot_pulse_timer.start(500)
+
+    @Slot()
+    def set_editing_state(self):
+        """Show editing state (recording voice instructions for edit)."""
+        self.is_recording = True
+        self.is_processing = False
+        self._is_editing = True
+
+        if self._settings_open or self._models_open:
+            self._prev_page = 1
+        else:
+            self.content_stack.setCurrentIndex(1)  # recording page
+        self.recording_label.setText(t("listening"))
+        self.recording_label.setStyleSheet(EDITING_LABEL)
+        self.record_button.setText(t("stop"))
+        self.record_button.setStyleSheet(RECORD_BUTTON_EDITING)
+        self.copy_button.hide()
+        self.cancel_button.show()
+        self.status_label.setText("")
+
+        # Status dot
+        self.status_dot.setStyleSheet(DOT_EDITING)
+        self._dot_pulse_timer.start(500)
+
+        # Timer
+        self._elapsed_seconds = 0
+        self.timer_label.setText("00:00")
+        self.timer_label.setStyleSheet(TIMER_EDITING)
+        self.timer_label.show()
+        self._elapsed_timer.start(1000)
+
+        # Waveform in blue
+        self.waveform.color = BLUE
+        self.waveform.start()
+
+        # Dots animation
+        self._dots_timer.start(400)
+
+        # Tabs
+        self._update_tabs_enabled(False)
+
+    @Slot()
+    def set_editing_processing_state(self):
+        """Show processing state during edit flow (blue instead of amber)."""
+        self.is_recording = False
+        self.is_processing = True
+        self._is_editing = True
+
+        if self._settings_open or self._models_open:
+            self._prev_page = 2
+        else:
+            self.content_stack.setCurrentIndex(2)
+        self.transcription_text.clear()
+        self.processing_label.show()
+        self.processing_label.setText(t("editing"))
+        self.processing_label.setStyleSheet(EDITING_LABEL)
+        self.record_button.setText(t("processing_ellipsis"))
+        self.record_button.setStyleSheet(RECORD_BUTTON_EDITING)
+        self.copy_button.hide()
+        self.cancel_button.show()
+
+        # Stop recording animations
+        self.waveform.stop()
+        self.waveform.color = RED  # Reset color for next recording
+
+        # Timer
+        self._elapsed_seconds = 0
+        self.timer_label.setText("00:00")
+        self.timer_label.setStyleSheet(TIMER_EDITING)
+        self.timer_label.show()
+        self._elapsed_timer.start(1000)
+
+        # Dot
+        self.status_dot.setStyleSheet(DOT_EDITING)
         self._dot_pulse_timer.start(500)
 
         # Dots animation
@@ -1247,7 +1341,7 @@ class MainWindow(QMainWindow):
         self._transforming_format = None
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open:
+        if self._settings_open or self._models_open:
             self._prev_page = 2  # done page
         else:
             self.content_stack.setCurrentIndex(2)
@@ -1257,6 +1351,7 @@ class MainWindow(QMainWindow):
         # Button states
         self.record_button.setText(t("record"))
         self.record_button.setStyleSheet(RECORD_BUTTON_IDLE)
+        self.cancel_button.hide()
         self.copy_button.setText(t("copy"))
         self.copy_button.setStyleSheet(FOOTER_TEXT_BUTTON)
         self.copy_button.show()
