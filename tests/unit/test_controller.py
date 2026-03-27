@@ -4,6 +4,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
+from PySide6.QtCore import QCoreApplication
 
 from src.config.settings import Settings
 from src.controller import Controller, AppState
@@ -33,6 +34,8 @@ def controller(mock_settings, qtbot):
 
         ctrl = Controller(mock_settings)
         yield ctrl
+        # Drain any pending QTimer.singleShot (e.g. 150ms edit timer)
+        qtbot.wait(200)
         ctrl._pool.shutdown(wait=False, cancel_futures=True)
 
 

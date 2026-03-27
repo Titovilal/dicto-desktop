@@ -38,6 +38,7 @@ def controller(settings, qtbot):
 
         ctrl = Controller(settings)
         yield ctrl, recorder, transcriber, MockClipboard, MockKeyboard
+        qtbot.wait(200)
         ctrl._pool.shutdown(wait=False, cancel_futures=True)
 
 
