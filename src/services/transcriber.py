@@ -1,7 +1,7 @@
 """
 Transcription and transformation service using the Dicto API.
 
-API Base: https://terturionsland.dev
+API Base: https://dicto.up.railway.app
 - POST /api/transcribe  — audio to text
 - POST /api/transform   — text transformation (format conversion)
 - POST /api/edit         — edit text using voice instructions (audio + text)
@@ -20,7 +20,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = os.environ.get("DICTO_API_URL", "https://terturionsland.dev")
+BASE_URL = os.environ.get("DICTO_API_URL", "https://dicto.up.railway.app")
 
 
 class TranscriptionError(Exception):

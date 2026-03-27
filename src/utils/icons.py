@@ -34,9 +34,9 @@ def get_icon_path(icon_name: str = "icon") -> Path | None:
 
     # Prefer .ico on Windows, .png elsewhere
     if sys.platform == "win32":
-        extensions = [".ico", ".png"]
+        extensions = [".ico", ".png", ".svg"]
     else:
-        extensions = [".png", ".ico"]
+        extensions = [".png", ".ico", ".svg"]
 
     for ext in extensions:
         icon_path = icons_dir / f"{icon_name}{ext}"
