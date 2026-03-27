@@ -2,11 +2,8 @@ name: Build
 
 on:
   push:
-    branches: [main]
     tags:
       - 'v*'
-  pull_request:
-    branches: [main]
   workflow_dispatch:
     inputs:
       create_release:
@@ -45,9 +42,6 @@ jobs:
             echo "should_release=true" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "Tag push detected"
-            echo "should_release=true" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "Push to main with new version v$VERSION - auto release"
             echo "should_release=true" >> $GITHUB_OUTPUT
           else
             echo "No release needed"

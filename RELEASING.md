@@ -23,13 +23,9 @@ git push origin main
 
 ### 3. Crear el release
 
-Hay tres formas de disparar el workflow de release:
+Hay dos formas de disparar el workflow de release:
 
-#### Opcion A: Automatico al hacer push a main (recomendado)
-
-Al hacer push a `main`, el workflow detecta si la version en `pyproject.toml` no tiene tag existente y crea el release automaticamente.
-
-#### Opcion B: Usando el Makefile
+#### Opcion A: Usando el Makefile (recomendado)
 
 ```bash
 make release
@@ -37,12 +33,14 @@ make release
 
 Esto ejecuta `gh workflow run build.yml -f create_release=true` para disparar el workflow manualmente.
 
-#### Opcion C: Crear un tag manualmente
+#### Opcion B: Crear un tag manualmente
 
 ```bash
 git tag v2.2.0
 git push origin v2.2.0
 ```
+
+> **Nota:** El workflow NO se ejecuta automaticamente con cada push a main. Solo se dispara manualmente o al pushear un tag `v*`.
 
 ## Que hace el workflow
 
