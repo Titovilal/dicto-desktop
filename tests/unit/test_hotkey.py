@@ -1,4 +1,5 @@
 """Unit tests for HotkeyListener key parsing and combination matching."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -7,44 +8,47 @@ from src.services.hotkey import HotkeyListener
 
 
 class TestKeyParsing:
-
     def test_parse_special_key_space(self):
         listener = HotkeyListener(modifiers=["ctrl"], key="space")
         from pynput import keyboard
+
         assert listener.key == keyboard.Key.space
 
     def test_parse_special_key_enter(self):
         listener = HotkeyListener(modifiers=["ctrl"], key="enter")
         from pynput import keyboard
+
         assert listener.key == keyboard.Key.enter
 
     def test_parse_regular_char(self):
         listener = HotkeyListener(modifiers=["ctrl"], key="a")
         from pynput import keyboard
+
         assert listener.key == keyboard.KeyCode.from_char("a")
 
 
 class TestModifierParsing:
-
     def test_parse_generic_modifiers(self):
         from pynput import keyboard
+
         listener = HotkeyListener(modifiers=["ctrl", "shift"], key="space")
         assert keyboard.Key.ctrl in listener.modifiers
         assert keyboard.Key.shift in listener.modifiers
 
     def test_parse_specific_lr_adds_generic(self):
         from pynput import keyboard
+
         listener = HotkeyListener(modifiers=["ctrl_l"], key="space")
         assert keyboard.Key.ctrl in listener.modifiers
 
     def test_parse_alt(self):
         from pynput import keyboard
+
         listener = HotkeyListener(modifiers=["alt"], key="space")
         assert keyboard.Key.alt in listener.modifiers
 
 
 class TestModes:
-
     def test_hold_mode_default(self):
         listener = HotkeyListener(modifiers=["ctrl"], key="space")
         assert listener.mode == "hold"
@@ -55,7 +59,6 @@ class TestModes:
 
 
 class TestStartStop:
-
     @patch("src.services.hotkey.keyboard.Listener")
     def test_start_creates_listener(self, MockListener):
         listener = HotkeyListener(modifiers=["ctrl"], key="space")

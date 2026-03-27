@@ -1,6 +1,7 @@
 """
 Icon utilities for Dicto application.
 """
+
 from __future__ import annotations
 
 import sys

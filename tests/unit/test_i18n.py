@@ -1,4 +1,5 @@
 """Unit tests for internationalization."""
+
 from __future__ import annotations
 
 import src.i18n as i18n
@@ -6,7 +7,6 @@ from src.i18n.translations import TRANSLATIONS, UI_LANGUAGES
 
 
 class TestTranslation:
-
     def setup_method(self):
         i18n.set_language("es")
 

@@ -147,7 +147,9 @@ class AudioRecorder:
                 while self.is_recording:
                     elapsed = time.time() - start_time
                     if elapsed > self.max_duration:
-                        logger.info(f"Max recording duration ({self.max_duration}s) reached")
+                        logger.info(
+                            f"Max recording duration ({self.max_duration}s) reached"
+                        )
                         break
                     time.sleep(0.1)
 
@@ -184,7 +186,9 @@ class AudioRecorder:
         devices = sd.query_devices()
         for i, dev in enumerate(devices):
             if dev["max_input_channels"] > 0:
-                logger.info(f"  [{i}] {dev['name']} (channels: {dev['max_input_channels']})")
+                logger.info(
+                    f"  [{i}] {dev['name']} (channels: {dev['max_input_channels']})"
+                )
 
     def close(self):
         """Clean up resources."""

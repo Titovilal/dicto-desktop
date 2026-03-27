@@ -28,7 +28,9 @@ class ClipboardManager:
 
         try:
             pyperclip.copy(text)
-            logger.info(f"Copied to clipboard: {text[:50]}{'...' if len(text) > 50 else ''}")
+            logger.info(
+                f"Copied to clipboard: {text[:50]}{'...' if len(text) > 50 else ''}"
+            )
             return True
 
         except Exception as e:

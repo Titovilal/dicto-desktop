@@ -1,4 +1,5 @@
 """Unit tests for AudioRecorder."""
+
 from __future__ import annotations
 
 from unittest.mock import patch, MagicMock
@@ -10,7 +11,6 @@ from src.services.recorder import AudioRecorder
 
 
 class TestInit:
-
     def test_default_params(self):
         with patch("src.services.recorder.sd"):
             r = AudioRecorder()
@@ -28,7 +28,6 @@ class TestInit:
 
 
 class TestRecordingState:
-
     def test_stop_when_not_recording_returns_none(self):
         with patch("src.services.recorder.sd"):
             r = AudioRecorder()
@@ -53,7 +52,6 @@ class TestRecordingState:
 
 
 class TestCleanup:
-
     def test_cleanup_temp_file(self, tmp_path):
         with patch("src.services.recorder.sd"):
             r = AudioRecorder()
@@ -73,7 +71,6 @@ class TestCleanup:
 
 
 class TestAudioLevelCallback:
-
     def test_callback_is_set(self):
         with patch("src.services.recorder.sd"):
             r = AudioRecorder()

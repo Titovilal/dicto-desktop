@@ -6,6 +6,7 @@ API Base: https://terturionsland.dev
 - POST /api/transform   — text transformation (format conversion)
 - POST /api/edit         — edit text using voice instructions (audio + text)
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,26 +25,31 @@ BASE_URL = os.environ.get("DICTO_API_URL", "https://terturionsland.dev")
 
 class TranscriptionError(Exception):
     """Base exception for transcription errors."""
+
     pass
 
 
 class APIKeyError(TranscriptionError):
     """API key is invalid or missing."""
+
     pass
 
 
 class RateLimitError(TranscriptionError):
     """API rate limit / spending limit exceeded."""
+
     pass
 
 
 class AudioTooShortError(TranscriptionError):
     """Audio file is too short."""
+
     pass
 
 
 class AudioTooLongError(TranscriptionError):
     """Audio file is too long."""
+
     pass
 
 
@@ -53,9 +59,14 @@ class Transcriber:
     MAX_RETRIES = 3
     RETRY_DELAY = 2  # seconds
 
-    def __init__(self, api_key: str, language: str = "es", model: str = "v3-turbo",
-                 transformation_model: str = "qwen/qwen3-32b",
-                 edition_model: str = "qwen/qwen3-32b"):
+    def __init__(
+        self,
+        api_key: str,
+        language: str = "es",
+        model: str = "v3-turbo",
+        transformation_model: str = "qwen/qwen3-32b",
+        edition_model: str = "qwen/qwen3-32b",
+    ):
         if not api_key:
             raise APIKeyError("Dicto API key is required")
 
@@ -81,7 +92,9 @@ class Transcriber:
 
         file_size_mb = audio_path.stat().st_size / (1024 * 1024)
         if file_size_mb > 25:
-            raise AudioTooLongError(f"Audio file too large: {file_size_mb:.1f}MB (max 25MB)")
+            raise AudioTooLongError(
+                f"Audio file too large: {file_size_mb:.1f}MB (max 25MB)"
+            )
         if file_size_mb < 0.001:
             raise AudioTooShortError("Audio file too small (likely no audio recorded)")
 
@@ -92,16 +105,20 @@ class Transcriber:
             except RateLimitError as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
-                    delay = self.RETRY_DELAY * (2 ** attempt)
-                    logger.warning(f"Rate limit hit, retrying in {delay}s… (attempt {attempt + 1}/{self.MAX_RETRIES})")
+                    delay = self.RETRY_DELAY * (2**attempt)
+                    logger.warning(
+                        f"Rate limit hit, retrying in {delay}s… (attempt {attempt + 1}/{self.MAX_RETRIES})"
+                    )
                     time.sleep(delay)
             except APIKeyError:
                 raise
             except TranscriptionError as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
-                    delay = self.RETRY_DELAY * (2 ** attempt)
-                    logger.warning(f"Transcription failed, retrying in {delay}s… (attempt {attempt + 1}/{self.MAX_RETRIES})")
+                    delay = self.RETRY_DELAY * (2**attempt)
+                    logger.warning(
+                        f"Transcription failed, retrying in {delay}s… (attempt {attempt + 1}/{self.MAX_RETRIES})"
+                    )
                     time.sleep(delay)
 
         raise last_error or TranscriptionError("Transcription failed after all retries")
@@ -140,7 +157,9 @@ class Transcriber:
                 if not text:
                     raise TranscriptionError("API returned empty transcription")
                 self._last_transcription_id = result.get("id")
-                logger.info(f"Transcription OK (id={self._last_transcription_id}, lang={result.get('language')}, duration={result.get('duration')}s)")
+                logger.info(
+                    f"Transcription OK (id={self._last_transcription_id}, lang={result.get('language')}, duration={result.get('duration')}s)"
+                )
                 return text.strip()
 
             self._handle_error_response(response)
@@ -156,7 +175,9 @@ class Transcriber:
 
     # ── Transform ───────────────────────────────────────────
 
-    def transform(self, text: str, instructions: str, transcription_id: int | None = None) -> str:
+    def transform(
+        self, text: str, instructions: str, transcription_id: int | None = None
+    ) -> str:
         """
         Transform text using the Dicto /api/transform endpoint (Dicto format).
 
@@ -238,7 +259,11 @@ class Transcriber:
             }
             mime = mime_types.get(suffix, "audio/wav")
 
-            data = {"text": text, "source": "mic_app", "edition_model": self.edition_model}
+            data = {
+                "text": text,
+                "source": "mic_app",
+                "edition_model": self.edition_model,
+            }
 
             with open(audio_path, "rb") as audio_file:
                 files = {"audio": (audio_path.name, audio_file, mime)}

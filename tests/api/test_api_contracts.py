@@ -1,4 +1,5 @@
 """API contract tests — verify request format and response parsing without hitting the real API."""
+
 from __future__ import annotations
 
 from unittest.mock import patch, MagicMock
@@ -27,7 +28,9 @@ class TestTranscribeContract:
         mock_response.status_code = 200
         mock_response.json.return_value = {"text": "hello", "id": 1}
 
-        with patch.object(transcriber.client, "post", return_value=mock_response) as mock_post:
+        with patch.object(
+            transcriber.client, "post", return_value=mock_response
+        ) as mock_post:
             transcriber.transcribe(sample_audio_file)
 
         mock_post.assert_called_once()
@@ -57,7 +60,9 @@ class TestTranscribeContract:
         mock_response.status_code = 200
         mock_response.json.return_value = {"text": "hello", "id": 1}
 
-        with patch.object(transcriber.client, "post", return_value=mock_response) as mock_post:
+        with patch.object(
+            transcriber.client, "post", return_value=mock_response
+        ) as mock_post:
             transcriber.transcribe(sample_audio_file)
 
         files = mock_post.call_args.kwargs["files"]
@@ -72,7 +77,9 @@ class TestTransformContract:
         mock_response.status_code = 200
         mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
 
-        with patch.object(transcriber.client, "post", return_value=mock_response) as mock_post:
+        with patch.object(
+            transcriber.client, "post", return_value=mock_response
+        ) as mock_post:
             transcriber.transform("some text", "format as email", transcription_id=42)
 
         call_kwargs = mock_post.call_args
@@ -96,7 +103,9 @@ class TestTransformContract:
         mock_response.status_code = 200
         mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
 
-        with patch.object(transcriber.client, "post", return_value=mock_response) as mock_post:
+        with patch.object(
+            transcriber.client, "post", return_value=mock_response
+        ) as mock_post:
             transcriber.transform("text", "instructions")
 
         payload = mock_post.call_args.kwargs["json"]
@@ -109,9 +118,13 @@ class TestEditContract:
     def test_request_format(self, transcriber, sample_audio_file):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"choices": [{"message": {"content": "edited"}}]}
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": "edited"}}]
+        }
 
-        with patch.object(transcriber.client, "post", return_value=mock_response) as mock_post:
+        with patch.object(
+            transcriber.client, "post", return_value=mock_response
+        ) as mock_post:
             transcriber.edit("selected text", sample_audio_file)
 
         call_kwargs = mock_post.call_args
@@ -156,9 +169,7 @@ class TestResponseParsing:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "choices": [
-                {"message": {"content": "  formatted  "}}
-            ]
+            "choices": [{"message": {"content": "  formatted  "}}]
         }
 
         with patch.object(transcriber.client, "post", return_value=mock_response):
@@ -170,9 +181,7 @@ class TestResponseParsing:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "choices": [
-                {"message": {"content": "  edited  "}}
-            ]
+            "choices": [{"message": {"content": "  edited  "}}]
         }
 
         with patch.object(transcriber.client, "post", return_value=mock_response):

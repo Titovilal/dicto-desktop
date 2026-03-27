@@ -1,4 +1,5 @@
 """Unit tests for ClipboardManager."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -7,7 +8,6 @@ from src.services.clipboard import ClipboardManager
 
 
 class TestCopy:
-
     @patch("src.services.clipboard.pyperclip.copy")
     def test_copy_text(self, mock_copy):
         assert ClipboardManager.copy("hello") is True
@@ -22,7 +22,6 @@ class TestCopy:
 
 
 class TestPaste:
-
     @patch("src.services.clipboard.pyperclip.paste", return_value="world")
     def test_paste_text(self, mock_paste):
         assert ClipboardManager.paste() == "world"
@@ -37,7 +36,6 @@ class TestPaste:
 
 
 class TestClear:
-
     @patch("src.services.clipboard.pyperclip.copy")
     def test_clear(self, mock_copy):
         ClipboardManager.clear()

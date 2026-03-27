@@ -5,15 +5,26 @@ Draggable by clicking and dragging anywhere on the card.
 """
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QStackedWidget, QPushButton,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QStackedWidget,
+    QPushButton,
 )
 from PySide6.QtCore import Qt, QTimer, QPoint, Signal
 
 from src.i18n import t
 from src.ui.main_window_styles import (
-    BG, BORDER, TEXT, TEXT_DIM, SECONDARY,
-    RED, AMBER, GREEN, BLUE,
+    BG,
+    BORDER,
+    TEXT,
+    TEXT_DIM,
+    SECONDARY,
+    RED,
+    AMBER,
+    GREEN,
+    BLUE,
 )
 from src.ui.waveform import WaveformWidget
 from src.ui.icons import SVG_SETTINGS_SMALL, SVG_RECORD, SVG_STOP, SVG_RESET
@@ -34,6 +45,7 @@ def _make_overlay_icon(svg: str, size: int, color: str):
     from PySide6.QtSvg import QSvgRenderer
     from PySide6.QtGui import QPixmap, QPainter, QColor, QIcon
     from PySide6.QtCore import QSize
+
     colored = svg.replace("currentColor", color)
     renderer = QSvgRenderer(colored.encode())
     px = QPixmap(QSize(size * 2, size * 2))
@@ -49,6 +61,7 @@ def _make_overlay_icon(svg: str, size: int, color: str):
 
 class OverlayPopover(QWidget):
     """Small popover shown when clicking the settings button."""
+
     reset_position_clicked = Signal()
     record_clicked = Signal()
 
@@ -114,7 +127,9 @@ class OverlayWindow(QWidget):
     record_requested = Signal()
     stop_requested = Signal()
 
-    def __init__(self, position: str = "top-right", size: int = 100, opacity: float = 0.85):
+    def __init__(
+        self, position: str = "top-right", size: int = 100, opacity: float = 0.85
+    ):
         super().__init__()
         self.position_name = "top-right"
         self.window_opacity = opacity
@@ -156,6 +171,7 @@ class OverlayWindow(QWidget):
 
     def _position_window(self):
         from PySide6.QtWidgets import QApplication
+
         screen = QApplication.primaryScreen().geometry()
         margin = 16
         top_offset = 50
@@ -178,7 +194,9 @@ class OverlayWindow(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_active = True
-            self._drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self._drag_offset = (
+                event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            )
             event.accept()
 
     def mouseMoveEvent(self, event):
@@ -216,11 +234,15 @@ class OverlayWindow(QWidget):
 
         self.status_dot = QWidget()
         self.status_dot.setFixedSize(6, 6)
-        self.status_dot.setStyleSheet(f"background-color: {TEXT_DIM}; border-radius: 3px;")
+        self.status_dot.setStyleSheet(
+            f"background-color: {TEXT_DIM}; border-radius: 3px;"
+        )
         status_row.addWidget(self.status_dot, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self.status_label = QLabel(t("ready"))
-        self.status_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: 600; {LABEL_BASE}")
+        self.status_label.setStyleSheet(
+            f"color: {TEXT}; font-size: 12px; font-weight: 600; {LABEL_BASE}"
+        )
         status_row.addWidget(self.status_label, 1)
 
         # Action button: settings (idle) / stop (recording/editing)
@@ -228,8 +250,7 @@ class OverlayWindow(QWidget):
         self.action_btn.setFixedSize(22, 22)
         self.action_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.action_btn.setStyleSheet(
-            f"QPushButton {{ {_BTN_BASE} }}"
-            f"QPushButton:hover {{ {_BTN_HOVER} }}"
+            f"QPushButton {{ {_BTN_BASE} }}QPushButton:hover {{ {_BTN_HOVER} }}"
         )
         self.action_btn.clicked.connect(self._on_action_btn_clicked)
         self._action_mode = "settings"  # "settings" or "stop"
@@ -241,14 +262,22 @@ class OverlayWindow(QWidget):
         # Waveform area
         self.icon_stack = QStackedWidget()
         self.icon_stack.setFixedHeight(18)
-        self.waveform_recording = WaveformWidget(bar_width=2, bar_gap=1, height=16, color=RED, mode="live")
-        self.waveform_processing = WaveformWidget(bar_width=2, bar_gap=1, height=16, color=AMBER, mode="pulse")
-        self.waveform_success = WaveformWidget(bar_width=2, bar_gap=1, height=16, color=GREEN, mode="settle")
-        self.waveform_editing = WaveformWidget(bar_width=2, bar_gap=1, height=16, color=BLUE, mode="live")
-        self.icon_stack.addWidget(self.waveform_recording)    # index 0
-        self.icon_stack.addWidget(self.waveform_processing)   # index 1
-        self.icon_stack.addWidget(self.waveform_success)      # index 2
-        self.icon_stack.addWidget(self.waveform_editing)      # index 3
+        self.waveform_recording = WaveformWidget(
+            bar_width=2, bar_gap=1, height=16, color=RED, mode="live"
+        )
+        self.waveform_processing = WaveformWidget(
+            bar_width=2, bar_gap=1, height=16, color=AMBER, mode="pulse"
+        )
+        self.waveform_success = WaveformWidget(
+            bar_width=2, bar_gap=1, height=16, color=GREEN, mode="settle"
+        )
+        self.waveform_editing = WaveformWidget(
+            bar_width=2, bar_gap=1, height=16, color=BLUE, mode="live"
+        )
+        self.icon_stack.addWidget(self.waveform_recording)  # index 0
+        self.icon_stack.addWidget(self.waveform_processing)  # index 1
+        self.icon_stack.addWidget(self.waveform_success)  # index 2
+        self.icon_stack.addWidget(self.waveform_editing)  # index 3
         self.icon_stack.setCurrentIndex(0)
         self.icon_stack.hide()
         card_layout.addWidget(self.icon_stack)
@@ -261,7 +290,9 @@ class OverlayWindow(QWidget):
 
     def _update_action_btn_icon(self):
         if self._action_mode == "settings":
-            self.action_btn.setIcon(_make_overlay_icon(SVG_SETTINGS_SMALL, 14, TEXT_DIM))
+            self.action_btn.setIcon(
+                _make_overlay_icon(SVG_SETTINGS_SMALL, 14, TEXT_DIM)
+            )
         else:
             self.action_btn.setIcon(_make_overlay_icon(SVG_STOP, 14, RED))
 
@@ -278,7 +309,9 @@ class OverlayWindow(QWidget):
     def _show_popover_at_button(self):
         self._popover.adjustSize()
         # Position popover below the overlay
-        pos = self.mapToGlobal(QPoint(self.width() - self._popover.width(), self.height() + 4))
+        pos = self.mapToGlobal(
+            QPoint(self.width() - self._popover.width(), self.height() + 4)
+        )
         self._popover.move(pos)
         self._popover.show()
         self._popover.raise_()
@@ -317,14 +350,24 @@ class OverlayWindow(QWidget):
     def _pulse_dot(self):
         self._dot_visible = not self._dot_visible
         if self._dot_visible:
-            color = RED if self.current_state == "recording" else BLUE if self.current_state == "editing" else AMBER
-            self.status_dot.setStyleSheet(f"background-color: {color}; border-radius: 3px;")
+            color = (
+                RED
+                if self.current_state == "recording"
+                else BLUE
+                if self.current_state == "editing"
+                else AMBER
+            )
+            self.status_dot.setStyleSheet(
+                f"background-color: {color}; border-radius: 3px;"
+            )
         else:
-            self.status_dot.setStyleSheet("background-color: transparent; border-radius: 3px;")
+            self.status_dot.setStyleSheet(
+                "background-color: transparent; border-radius: 3px;"
+            )
 
     def _animate_dots(self):
         self._dots_count = (self._dots_count + 1) % 4
-        dots = "." * self._dots_count + "\u00A0" * (3 - self._dots_count)
+        dots = "." * self._dots_count + "\u00a0" * (3 - self._dots_count)
         if self.current_state == "recording":
             self.status_label.setText(f"{t('recording')}{dots}")
         elif self.current_state == "processing":
@@ -353,9 +396,13 @@ class OverlayWindow(QWidget):
         self.current_state = "idle"
         self._stop_animations()
         self.status_label.setText(t("ready"))
-        self.status_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: 600; {LABEL_BASE}")
+        self.status_label.setStyleSheet(
+            f"color: {TEXT}; font-size: 12px; font-weight: 600; {LABEL_BASE}"
+        )
         self.sub_label.hide()
-        self.status_dot.setStyleSheet(f"background-color: {TEXT_DIM}; border-radius: 3px;")
+        self.status_dot.setStyleSheet(
+            f"background-color: {TEXT_DIM}; border-radius: 3px;"
+        )
         self._set_card_style()
         self._hide_icon()
         self._set_action_mode("settings")
@@ -363,7 +410,9 @@ class OverlayWindow(QWidget):
     def show_recording(self):
         self.current_state = "recording"
         self.status_label.setText(t("recording"))
-        self.status_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: 600; {LABEL_BASE}")
+        self.status_label.setStyleSheet(
+            f"color: {TEXT}; font-size: 12px; font-weight: 600; {LABEL_BASE}"
+        )
         self.sub_label.hide()
         self.status_dot.setStyleSheet(f"background-color: {RED}; border-radius: 3px;")
         self._set_card_style()
@@ -378,7 +427,9 @@ class OverlayWindow(QWidget):
         self.current_state = "editing"
         self._editing_label = t("recording") if recording else t("editing")
         self.status_label.setText(self._editing_label)
-        self.status_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: 600; {LABEL_BASE}")
+        self.status_label.setStyleSheet(
+            f"color: {TEXT}; font-size: 12px; font-weight: 600; {LABEL_BASE}"
+        )
         self.sub_label.hide()
         self.status_dot.setStyleSheet(f"background-color: {BLUE}; border-radius: 3px;")
         self._set_card_style()
@@ -392,7 +443,9 @@ class OverlayWindow(QWidget):
     def show_processing(self):
         self.current_state = "processing"
         self.status_label.setText(t("processing"))
-        self.status_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: 600; {LABEL_BASE}")
+        self.status_label.setStyleSheet(
+            f"color: {TEXT}; font-size: 12px; font-weight: 600; {LABEL_BASE}"
+        )
         self.sub_label.hide()
         self.status_dot.setStyleSheet(f"background-color: {AMBER}; border-radius: 3px;")
         self._set_card_style()
@@ -407,7 +460,9 @@ class OverlayWindow(QWidget):
         self.current_state = "success"
         self._stop_animations()
         self.status_label.setText(t("copied_to_clipboard").upper())
-        self.status_label.setStyleSheet(f"color: {GREEN}; font-size: 12px; font-weight: 600; {LABEL_BASE}")
+        self.status_label.setStyleSheet(
+            f"color: {GREEN}; font-size: 12px; font-weight: 600; {LABEL_BASE}"
+        )
         self.sub_label.hide()
         self.status_dot.setStyleSheet(f"background-color: {GREEN}; border-radius: 3px;")
         self._set_card_style()
@@ -424,7 +479,9 @@ class OverlayWindow(QWidget):
         self.current_state = "error"
         self._stop_animations()
         self.status_label.setText(f"{t('error')}: {message}")
-        self.status_label.setStyleSheet(f"color: {RED}; font-size: 12px; font-weight: 600; {LABEL_BASE}")
+        self.status_label.setStyleSheet(
+            f"color: {RED}; font-size: 12px; font-weight: 600; {LABEL_BASE}"
+        )
         self.sub_label.hide()
         self.status_dot.setStyleSheet(f"background-color: {RED}; border-radius: 3px;")
         self._set_card_style()

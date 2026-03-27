@@ -1,4 +1,5 @@
 """Integration tests for settings <-> controller synchronization."""
+
 from __future__ import annotations
 
 from unittest.mock import patch, MagicMock
@@ -18,11 +19,12 @@ def settings(tmp_path):
 
 @pytest.fixture
 def controller(settings, qtbot):
-    with patch("src.controller.AudioRecorder") as MockRecorder, \
-         patch("src.controller.Transcriber"), \
-         patch("src.controller.HotkeyListener") as MockHotkey, \
-         patch("src.controller.KeyboardService"):
-
+    with (
+        patch("src.controller.AudioRecorder") as MockRecorder,
+        patch("src.controller.Transcriber"),
+        patch("src.controller.HotkeyListener") as MockHotkey,
+        patch("src.controller.KeyboardService"),
+    ):
         recorder = MockRecorder.return_value
         recorder.is_recording = False
 
@@ -35,7 +37,6 @@ def controller(settings, qtbot):
 
 
 class TestHotkeyUpdate:
-
     def test_update_recording_hotkey_recreates_listener(self, controller, qtbot):
         ctrl, MockHotkey = controller
         ctrl.start()

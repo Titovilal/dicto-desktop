@@ -1,6 +1,7 @@
 """
 Main controller that orchestrates all application components.
 """
+
 from __future__ import annotations
 
 import traceback
@@ -34,7 +35,7 @@ class Controller(QObject):
     recording_stopped = Signal(float)
     transcription_completed = Signal(str)
     transform_completed = Signal(str, str)  # (format_id, transformed_text)
-    transform_failed = Signal(str, str)     # (format_id, error_message)
+    transform_failed = Signal(str, str)  # (format_id, error_message)
     error_occurred = Signal(str)
     audio_level_changed = Signal(float)
 
@@ -89,7 +90,9 @@ class Controller(QObject):
 
             api_key = self.settings.transcription_api_key
             if not api_key:
-                logger.warning("No API key found. Set DICTO_API_KEY or add to config.yaml")
+                logger.warning(
+                    "No API key found. Set DICTO_API_KEY or add to config.yaml"
+                )
             else:
                 self.transcriber = Transcriber(
                     api_key=api_key,
@@ -173,7 +176,9 @@ class Controller(QObject):
             self._set_state(AppState.RECORDING)
             self.recording_started.emit()
             if not self.recorder.start_recording():
-                self._handle_error("Failed to start recording. Check microphone permissions.")
+                self._handle_error(
+                    "Failed to start recording. Check microphone permissions."
+                )
         except Exception as e:
             self._handle_error(f"Error starting recording: {e}")
 
@@ -199,7 +204,9 @@ class Controller(QObject):
 
     def _transcribe_audio(self, audio_file_path: str):
         if not self.transcriber:
-            self._handle_error("Transcriber not initialized. Set API key in environment or config.yaml")
+            self._handle_error(
+                "Transcriber not initialized. Set API key in environment or config.yaml"
+            )
             return
 
         logger.info(f"Transcribing audio: {audio_file_path}")
@@ -233,7 +240,9 @@ class Controller(QObject):
             self._set_state(AppState.SUCCESS)
             self.transcription_completed.emit(text)
             logger.info(f"Transcription successful: {text}")
-            self._perform_auto_actions(self.settings.auto_paste, self.settings.auto_enter)
+            self._perform_auto_actions(
+                self.settings.auto_paste, self.settings.auto_enter
+            )
         else:
             self._handle_error("Failed to copy to clipboard")
 
@@ -288,7 +297,9 @@ class Controller(QObject):
         self._set_state(AppState.RECORDING)
         self.recording_started.emit()
         if not self.recorder.start_recording():
-            self._handle_error("Failed to start recording. Check microphone permissions.")
+            self._handle_error(
+                "Failed to start recording. Check microphone permissions."
+            )
 
     def _stop_edit_recording_and_process(self):
         """Stop recording, copy selected text, transcribe voice, then transform."""
@@ -315,7 +326,9 @@ class Controller(QObject):
                 return
 
             # Wait for clipboard to update, then read and process
-            QTimer.singleShot(150, lambda: self._edit_process_with_audio(audio_file_path, duration))
+            QTimer.singleShot(
+                150, lambda: self._edit_process_with_audio(audio_file_path, duration)
+            )
         except Exception as e:
             self._handle_error(f"Error stopping edit recording: {e}")
 
@@ -328,7 +341,9 @@ class Controller(QObject):
                 self.recorder.cleanup_temp_file()
             return
 
-        logger.info(f"Edit selection: copied {len(selected_text)} chars, sending to /api/edit ({duration:.1f}s audio)")
+        logger.info(
+            f"Edit selection: copied {len(selected_text)} chars, sending to /api/edit ({duration:.1f}s audio)"
+        )
 
         def _do_edit_with_voice():
             try:
@@ -353,7 +368,9 @@ class Controller(QObject):
             self._set_state(AppState.SUCCESS)
             self.edit_completed.emit(text)
             logger.info(f"Edit selection successful: {text[:50]}")
-            self._perform_auto_actions(self.settings.edit_auto_paste, self.settings.edit_auto_enter)
+            self._perform_auto_actions(
+                self.settings.edit_auto_paste, self.settings.edit_auto_enter
+            )
         else:
             self._handle_error("Failed to copy edited text to clipboard")
 
@@ -410,17 +427,26 @@ class Controller(QObject):
     # ── Hotkey updates ──────────────────────────────────────────
 
     def _update_hotkey_listener(
-        self, listener_attr: str, modifiers: list[str], key: str,
-        on_press, on_release, mode: str = "hold", suppress_key: bool = False,
+        self,
+        listener_attr: str,
+        modifiers: list[str],
+        key: str,
+        on_press,
+        on_release,
+        mode: str = "hold",
+        suppress_key: bool = False,
     ):
         """Generic hotkey listener update: stop old -> create new -> start."""
         old_listener = getattr(self, listener_attr)
         if old_listener:
             old_listener.stop()
         new_listener = HotkeyListener(
-            modifiers=modifiers, key=key,
-            on_press=on_press, on_release=on_release,
-            mode=mode, suppress_key=suppress_key,
+            modifiers=modifiers,
+            key=key,
+            on_press=on_press,
+            on_release=on_release,
+            mode=mode,
+            suppress_key=suppress_key,
         )
         setattr(self, listener_attr, new_listener)
         new_listener.start()
@@ -428,15 +454,22 @@ class Controller(QObject):
 
     def update_recording_hotkey(self, modifiers: list[str], key: str):
         self._update_hotkey_listener(
-            "hotkey_listener", modifiers, key,
-            self._on_hotkey_press, self._on_hotkey_release,
+            "hotkey_listener",
+            modifiers,
+            key,
+            self._on_hotkey_press,
+            self._on_hotkey_release,
         )
 
     def update_edit_hotkey(self, modifiers: list[str], key: str):
         self._update_hotkey_listener(
-            "edit_hotkey_listener", modifiers, key,
-            self._on_edit_hotkey_press, self._on_edit_hotkey_release,
-            mode="hold", suppress_key=True,
+            "edit_hotkey_listener",
+            modifiers,
+            key,
+            self._on_edit_hotkey_press,
+            self._on_edit_hotkey_release,
+            mode="hold",
+            suppress_key=True,
         )
 
     # ── Transform ─────────────────────────────────────────────
@@ -453,7 +486,9 @@ class Controller(QObject):
         def _do_transform():
             try:
                 assert self.transcriber is not None
-                result = self.transcriber.transform(text, instructions, transcription_id)
+                result = self.transcriber.transform(
+                    text, instructions, transcription_id
+                )
                 self.transform_completed.emit(format_id, result)
             except Exception as e:
                 self.transform_failed.emit(format_id, str(e))

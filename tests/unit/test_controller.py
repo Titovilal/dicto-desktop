@@ -1,10 +1,10 @@
 """Unit tests for Controller state machine and cancel logic."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
 
 import pytest
-from PySide6.QtCore import QCoreApplication
 
 from src.config.settings import Settings
 from src.controller import Controller, AppState
@@ -21,11 +21,12 @@ def mock_settings(tmp_path):
 @pytest.fixture
 def controller(mock_settings, qtbot):
     """Controller with mocked external services."""
-    with patch("src.controller.AudioRecorder") as MockRecorder, \
-         patch("src.controller.Transcriber"), \
-         patch("src.controller.HotkeyListener"), \
-         patch("src.controller.KeyboardService"):
-
+    with (
+        patch("src.controller.AudioRecorder") as MockRecorder,
+        patch("src.controller.Transcriber"),
+        patch("src.controller.HotkeyListener"),
+        patch("src.controller.KeyboardService"),
+    ):
         recorder = MockRecorder.return_value
         recorder.is_recording = False
         recorder.start_recording.return_value = True
@@ -40,7 +41,6 @@ def controller(mock_settings, qtbot):
 
 
 class TestStateTransitions:
-
     def test_initial_state_after_start(self, controller, qtbot):
         controller.start()
         assert controller.current_state == AppState.IDLE
@@ -76,7 +76,6 @@ class TestStateTransitions:
 
 
 class TestCancel:
-
     def test_cancel_during_recording(self, controller, qtbot):
         controller.start()
         controller._on_hotkey_press()
@@ -111,9 +110,10 @@ class TestCancel:
 
 
 class TestTranscriptionResult:
-
     @patch("src.controller.ClipboardManager")
-    def test_successful_transcription_copies_to_clipboard(self, MockClipboard, controller, qtbot):
+    def test_successful_transcription_copies_to_clipboard(
+        self, MockClipboard, controller, qtbot
+    ):
         MockClipboard.copy.return_value = True
         with qtbot.waitSignal(controller.transcription_completed, timeout=1000):
             controller._on_transcribe_finished("hello world")
@@ -134,7 +134,6 @@ class TestTranscriptionResult:
 
 
 class TestManualControls:
-
     def test_start_recording_manual(self, controller, qtbot):
         controller.start()
         with qtbot.waitSignal(controller.recording_started, timeout=1000):
@@ -161,7 +160,6 @@ class TestManualControls:
 
 
 class TestNoRecorder:
-
     def test_start_recording_without_recorder(self, controller, qtbot):
         controller.recorder = None
         with qtbot.waitSignal(controller.error_occurred, timeout=1000):
@@ -176,7 +174,6 @@ class TestNoRecorder:
 
 
 class TestNoTranscriber:
-
     def test_transcribe_without_transcriber(self, controller, qtbot):
         controller.transcriber = None
         with qtbot.waitSignal(controller.error_occurred, timeout=1000):
@@ -185,7 +182,6 @@ class TestNoTranscriber:
 
 
 class TestEditFlow:
-
     def test_edit_hotkey_press_starts_recording(self, controller, qtbot):
         controller.start()
         with qtbot.waitSignal(controller.edit_started, timeout=1000):
@@ -259,7 +255,6 @@ class TestEditFlow:
 
 
 class TestTransform:
-
     def test_transform_without_transcriber(self, controller, qtbot):
         controller.transcriber = None
         with qtbot.waitSignal(controller.transform_failed, timeout=1000):
@@ -271,7 +266,9 @@ class TestTransform:
         with qtbot.waitSignal(controller.transform_completed, timeout=1000) as blocker:
             controller.request_transform("formal", "hello", "make formal")
         assert blocker.args == ["formal", "Hello, good day."]
-        controller.transcriber.transform.assert_called_once_with("hello", "make formal", 42)
+        controller.transcriber.transform.assert_called_once_with(
+            "hello", "make formal", 42
+        )
 
     def test_transform_error(self, controller, qtbot):
         controller.transcriber.transform.side_effect = Exception("API error")

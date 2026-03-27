@@ -2,6 +2,7 @@
 Unified waveform visualization widget.
 Used by both the main window and the overlay with different parameters.
 """
+
 from __future__ import annotations
 
 import math

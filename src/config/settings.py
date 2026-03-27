@@ -1,6 +1,7 @@
 """
 Configuration management for Dicto application.
 """
+
 from __future__ import annotations
 
 import os
@@ -31,6 +32,7 @@ def _config_property(section: str, key: str, default=None):
     Handles both flat keys (section=key, key=None) and nested keys (section.key).
     Setters auto-create the section dict if missing.
     """
+
     def getter(self):
         if section in self.config and isinstance(self.config[section], dict):
             return self.config[section].get(key, default)
@@ -46,6 +48,7 @@ def _config_property(section: str, key: str, default=None):
 
 def _flat_config_property(key: str, default=None):
     """Property for top-level config keys."""
+
     def getter(self):
         return self.config.get(key, default)
 
@@ -63,7 +66,12 @@ class Settings:
         "overlay": {"position": "top-right", "size": 100, "opacity": 0.9},
         "transcription": {"api_key": "", "language": "es", "model": "v3-turbo"},
         "audio": {"sample_rate": 16000, "max_duration": 120, "channels": 1},
-        "behavior": {"auto_paste": False, "auto_enter": False, "always_on_top": False, "persistent_overlay": False},
+        "behavior": {
+            "auto_paste": False,
+            "auto_enter": False,
+            "always_on_top": False,
+            "persistent_overlay": False,
+        },
         "edit_hotkey": {"modifiers": ["ctrl", "alt"], "key": "space"},
         "edit": {"auto_paste": True, "auto_enter": False},
         "transformation": {"model": "qwen/qwen3-32b"},
@@ -112,7 +120,9 @@ class Settings:
 
     # ── Hotkey settings ──────────────────────────────────────
 
-    hotkey_modifiers: List[str] = _config_property("hotkey", "modifiers", ["ctrl", "shift"])
+    hotkey_modifiers: List[str] = _config_property(
+        "hotkey", "modifiers", ["ctrl", "shift"]
+    )
     hotkey_key: str = _config_property("hotkey", "key", "space")
 
     # ── Overlay settings ─────────────────────────────────────
@@ -142,7 +152,9 @@ class Settings:
 
     # ── Edit hotkey settings ─────────────────────────────────
 
-    edit_hotkey_modifiers: List[str] = _config_property("edit_hotkey", "modifiers", ["ctrl", "alt"])
+    edit_hotkey_modifiers: List[str] = _config_property(
+        "edit_hotkey", "modifiers", ["ctrl", "alt"]
+    )
     edit_hotkey_key: str = _config_property("edit_hotkey", "key", "space")
 
     # ── Edit behavior settings ───────────────────────────────
@@ -152,7 +164,9 @@ class Settings:
 
     # ── Transformation model ──────────────────────────────────
 
-    transformation_model: str = _config_property("transformation", "model", "qwen/qwen3-32b")
+    transformation_model: str = _config_property(
+        "transformation", "model", "qwen/qwen3-32b"
+    )
 
     # ── Edition model ─────────────────────────────────────────
 

@@ -1,4 +1,5 @@
 """Integration tests for the complete recording → transcription → clipboard flow."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -20,12 +21,13 @@ def settings(tmp_path):
 @pytest.fixture
 def controller(settings, qtbot):
     """Controller with mocked I/O boundaries but real internal logic."""
-    with patch("src.controller.AudioRecorder") as MockRecorder, \
-         patch("src.controller.Transcriber") as MockTranscriber, \
-         patch("src.controller.HotkeyListener"), \
-         patch("src.controller.KeyboardService"), \
-         patch("src.controller.ClipboardManager") as MockClipboard:
-
+    with (
+        patch("src.controller.AudioRecorder") as MockRecorder,
+        patch("src.controller.Transcriber") as MockTranscriber,
+        patch("src.controller.HotkeyListener"),
+        patch("src.controller.KeyboardService"),
+        patch("src.controller.ClipboardManager") as MockClipboard,
+    ):
         recorder = MockRecorder.return_value
         recorder.is_recording = False
         recorder.start_recording.return_value = True
@@ -42,7 +44,6 @@ def controller(settings, qtbot):
 
 
 class TestHappyPath:
-
     def test_full_recording_flow(self, controller, qtbot):
         ctrl, recorder, transcriber, clipboard = controller
 
@@ -77,7 +78,6 @@ class TestHappyPath:
 
 
 class TestCancelFlow:
-
     def test_cancel_during_recording_returns_to_idle(self, controller, qtbot):
         ctrl, recorder, _, _ = controller
         ctrl.start()
@@ -108,7 +108,6 @@ class TestCancelFlow:
 
 
 class TestErrorFlow:
-
     def test_transcription_error_goes_to_error(self, controller, qtbot):
         ctrl, _, _, _ = controller
         ctrl.start()

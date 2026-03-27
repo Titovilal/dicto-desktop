@@ -3,6 +3,7 @@
 Dicto - Main entry point
 A minimalist desktop application for voice-to-text transcription.
 """
+
 from __future__ import annotations
 
 import sys
@@ -13,6 +14,7 @@ from pathlib import Path
 # Must be done before creating QApplication
 if sys.platform == "win32":
     import ctypes
+
     app_id = "dicto.desktop.1.0"
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
 
@@ -59,6 +61,7 @@ class DictoApp:
 
         # Enable font antialiasing
         from PySide6.QtGui import QFont
+
         font = QFont("JetBrains Mono")
         font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
         font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
@@ -116,6 +119,7 @@ class DictoApp:
     def _load_fonts(self):
         """Load bundled JetBrains Mono font files."""
         from PySide6.QtGui import QFontDatabase
+
         fonts_dir = Path(__file__).parent.parent / "assets" / "fonts"
         if fonts_dir.is_dir():
             for font_file in fonts_dir.glob("*.ttf"):
@@ -171,7 +175,9 @@ class DictoApp:
 
         # Controller events -> Update main window
         # recording_started -> main window is handled in _on_recording_started_overlay
-        self.controller.transcription_completed.connect(self.main_window.update_transcription)
+        self.controller.transcription_completed.connect(
+            self.main_window.update_transcription
+        )
 
         # Main window actions -> Controller
         self.main_window.play_clicked.connect(self.controller.start_recording_manual)
@@ -180,16 +186,22 @@ class DictoApp:
         self.main_window.transform_requested.connect(self.controller.request_transform)
 
         # Controller transform results -> Main window
-        self.controller.transform_completed.connect(self.main_window.on_transform_completed)
+        self.controller.transform_completed.connect(
+            self.main_window.on_transform_completed
+        )
         self.controller.transform_failed.connect(self.main_window.on_transform_failed)
 
         # Audio level -> waveform widgets
         self.controller.audio_level_changed.connect(
-            self.main_window.waveform.set_level, Qt.ConnectionType.QueuedConnection)
+            self.main_window.waveform.set_level, Qt.ConnectionType.QueuedConnection
+        )
         self.controller.audio_level_changed.connect(
-            self.overlay.waveform_recording.set_level, Qt.ConnectionType.QueuedConnection)
+            self.overlay.waveform_recording.set_level,
+            Qt.ConnectionType.QueuedConnection,
+        )
         self.controller.audio_level_changed.connect(
-            self.overlay.waveform_editing.set_level, Qt.ConnectionType.QueuedConnection)
+            self.overlay.waveform_editing.set_level, Qt.ConnectionType.QueuedConnection
+        )
 
         # Edit selection signals -> UI state updates
         self.controller.edit_started.connect(self._on_edit_started)
@@ -197,7 +209,9 @@ class DictoApp:
         self.controller.edit_failed.connect(self._on_error)
 
         # Hotkey changes -> Controller
-        self.main_window.recording_hotkey_changed.connect(self.controller.update_recording_hotkey)
+        self.main_window.recording_hotkey_changed.connect(
+            self.controller.update_recording_hotkey
+        )
         self.main_window.edit_hotkey_changed.connect(self.controller.update_edit_hotkey)
 
         # Overlay record/stop buttons
@@ -212,7 +226,9 @@ class DictoApp:
         # Tray actions
         self.tray_manager.quit_requested.connect(self.quit)
         self.tray_manager.show_window_requested.connect(self._show_main_window)
-        self.tray_manager.open_config_requested.connect(self.main_window.show_settings_tab)
+        self.tray_manager.open_config_requested.connect(
+            self.main_window.show_settings_tab
+        )
 
         logger.info("Signals connected")
 
@@ -272,7 +288,6 @@ class DictoApp:
         # Show success overlay
         self.overlay.show_success()
 
-
         # Return to idle after overlay hides
         QTimer.singleShot(1500, self.controller.return_to_idle)
 
@@ -313,7 +328,6 @@ class DictoApp:
 
         self._in_edit_flow = False
         self.overlay.show_success()
-
 
         QTimer.singleShot(1500, self.controller.return_to_idle)
 

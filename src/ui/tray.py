@@ -1,6 +1,7 @@
 """
 System tray manager for Dicto application.
 """
+
 from __future__ import annotations
 
 import logging
@@ -71,11 +72,15 @@ class TrayManager(QObject):
         if icon_path:
             return QIcon(str(icon_path))
         from PySide6.QtWidgets import QStyle
+
         return self.app.style().standardIcon(QStyle.StandardPixmap.SP_MediaVolume)
 
     @Slot(QSystemTrayIcon.ActivationReason)
     def _on_tray_activated(self, reason):
-        if reason in (QSystemTrayIcon.ActivationReason.Trigger, QSystemTrayIcon.ActivationReason.DoubleClick):
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+        ):
             self.show_window_requested.emit()
 
     @Slot()
@@ -109,7 +114,9 @@ class TrayManager(QObject):
             self.tray_icon.showMessage(title, message, icon_type, 3000)
 
     def show_error(self, message: str):
-        self.show_message(f"Dicto — {t('error')}", message, QSystemTrayIcon.MessageIcon.Critical)
+        self.show_message(
+            f"Dicto — {t('error')}", message, QSystemTrayIcon.MessageIcon.Critical
+        )
 
     def show_success(self, message: str):
         self.show_message("Dicto", message, QSystemTrayIcon.MessageIcon.Information)

@@ -2,6 +2,7 @@
 Main window for Dicto application.
 Redesigned to match the dicto web component aesthetic.
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,7 +24,14 @@ from PySide6.QtWidgets import (
     QScrollArea,
 )
 from PySide6.QtCore import Signal, Slot, Qt, QSize, QUrl, QTimer, QEvent
-from PySide6.QtGui import QIcon, QPainter, QColor, QPixmap, QDesktopServices, QMouseEvent
+from PySide6.QtGui import (
+    QIcon,
+    QPainter,
+    QColor,
+    QPixmap,
+    QDesktopServices,
+    QMouseEvent,
+)
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -108,7 +116,6 @@ def _make_icon(svg_data: str, size: int, color: str) -> QIcon:
     return icon
 
 
-
 class HotkeyButton(QPushButton):
     """A button that captures key combinations when clicked."""
 
@@ -138,7 +145,10 @@ class HotkeyButton(QPushButton):
     }
 
     _MODIFIER_KEYS = {
-        Qt.Key.Key_Control, Qt.Key.Key_Shift, Qt.Key.Key_Alt, Qt.Key.Key_Meta,
+        Qt.Key.Key_Control,
+        Qt.Key.Key_Shift,
+        Qt.Key.Key_Alt,
+        Qt.Key.Key_Meta,
     }
 
     def __init__(self, modifiers: list[str], key: str, parent=None):
@@ -245,8 +255,8 @@ class MainWindow(QMainWindow):
     copy_clicked = Signal()
     transform_requested = Signal(str, str, str)  # (format_id, text, instructions)
     persistent_overlay_changed = Signal(bool)
-    recording_hotkey_changed = Signal(list, str)   # (modifiers, key)
-    edit_hotkey_changed = Signal(list, str)         # (modifiers, key)
+    recording_hotkey_changed = Signal(list, str)  # (modifiers, key)
+    edit_hotkey_changed = Signal(list, str)  # (modifiers, key)
 
     FULL_SIZE = (420, 370)
 
@@ -290,7 +300,9 @@ class MainWindow(QMainWindow):
 
         central_widget = QWidget()
         central_widget.setObjectName("centralCard")
-        central_widget.setStyleSheet(f"QWidget#centralCard {{ background-color: {MUTED}; border: 1px solid {BORDER}; border-radius: 6px; }}")
+        central_widget.setStyleSheet(
+            f"QWidget#centralCard {{ background-color: {MUTED}; border: 1px solid {BORDER}; border-radius: 6px; }}"
+        )
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -332,7 +344,9 @@ class MainWindow(QMainWindow):
 
         # Title
         title = QLabel("dicto")
-        title.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {TEXT}; letter-spacing: -0.5px;")
+        title.setStyleSheet(
+            f"font-size: 14px; font-weight: 600; color: {TEXT}; letter-spacing: -0.5px;"
+        )
         layout.addWidget(title)
 
         # Web button (next to title)
@@ -343,9 +357,13 @@ class MainWindow(QMainWindow):
         web_btn.setIconSize(QSize(16, 16))
         web_btn.setStyleSheet(HEADER_BUTTON)
         web_btn.setToolTip(t("go_to_web"))
-        web_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(os.environ.get("DICTO_WEB_URL", "https://app.dicto.io"))))
-        setattr(web_btn, '_icon_normal', _make_icon(SVG_EXTERNAL, 16, TEXT_DIM))
-        setattr(web_btn, '_icon_hover', _make_icon(SVG_EXTERNAL, 16, TEXT))
+        web_btn.clicked.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl(os.environ.get("DICTO_WEB_URL", "https://app.dicto.io"))
+            )
+        )
+        setattr(web_btn, "_icon_normal", _make_icon(SVG_EXTERNAL, 16, TEXT_DIM))
+        setattr(web_btn, "_icon_hover", _make_icon(SVG_EXTERNAL, 16, TEXT))
         web_btn.installEventFilter(self)
         layout.addWidget(web_btn)
 
@@ -366,8 +384,10 @@ class MainWindow(QMainWindow):
         self.models_button.setStyleSheet(HEADER_BUTTON)
         self.models_button.setToolTip(t("models"))
         self.models_button.clicked.connect(self._toggle_models)
-        setattr(self.models_button, '_icon_normal', _make_icon(SVG_MODELS, 16, TEXT_DIM))
-        setattr(self.models_button, '_icon_hover', _make_icon(SVG_MODELS, 16, TEXT))
+        setattr(
+            self.models_button, "_icon_normal", _make_icon(SVG_MODELS, 16, TEXT_DIM)
+        )
+        setattr(self.models_button, "_icon_hover", _make_icon(SVG_MODELS, 16, TEXT))
         self.models_button.installEventFilter(self)
         layout.addWidget(self.models_button)
 
@@ -380,8 +400,10 @@ class MainWindow(QMainWindow):
         self.settings_button.setStyleSheet(HEADER_BUTTON)
         self.settings_button.setToolTip(t("settings"))
         self.settings_button.clicked.connect(self._toggle_settings)
-        setattr(self.settings_button, '_icon_normal', _make_icon(SVG_SETTINGS, 16, TEXT_DIM))
-        setattr(self.settings_button, '_icon_hover', _make_icon(SVG_SETTINGS, 16, TEXT))
+        setattr(
+            self.settings_button, "_icon_normal", _make_icon(SVG_SETTINGS, 16, TEXT_DIM)
+        )
+        setattr(self.settings_button, "_icon_hover", _make_icon(SVG_SETTINGS, 16, TEXT))
         self.settings_button.installEventFilter(self)
         layout.addWidget(self.settings_button)
 
@@ -394,8 +416,8 @@ class MainWindow(QMainWindow):
         close_btn.setStyleSheet(HEADER_BUTTON_CLOSE)
         close_btn.setToolTip(t("close"))
         close_btn.clicked.connect(self.close)
-        setattr(close_btn, '_icon_normal', _make_icon(SVG_CLOSE, 16, TEXT_DIM))
-        setattr(close_btn, '_icon_hover', _make_icon(SVG_CLOSE, 16, RED))
+        setattr(close_btn, "_icon_normal", _make_icon(SVG_CLOSE, 16, TEXT_DIM))
+        setattr(close_btn, "_icon_hover", _make_icon(SVG_CLOSE, 16, RED))
         close_btn.installEventFilter(self)
         layout.addWidget(close_btn)
 
@@ -418,13 +440,20 @@ class MainWindow(QMainWindow):
         layout.setSpacing(6)
 
         self.format_tabs = []
-        formats = [("raw", t("tab_original")), ("email", t("tab_email")), ("notes", t("tab_notes")), ("tweet", t("tab_post"))]
+        formats = [
+            ("raw", t("tab_original")),
+            ("email", t("tab_email")),
+            ("notes", t("tab_notes")),
+            ("tweet", t("tab_post")),
+        ]
         for fid, label in formats:
             btn = QPushButton(label)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             is_raw = fid == "raw"
             btn.setStyleSheet(TAB_BUTTON_ACTIVE if is_raw else TAB_BUTTON_DISABLED)
-            btn.setEnabled(is_raw)  # Only "Original" is clickable until transcription is available
+            btn.setEnabled(
+                is_raw
+            )  # Only "Original" is clickable until transcription is available
             btn.setProperty("format_id", fid)
             btn.clicked.connect(lambda checked, b=btn: self._on_format_clicked(b))
             self.format_tabs.append(btn)
@@ -521,7 +550,9 @@ class MainWindow(QMainWindow):
         # Icon circle
         icon_container = QWidget()
         icon_container.setFixedSize(28, 28)
-        icon_container.setStyleSheet(f"border: 1px solid {BORDER}; border-radius: 14px;")
+        icon_container.setStyleSheet(
+            f"border: 1px solid {BORDER}; border-radius: 14px;"
+        )
         icon_layout = QVBoxLayout(icon_container)
         icon_layout.setContentsMargins(5, 5, 5, 5)
         icon_label = QLabel()
@@ -573,7 +604,9 @@ class MainWindow(QMainWindow):
 
         layout.addStretch()
 
-        self.waveform = WaveformWidget(bar_count=18, bar_width=2, bar_gap=2, height=28, mode="live")
+        self.waveform = WaveformWidget(
+            bar_count=18, bar_width=2, bar_gap=2, height=28, mode="live"
+        )
         layout.addWidget(self.waveform, 0, Qt.AlignmentFlag.AlignCenter)
 
         layout.addStretch()
@@ -581,12 +614,12 @@ class MainWindow(QMainWindow):
 
     def _animate_dots(self):
         self._dots_count = (self._dots_count + 1) % 4
-        dots = "." * self._dots_count + "\u00A0" * (3 - self._dots_count)
-        if self.is_recording and getattr(self, '_is_editing', False):
+        dots = "." * self._dots_count + "\u00a0" * (3 - self._dots_count)
+        if self.is_recording and getattr(self, "_is_editing", False):
             self.recording_label.setText(f"{t('listening')}{dots}")
         elif self.is_recording:
             self.recording_label.setText(f"{t('listening')}{dots}")
-        elif self.is_processing and getattr(self, '_is_editing', False):
+        elif self.is_processing and getattr(self, "_is_editing", False):
             self.processing_label.setText(f"{t('editing')}{dots}")
         elif self.is_processing:
             self.processing_label.setText(f"{t('processing')}{dots}")
@@ -629,7 +662,7 @@ class MainWindow(QMainWindow):
         """Create a combo box with items, connect its signal, add to layout, and return it."""
         combo = QComboBox()
         combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        setattr(combo, 'wheelEvent', lambda e: e.ignore())
+        setattr(combo, "wheelEvent", lambda e: e.ignore())
         for value, label in items.items():
             combo.addItem(label, value)
         combo.currentIndexChanged.connect(callback)
@@ -644,7 +677,9 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._section_label(t(title_key)))
         layout.addSpacing(6)
 
-    def _add_hotkey_row(self, layout, label_key: str, modifiers: list[str], key: str, callback) -> HotkeyButton:
+    def _add_hotkey_row(
+        self, layout, label_key: str, modifiers: list[str], key: str, callback
+    ) -> HotkeyButton:
         """Create a labeled hotkey button row."""
         row = QHBoxLayout()
         row.setSpacing(8)
@@ -714,32 +749,62 @@ class MainWindow(QMainWindow):
         # Keyboard shortcuts
         self._add_section(layout, "keyboard_shortcuts")
         layout.addSpacing(2)
-        rec_mods = self.settings.hotkey_modifiers if self.settings else ["ctrl", "shift"]
+        rec_mods = (
+            self.settings.hotkey_modifiers if self.settings else ["ctrl", "shift"]
+        )
         rec_key = self.settings.hotkey_key if self.settings else "space"
-        self.recording_hotkey_button = self._add_hotkey_row(layout, "hotkey_record", rec_mods, rec_key, self._on_recording_hotkey_changed)
+        self.recording_hotkey_button = self._add_hotkey_row(
+            layout,
+            "hotkey_record",
+            rec_mods,
+            rec_key,
+            self._on_recording_hotkey_changed,
+        )
         layout.addSpacing(6)
-        edit_mods = self.settings.edit_hotkey_modifiers if self.settings else ["ctrl", "alt"]
+        edit_mods = (
+            self.settings.edit_hotkey_modifiers if self.settings else ["ctrl", "alt"]
+        )
         edit_key = self.settings.edit_hotkey_key if self.settings else "space"
-        self.edit_hotkey_button = self._add_hotkey_row(layout, "hotkey_edit_selection", edit_mods, edit_key, self._on_edit_hotkey_changed)
+        self.edit_hotkey_button = self._add_hotkey_row(
+            layout,
+            "hotkey_edit_selection",
+            edit_mods,
+            edit_key,
+            self._on_edit_hotkey_changed,
+        )
 
         # Behavior (transcription + edit selection together)
         self._add_section(layout, "behavior")
-        self.auto_paste_checkbox = self._add_checkbox(layout, "auto_paste_after_transcribe", self._on_auto_paste_changed)
-        self.auto_enter_checkbox = self._add_checkbox(layout, "press_enter_after_paste", self._on_auto_enter_changed)
+        self.auto_paste_checkbox = self._add_checkbox(
+            layout, "auto_paste_after_transcribe", self._on_auto_paste_changed
+        )
+        self.auto_enter_checkbox = self._add_checkbox(
+            layout, "press_enter_after_paste", self._on_auto_enter_changed
+        )
 
         # Edit selection
         self._add_section(layout, "edit_selection")
-        self.edit_auto_paste_checkbox = self._add_checkbox(layout, "auto_paste_after_edit", self._on_edit_auto_paste_changed)
-        self.edit_auto_enter_checkbox = self._add_checkbox(layout, "press_enter_after_paste", self._on_edit_auto_enter_changed)
+        self.edit_auto_paste_checkbox = self._add_checkbox(
+            layout, "auto_paste_after_edit", self._on_edit_auto_paste_changed
+        )
+        self.edit_auto_enter_checkbox = self._add_checkbox(
+            layout, "press_enter_after_paste", self._on_edit_auto_enter_changed
+        )
 
         # Window (application + overlay merged)
         self._add_section(layout, "application")
-        self.always_on_top_checkbox = self._add_checkbox(layout, "always_on_top", self._on_always_on_top_changed)
-        self.persistent_overlay_checkbox = self._add_checkbox(layout, "persistent_overlay", self._on_persistent_overlay_changed)
+        self.always_on_top_checkbox = self._add_checkbox(
+            layout, "always_on_top", self._on_always_on_top_changed
+        )
+        self.persistent_overlay_checkbox = self._add_checkbox(
+            layout, "persistent_overlay", self._on_persistent_overlay_changed
+        )
 
         # UI Language (rarely changed)
         self._add_section(layout, "ui_language")
-        self.ui_language_combo = self._add_combo(layout, UI_LANGUAGES, self._on_ui_language_changed)
+        self.ui_language_combo = self._add_combo(
+            layout, UI_LANGUAGES, self._on_ui_language_changed
+        )
 
         layout.addStretch()
         self.content_stack.addWidget(page)
@@ -763,7 +828,9 @@ class MainWindow(QMainWindow):
 
         # Transcription language
         self._add_section(layout, "transcription_language")
-        self.language_combo = self._add_combo(layout, self.LANGUAGES, self._on_language_changed)
+        self.language_combo = self._add_combo(
+            layout, self.LANGUAGES, self._on_language_changed
+        )
 
         # Transformation model
         self._add_section(layout, "transformation_model")
@@ -837,7 +904,9 @@ class MainWindow(QMainWindow):
         # Status label (for settings feedback, right-aligned)
         self.status_label = QLabel("")
         self.status_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.status_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         layout.addWidget(self.status_label)
 
         parent_layout.addWidget(self.footer)
@@ -858,9 +927,9 @@ class MainWindow(QMainWindow):
         return sep
 
     def eventFilter(self, obj, event):
-        if hasattr(obj, '_icon_hover'):
+        if hasattr(obj, "_icon_hover"):
             if event.type() == QEvent.Type.Enter:
-                obj.setIcon(getattr(obj, '_icon_hover'))
+                obj.setIcon(getattr(obj, "_icon_hover"))
             elif event.type() == QEvent.Type.Leave:
                 # Don't reset to dim if this button's panel is active
                 if obj is self.models_button and self._models_open:
@@ -868,7 +937,7 @@ class MainWindow(QMainWindow):
                 elif obj is self.settings_button and self._settings_open:
                     pass
                 else:
-                    obj.setIcon(getattr(obj, '_icon_normal'))
+                    obj.setIcon(getattr(obj, "_icon_normal"))
         return super().eventFilter(obj, event)
 
     def _format_elapsed(self) -> str:
@@ -888,7 +957,9 @@ class MainWindow(QMainWindow):
             elif self.is_processing:
                 self.status_dot.setStyleSheet(DOT_PROCESSING)
         else:
-            self.status_dot.setStyleSheet("background-color: transparent; border-radius: 4px;")
+            self.status_dot.setStyleSheet(
+                "background-color: transparent; border-radius: 4px;"
+            )
 
     def _toggle_settings(self):
         if self._settings_open:
@@ -931,7 +1002,7 @@ class MainWindow(QMainWindow):
     def _close_panel(self):
         self._settings_open = False
         self._models_open = False
-        self.content_stack.setCurrentIndex(getattr(self, '_prev_page', 0))
+        self.content_stack.setCurrentIndex(getattr(self, "_prev_page", 0))
         self.settings_button.setIcon(_make_icon(SVG_SETTINGS, 16, TEXT_DIM))
         self.settings_button.setStyleSheet(HEADER_BUTTON)
         self.models_button.setIcon(_make_icon(SVG_MODELS, 16, TEXT_DIM))
@@ -966,7 +1037,9 @@ class MainWindow(QMainWindow):
             self.model_combo.setCurrentIndex(model_index)
 
         current_transform_model = self.settings.transformation_model
-        transform_index = self.transformation_model_combo.findData(current_transform_model)
+        transform_index = self.transformation_model_combo.findData(
+            current_transform_model
+        )
         if transform_index >= 0:
             self.transformation_model_combo.setCurrentIndex(transform_index)
 
@@ -991,7 +1064,9 @@ class MainWindow(QMainWindow):
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
-            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self._drag_pos = (
+                event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            )
             event.accept()
 
     def mouseMoveEvent(self, event: QMouseEvent):
@@ -1059,7 +1134,9 @@ class MainWindow(QMainWindow):
         self._save_setting("always_on_top", checked)
 
     def _on_language_changed(self, index: int):
-        self._save_setting("transcription_language", self.language_combo.itemData(index))
+        self._save_setting(
+            "transcription_language", self.language_combo.itemData(index)
+        )
 
     def _on_persistent_overlay_changed(self, state: int):
         checked = state == Qt.CheckState.Checked.value
@@ -1189,7 +1266,6 @@ class MainWindow(QMainWindow):
         # Tabs
         self._update_tabs_enabled(False)
 
-
     @Slot()
     def set_idle_state(self):
         self.is_recording = False
@@ -1226,7 +1302,6 @@ class MainWindow(QMainWindow):
         else:
             self.copy_button.hide()
             self._update_tabs_enabled(False)
-
 
     @Slot()
     def set_processing_state(self):
@@ -1341,7 +1416,6 @@ class MainWindow(QMainWindow):
 
         # Tabs
         self._update_tabs_enabled(False)
-
 
     @Slot(str)
     def update_transcription(self, text: str):

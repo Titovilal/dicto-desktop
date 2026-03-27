@@ -1,4 +1,5 @@
 """Shared fixtures for Dicto tests."""
+
 from __future__ import annotations
 
 
@@ -24,10 +25,12 @@ def default_settings(tmp_config):
 @pytest.fixture
 def custom_config(tmp_config):
     """Write a custom config.yaml and return the path."""
+
     def _write(data: dict):
         with open(tmp_config, "w", encoding="utf-8") as f:
             yaml.dump(data, f)
         return str(tmp_config)
+
     return _write
 
 
@@ -35,6 +38,7 @@ def custom_config(tmp_config):
 def sample_audio_file(tmp_path):
     """Create a small valid WAV file for testing."""
     import struct
+
     wav_path = tmp_path / "test.wav"
     # Minimal WAV: 16-bit mono, 16kHz, 0.1s of silence
     sample_rate = 16000
@@ -47,13 +51,13 @@ def sample_audio_file(tmp_path):
         f.write(b"WAVE")
         # fmt chunk
         f.write(b"fmt ")
-        f.write(struct.pack("<I", 16))       # chunk size
-        f.write(struct.pack("<H", 1))        # PCM
-        f.write(struct.pack("<H", 1))        # mono
+        f.write(struct.pack("<I", 16))  # chunk size
+        f.write(struct.pack("<H", 1))  # PCM
+        f.write(struct.pack("<H", 1))  # mono
         f.write(struct.pack("<I", sample_rate))
         f.write(struct.pack("<I", sample_rate * 2))  # byte rate
-        f.write(struct.pack("<H", 2))        # block align
-        f.write(struct.pack("<H", 16))       # bits per sample
+        f.write(struct.pack("<H", 2))  # block align
+        f.write(struct.pack("<H", 16))  # bits per sample
         # data chunk
         f.write(b"data")
         f.write(struct.pack("<I", data_size))

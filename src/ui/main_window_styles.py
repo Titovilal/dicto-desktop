@@ -2,27 +2,29 @@
 Styles and theme for the main window UI.
 Dark mode using zinc scale from the web app's globals.css.
 """
+
 from __future__ import annotations
 
 # ── Color Palette (zinc dark mode) ───────────────────────────
 
-BG = "#09090b"              # zinc-950  --background
-MUTED = "#18181b"           # zinc-900  --muted / --accent
-SECONDARY = "#27272a"       # zinc-800  --secondary / --border
-BORDER = "#27272a"          # zinc-800  --border
-TEXT = "#f4f4f5"            # zinc-100  --foreground
-TEXT_DIM = "#71717a"        # zinc-500  --muted-foreground
-PRIMARY = "#d4d4d8"         # zinc-300  --primary
-PRIMARY_FG = "#18181b"      # zinc-900  --primary-foreground
-RED = "#ef4444"             # red-500
-RED_HOVER = "#dc2626"       # red-600
-AMBER = "#fbbf24"           # amber-400
-GREEN = "#34d399"           # emerald-400
-BLUE = "#60a5fa"            # blue-400
+BG = "#09090b"  # zinc-950  --background
+MUTED = "#18181b"  # zinc-900  --muted / --accent
+SECONDARY = "#27272a"  # zinc-800  --secondary / --border
+BORDER = "#27272a"  # zinc-800  --border
+TEXT = "#f4f4f5"  # zinc-100  --foreground
+TEXT_DIM = "#71717a"  # zinc-500  --muted-foreground
+PRIMARY = "#d4d4d8"  # zinc-300  --primary
+PRIMARY_FG = "#18181b"  # zinc-900  --primary-foreground
+RED = "#ef4444"  # red-500
+RED_HOVER = "#dc2626"  # red-600
+AMBER = "#fbbf24"  # amber-400
+GREEN = "#34d399"  # emerald-400
+BLUE = "#60a5fa"  # blue-400
 
 FONT = '"JetBrains Mono", "Cascadia Code", "Consolas", monospace'
 
 # ── Style Helpers ────────────────────────────────────────────
+
 
 def _btn(
     bg: str = "transparent",
@@ -142,14 +144,22 @@ DOT_EDITING = _dot(BLUE)
 # ── Header Buttons ───────────────────────────────────────────
 
 HEADER_BUTTON = _btn(padding="4px", hover_bg=SECONDARY, font_weight="normal")
-HEADER_BUTTON_CLOSE = _btn(padding="4px", hover_bg="rgba(239, 68, 68, 0.1)", font_weight="normal")
-HEADER_BUTTON_ACTIVE = _btn(bg=MUTED, padding="4px", hover_bg=SECONDARY, font_weight="normal")
+HEADER_BUTTON_CLOSE = _btn(
+    padding="4px", hover_bg="rgba(239, 68, 68, 0.1)", font_weight="normal"
+)
+HEADER_BUTTON_ACTIVE = _btn(
+    bg=MUTED, padding="4px", hover_bg=SECONDARY, font_weight="normal"
+)
 
 # ── Format Tabs ──────────────────────────────────────────────
 
-TAB_BUTTON = _btn(color=TEXT_DIM, radius=3, padding="4px 10px", hover_bg=MUTED, hover_color=TEXT)
+TAB_BUTTON = _btn(
+    color=TEXT_DIM, radius=3, padding="4px 10px", hover_bg=MUTED, hover_color=TEXT
+)
 TAB_BUTTON_ACTIVE = _btn(bg=PRIMARY, color=PRIMARY_FG, radius=3, padding="4px 10px")
-TAB_BUTTON_DISABLED = _btn(color="rgba(113, 113, 122, 0.5)", radius=3, padding="4px 10px")
+TAB_BUTTON_DISABLED = _btn(
+    color="rgba(113, 113, 122, 0.5)", radius=3, padding="4px 10px"
+)
 
 # ── Content ──────────────────────────────────────────────────
 
@@ -173,29 +183,41 @@ TIMER_EDITING = _label(BLUE, font_weight="normal")
 
 # ── Footer Buttons ───────────────────────────────────────────
 
-RECORD_BUTTON_IDLE = _btn(bg=PRIMARY, color=PRIMARY_FG, hover_bg="rgba(244, 244, 245, 0.8)")
+RECORD_BUTTON_IDLE = _btn(
+    bg=PRIMARY, color=PRIMARY_FG, hover_bg="rgba(244, 244, 245, 0.8)"
+)
 RECORD_BUTTON_RECORDING = _btn(bg="#dc2626", color="white", hover_bg="#b91c1c")
 RECORD_BUTTON_PROCESSING = _btn(bg=AMBER, color=PRIMARY_FG)
 RECORD_BUTTON_EDITING = _btn(bg=BLUE, color=PRIMARY_FG)
 
-FOOTER_TEXT_BUTTON = _btn(color=TEXT_DIM, padding="6px 8px", hover_color=TEXT, font_weight="normal")
+FOOTER_TEXT_BUTTON = _btn(
+    color=TEXT_DIM, padding="6px 8px", hover_color=TEXT, font_weight="normal"
+)
 FOOTER_TEXT_BUTTON_SUCCESS = _btn(bg="transparent", color=GREEN, padding="6px 8px")
 
 # ── Settings ─────────────────────────────────────────────────
 
-SECTION_LABEL = _label(TEXT_DIM, font_size=11, font_weight="bold") + " letter-spacing: 1px;"
+SECTION_LABEL = (
+    _label(TEXT_DIM, font_size=11, font_weight="bold") + " letter-spacing: 1px;"
+)
 SETTINGS_TITLE = f"color: {TEXT}; padding-left: 4px;"
 
 ICON_BUTTON = _btn(padding="0", hover_bg=MUTED, font_weight="normal")
 
 FLAT_BUTTON = _btn(
-    bg=MUTED, border=f"1px solid {BORDER}",
-    font_size=13, padding="0 12px", hover_bg=SECONDARY,
+    bg=MUTED,
+    border=f"1px solid {BORDER}",
+    font_size=13,
+    padding="0 12px",
+    hover_bg=SECONDARY,
 )
 
 ACCENT_BUTTON = _btn(
-    bg=PRIMARY, color=PRIMARY_FG,
-    font_size=13, font_weight="bold", padding="0 16px",
+    bg=PRIMARY,
+    color=PRIMARY_FG,
+    font_size=13,
+    font_weight="bold",
+    padding="0 16px",
     hover_bg="rgba(244, 244, 245, 0.8)",
 )
 

@@ -14,9 +14,7 @@ def setup_logging(level: int = logging.INFO) -> None:
         level: Logging level (default: INFO)
     """
     # Format: LEVEL - filename - message
-    formatter = logging.Formatter(
-        fmt="%(levelname)s:\t%(message)s"
-    )
+    formatter = logging.Formatter(fmt="%(levelname)s:\t%(message)s")
 
     # Console handler
     handler = logging.StreamHandler(sys.stdout)

@@ -1,4 +1,5 @@
 """Integration tests for the edit selection flow (copy text → record voice → edit via API)."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -20,12 +21,13 @@ def settings(tmp_path):
 @pytest.fixture
 def controller(settings, qtbot):
     """Controller with mocked I/O boundaries but real internal logic."""
-    with patch("src.controller.AudioRecorder") as MockRecorder, \
-         patch("src.controller.Transcriber") as MockTranscriber, \
-         patch("src.controller.HotkeyListener"), \
-         patch("src.controller.KeyboardService") as MockKeyboard, \
-         patch("src.controller.ClipboardManager") as MockClipboard:
-
+    with (
+        patch("src.controller.AudioRecorder") as MockRecorder,
+        patch("src.controller.Transcriber") as MockTranscriber,
+        patch("src.controller.HotkeyListener"),
+        patch("src.controller.KeyboardService") as MockKeyboard,
+        patch("src.controller.ClipboardManager") as MockClipboard,
+    ):
         recorder = MockRecorder.return_value
         recorder.is_recording = False
         recorder.start_recording.return_value = True
@@ -43,7 +45,6 @@ def controller(settings, qtbot):
 
 
 class TestEditHappyPath:
-
     def test_full_edit_flow(self, controller, qtbot):
         ctrl, recorder, transcriber, clipboard, keyboard = controller
 
@@ -79,7 +80,6 @@ class TestEditHappyPath:
 
 
 class TestEditCancelFlow:
-
     def test_cancel_during_edit_recording(self, controller, qtbot):
         ctrl, recorder, _, _, _ = controller
         ctrl.start()
@@ -109,7 +109,6 @@ class TestEditCancelFlow:
 
 
 class TestEditErrorFlow:
-
     def test_edit_error_goes_to_error(self, controller, qtbot):
         ctrl, _, _, _, _ = controller
         ctrl.start()

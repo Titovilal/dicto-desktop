@@ -1,4 +1,5 @@
 """Unit tests for Transcriber API client."""
+
 from __future__ import annotations
 
 import pytest
@@ -22,7 +23,6 @@ def transcriber():
 
 
 class TestInit:
-
     def test_requires_api_key(self):
         with pytest.raises(APIKeyError):
             Transcriber(api_key="")
@@ -42,7 +42,6 @@ class TestInit:
 
 
 class TestTranscribeValidation:
-
     def test_file_not_found(self, transcriber):
         with pytest.raises(TranscriptionError, match="not found"):
             transcriber.transcribe("/nonexistent/file.wav")
@@ -61,11 +60,15 @@ class TestTranscribeValidation:
 
 
 class TestTranscribeRequest:
-
     def test_success_returns_text(self, transcriber, sample_audio_file):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"text": "  hello world  ", "id": 42, "language": "es", "duration": 1.5}
+        mock_response.json.return_value = {
+            "text": "  hello world  ",
+            "id": 42,
+            "language": "es",
+            "duration": 1.5,
+        }
 
         with patch.object(transcriber.client, "post", return_value=mock_response):
             result = transcriber.transcribe(sample_audio_file)
@@ -94,8 +97,10 @@ class TestTranscribeRequest:
         mock_response = MagicMock()
         mock_response.status_code = 429
 
-        with patch.object(transcriber.client, "post", return_value=mock_response), \
-             patch("src.services.transcriber.time.sleep"):
+        with (
+            patch.object(transcriber.client, "post", return_value=mock_response),
+            patch("src.services.transcriber.time.sleep"),
+        ):
             with pytest.raises(RateLimitError):
                 transcriber.transcribe(sample_audio_file)
 
@@ -105,26 +110,37 @@ class TestTranscribeRequest:
         mock_response.json.return_value = {"error": "internal"}
         mock_response.text = "internal server error"
 
-        with patch.object(transcriber.client, "post", return_value=mock_response), \
-             patch("src.services.transcriber.time.sleep"):
+        with (
+            patch.object(transcriber.client, "post", return_value=mock_response),
+            patch("src.services.transcriber.time.sleep"),
+        ):
             with pytest.raises(TranscriptionError, match="500"):
                 transcriber.transcribe(sample_audio_file)
 
     def test_timeout_raises(self, transcriber, sample_audio_file):
-        with patch.object(transcriber.client, "post", side_effect=httpx.TimeoutException("timeout")), \
-             patch("src.services.transcriber.time.sleep"):
+        with (
+            patch.object(
+                transcriber.client,
+                "post",
+                side_effect=httpx.TimeoutException("timeout"),
+            ),
+            patch("src.services.transcriber.time.sleep"),
+        ):
             with pytest.raises(TranscriptionError, match="timeout"):
                 transcriber.transcribe(sample_audio_file)
 
     def test_network_error_raises(self, transcriber, sample_audio_file):
-        with patch.object(transcriber.client, "post", side_effect=httpx.ConnectError("no network")), \
-             patch("src.services.transcriber.time.sleep"):
+        with (
+            patch.object(
+                transcriber.client, "post", side_effect=httpx.ConnectError("no network")
+            ),
+            patch("src.services.transcriber.time.sleep"),
+        ):
             with pytest.raises(TranscriptionError, match="Network"):
                 transcriber.transcribe(sample_audio_file)
 
 
 class TestTransform:
-
     def test_success(self, transcriber):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -149,11 +165,11 @@ class TestTransform:
     def test_includes_transcription_id(self, transcriber):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "ok"}}]
-        }
+        mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
 
-        with patch.object(transcriber.client, "post", return_value=mock_response) as mock_post:
+        with patch.object(
+            transcriber.client, "post", return_value=mock_response
+        ) as mock_post:
             transcriber.transform("text", "instructions", transcription_id=99)
 
         payload = mock_post.call_args.kwargs["json"]
@@ -161,7 +177,6 @@ class TestTransform:
 
 
 class TestEdit:
-
     def test_success(self, transcriber, sample_audio_file):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -180,15 +195,16 @@ class TestEdit:
 
 
 class TestErrorParsing:
-
     def test_parse_error_dict(self, transcriber, sample_audio_file):
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.json.return_value = {"error": {"message": "bad request"}}
         mock_response.text = ""
 
-        with patch.object(transcriber.client, "post", return_value=mock_response), \
-             patch("src.services.transcriber.time.sleep"):
+        with (
+            patch.object(transcriber.client, "post", return_value=mock_response),
+            patch("src.services.transcriber.time.sleep"),
+        ):
             with pytest.raises(TranscriptionError, match="bad request"):
                 transcriber.transcribe(sample_audio_file)
 
@@ -198,7 +214,9 @@ class TestErrorParsing:
         mock_response.json.return_value = {"error": "something went wrong"}
         mock_response.text = ""
 
-        with patch.object(transcriber.client, "post", return_value=mock_response), \
-             patch("src.services.transcriber.time.sleep"):
+        with (
+            patch.object(transcriber.client, "post", return_value=mock_response),
+            patch("src.services.transcriber.time.sleep"),
+        ):
             with pytest.raises(TranscriptionError, match="something went wrong"):
                 transcriber.transcribe(sample_audio_file)

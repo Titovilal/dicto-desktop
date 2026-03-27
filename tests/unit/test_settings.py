@@ -1,4 +1,5 @@
 """Unit tests for Settings configuration management."""
+
 from __future__ import annotations
 
 import yaml
@@ -44,7 +45,9 @@ class TestSettingsLoading:
         assert s.hotkey_modifiers == ["ctrl", "shift"]
 
     def test_extra_keys_ignored(self, custom_config):
-        path = custom_config({"hotkey": {"key": "space"}, "unknown_section": {"foo": 1}})
+        path = custom_config(
+            {"hotkey": {"key": "space"}, "unknown_section": {"foo": 1}}
+        )
         s = Settings(config_path=path)
         assert s.hotkey_key == "space"
         assert "unknown_section" in s.config  # preserved, not crash

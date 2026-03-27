@@ -1,6 +1,7 @@
 """
 Global hotkey listener service using pynput.
 """
+
 from __future__ import annotations
 
 import logging
@@ -172,14 +173,16 @@ class HotkeyListener:
         """With suppress=True, all keys are blocked by default.
         We set _suppress=False to let everything through, except our hotkey combo."""
         # Default: let the key through
-        setattr(self.listener, '_suppress', False)
+        setattr(self.listener, "_suppress", False)
 
         # Only check key events
         if msg in (0x0100, 0x0104, 0x0101, 0x0105):
             try:
                 key = keyboard.KeyCode.from_vk(data.vkCode)
-                if self.modifiers.issubset(self.current_modifiers) and self._key_matches(key):
-                    setattr(self.listener, '_suppress', True)
+                if self.modifiers.issubset(
+                    self.current_modifiers
+                ) and self._key_matches(key):
+                    setattr(self.listener, "_suppress", True)
             except Exception:
                 pass
         return True
@@ -187,13 +190,13 @@ class HotkeyListener:
     @staticmethod
     def _get_vk(key) -> int | None:
         """Extract the virtual-key code from any pynput key representation."""
-        if hasattr(key, 'vk') and key.vk is not None:
+        if hasattr(key, "vk") and key.vk is not None:
             return key.vk
         # Key enum members (Key.space, etc.) store a KeyCode in .value
-        if hasattr(key, 'value') and hasattr(key.value, 'vk'):
+        if hasattr(key, "value") and hasattr(key.value, "vk"):
             return key.value.vk
         # KeyCode.from_char('x') has char but no vk – derive it
-        if hasattr(key, 'char') and key.char:
+        if hasattr(key, "char") and key.char:
             return ord(key.char.upper())
         return None
 
