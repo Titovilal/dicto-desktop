@@ -2,6 +2,7 @@
 Styles and theme for the main window UI.
 Dark mode using zinc scale from the web app's globals.css.
 """
+from __future__ import annotations
 
 # ── Color Palette (zinc dark mode) ───────────────────────────
 

@@ -6,8 +6,10 @@ API Base: https://terturionsland.dev
 - POST /api/transform   — text transformation (format conversion)
 - POST /api/edit         — edit text using voice instructions (audio + text)
 """
+from __future__ import annotations
 
 import logging
+from typing import NoReturn
 import time
 from pathlib import Path
 
@@ -269,7 +271,7 @@ class Transcriber:
 
     # ── Error handling ──────────────────────────────────────
 
-    def _handle_error_response(self, response: httpx.Response):
+    def _handle_error_response(self, response: httpx.Response) -> NoReturn:
         """Parse error response and raise appropriate exception."""
         if response.status_code == 401:
             raise APIKeyError("Invalid or missing API key")
@@ -293,7 +295,7 @@ class Transcriber:
             return response.text[:200]
 
     def close(self):
-        if self.client:
+        if getattr(self, "client", None):
             self.client.close()
 
     def __del__(self):

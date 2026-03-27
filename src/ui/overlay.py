@@ -12,20 +12,19 @@ from PySide6.QtCore import Qt, QTimer, QPoint, Signal
 
 from src.i18n import t
 from src.ui.main_window_styles import (
-    BG, BORDER, TEXT, TEXT_DIM, MUTED, SECONDARY,
+    BG, BORDER, TEXT, TEXT_DIM, SECONDARY,
     RED, AMBER, GREEN, BLUE,
 )
 from src.ui.waveform import WaveformWidget
+from src.ui.icons import SVG_SETTINGS_SMALL, SVG_RECORD, SVG_STOP, SVG_RESET
 
 
 FONT = '"JetBrains Mono", "Cascadia Code", "Consolas", monospace'
 LABEL_BASE = f"font-family: {FONT}; background: transparent; letter-spacing: -0.5px;"
 
-from src.ui.icons import SVG_SETTINGS_SMALL, SVG_RECORD, SVG_STOP, SVG_RESET
-
 # Button styles
 _BTN_BASE = (
-    f"background: transparent; border: none; border-radius: 4px; padding: 2px;"
+    "background: transparent; border: none; border-radius: 4px; padding: 2px;"
     f" font-family: {FONT};"
 )
 _BTN_HOVER = f"background: {SECONDARY};"
@@ -299,8 +298,8 @@ class OverlayWindow(QWidget):
             f"QWidget#overlayCard {{ "
             f"background-color: {BG}; "
             f"border: 1px solid {border_accent}; "
-            f"border-radius: 8px; "
-            f"}}"
+            "border-radius: 8px; "
+            "}"
         )
 
     # ── Persistent mode ──────────────────────────────────────
@@ -321,7 +320,7 @@ class OverlayWindow(QWidget):
             color = RED if self.current_state == "recording" else BLUE if self.current_state == "editing" else AMBER
             self.status_dot.setStyleSheet(f"background-color: {color}; border-radius: 3px;")
         else:
-            self.status_dot.setStyleSheet(f"background-color: transparent; border-radius: 3px;")
+            self.status_dot.setStyleSheet("background-color: transparent; border-radius: 3px;")
 
     def _animate_dots(self):
         self._dots_count = (self._dots_count + 1) % 4

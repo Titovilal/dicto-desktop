@@ -1,6 +1,7 @@
 """
 Global hotkey listener service using pynput.
 """
+from __future__ import annotations
 
 import logging
 from pynput import keyboard
@@ -171,14 +172,14 @@ class HotkeyListener:
         """With suppress=True, all keys are blocked by default.
         We set _suppress=False to let everything through, except our hotkey combo."""
         # Default: let the key through
-        self.listener._suppress = False
+        setattr(self.listener, '_suppress', False)
 
         # Only check key events
         if msg in (0x0100, 0x0104, 0x0101, 0x0105):
             try:
                 key = keyboard.KeyCode.from_vk(data.vkCode)
                 if self.modifiers.issubset(self.current_modifiers) and self._key_matches(key):
-                    self.listener._suppress = True
+                    setattr(self.listener, '_suppress', True)
             except Exception:
                 pass
         return True
@@ -211,7 +212,7 @@ class HotkeyListener:
         if self.listener is not None:
             return  # Already running
 
-        kwargs = dict(
+        kwargs: dict = dict(
             on_press=self._on_press,
             on_release=self._on_release,
         )

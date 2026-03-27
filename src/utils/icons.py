@@ -1,6 +1,7 @@
 """
 Icon utilities for Dicto application.
 """
+from __future__ import annotations
 
 import sys
 import logging
@@ -24,7 +25,7 @@ def get_icon_path(icon_name: str = "icon") -> Path | None:
     """
     # Determine base path (PyInstaller sets _MEIPASS when bundled)
     if getattr(sys, "frozen", False):
-        base_path = Path(sys._MEIPASS)
+        base_path = Path(getattr(sys, "_MEIPASS"))
     else:
         base_path = Path(__file__).parent.parent.parent
 

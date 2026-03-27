@@ -3,6 +3,7 @@
 Dicto - Main entry point
 A minimalist desktop application for voice-to-text transcription.
 """
+from __future__ import annotations
 
 import sys
 import signal

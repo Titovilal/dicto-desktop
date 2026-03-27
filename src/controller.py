@@ -1,6 +1,7 @@
 """
 Main controller that orchestrates all application components.
 """
+from __future__ import annotations
 
 import traceback
 from concurrent.futures import ThreadPoolExecutor
@@ -205,6 +206,7 @@ class Controller(QObject):
 
         def _do_transcribe():
             try:
+                assert self.transcriber is not None
                 text = self.transcriber.transcribe(audio_file_path)
                 if text:
                     self._transcription_done.emit(text)
@@ -330,11 +332,14 @@ class Controller(QObject):
 
         def _do_edit_with_voice():
             try:
+                assert self.transcriber is not None
+                assert self.recorder is not None
                 result = self.transcriber.edit(selected_text, audio_file_path)
                 self._edit_done.emit(result)
             except Exception as e:
                 self._edit_failed_internal.emit(str(e))
             finally:
+                assert self.recorder is not None
                 self.recorder.cleanup_temp_file()
 
         self._pool.submit(_do_edit_with_voice)
@@ -447,6 +452,7 @@ class Controller(QObject):
 
         def _do_transform():
             try:
+                assert self.transcriber is not None
                 result = self.transcriber.transform(text, instructions, transcription_id)
                 self.transform_completed.emit(format_id, result)
             except Exception as e:

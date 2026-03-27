@@ -2,6 +2,7 @@
 Main window for Dicto application.
 Redesigned to match the dicto web component aesthetic.
 """
+from __future__ import annotations
 
 import logging
 import os
@@ -22,10 +23,14 @@ from PySide6.QtWidgets import (
     QScrollArea,
 )
 from PySide6.QtCore import Signal, Slot, Qt, QSize, QUrl, QTimer, QEvent
-from PySide6.QtGui import QIcon, QFont, QPainter, QColor, QPixmap, QDesktopServices, QMouseEvent
+from PySide6.QtGui import QIcon, QPainter, QColor, QPixmap, QDesktopServices, QMouseEvent
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.controller import Controller
 
 from src.utils.icons import get_icon_path
-from src.i18n import t, set_language, get_language
+from src.i18n import t, set_language
 from src.i18n.translations import UI_LANGUAGES
 from src.ui.waveform import WaveformWidget
 from src.ui.main_window_styles import (
@@ -60,7 +65,6 @@ from src.ui.main_window_styles import (
     FLAT_BUTTON,
     ACCENT_BUTTON,
     SEPARATOR,
-    BG,
     MUTED,
     BORDER,
     TEXT,
@@ -86,7 +90,7 @@ def _make_icon(svg_data: str, size: int, color: str) -> QIcon:
 
     scale = 2
     app = QApplication.instance()
-    if app:
+    if app and isinstance(app, QApplication):
         screen = app.primaryScreen()
         if screen:
             scale = max(2, int(screen.devicePixelRatio()))
@@ -210,6 +214,7 @@ class HotkeyButton(QPushButton):
 
 
 class MainWindow(QMainWindow):
+    controller: Controller | None
     """Main application window matching the web component design."""
 
     LANGUAGES = {
@@ -339,8 +344,8 @@ class MainWindow(QMainWindow):
         web_btn.setStyleSheet(HEADER_BUTTON)
         web_btn.setToolTip(t("go_to_web"))
         web_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(os.environ.get("DICTO_WEB_URL", "https://app.dicto.io"))))
-        web_btn._icon_normal = _make_icon(SVG_EXTERNAL, 16, TEXT_DIM)
-        web_btn._icon_hover = _make_icon(SVG_EXTERNAL, 16, TEXT)
+        setattr(web_btn, '_icon_normal', _make_icon(SVG_EXTERNAL, 16, TEXT_DIM))
+        setattr(web_btn, '_icon_hover', _make_icon(SVG_EXTERNAL, 16, TEXT))
         web_btn.installEventFilter(self)
         layout.addWidget(web_btn)
 
@@ -361,8 +366,8 @@ class MainWindow(QMainWindow):
         self.models_button.setStyleSheet(HEADER_BUTTON)
         self.models_button.setToolTip(t("models"))
         self.models_button.clicked.connect(self._toggle_models)
-        self.models_button._icon_normal = _make_icon(SVG_MODELS, 16, TEXT_DIM)
-        self.models_button._icon_hover = _make_icon(SVG_MODELS, 16, TEXT)
+        setattr(self.models_button, '_icon_normal', _make_icon(SVG_MODELS, 16, TEXT_DIM))
+        setattr(self.models_button, '_icon_hover', _make_icon(SVG_MODELS, 16, TEXT))
         self.models_button.installEventFilter(self)
         layout.addWidget(self.models_button)
 
@@ -375,8 +380,8 @@ class MainWindow(QMainWindow):
         self.settings_button.setStyleSheet(HEADER_BUTTON)
         self.settings_button.setToolTip(t("settings"))
         self.settings_button.clicked.connect(self._toggle_settings)
-        self.settings_button._icon_normal = _make_icon(SVG_SETTINGS, 16, TEXT_DIM)
-        self.settings_button._icon_hover = _make_icon(SVG_SETTINGS, 16, TEXT)
+        setattr(self.settings_button, '_icon_normal', _make_icon(SVG_SETTINGS, 16, TEXT_DIM))
+        setattr(self.settings_button, '_icon_hover', _make_icon(SVG_SETTINGS, 16, TEXT))
         self.settings_button.installEventFilter(self)
         layout.addWidget(self.settings_button)
 
@@ -389,8 +394,8 @@ class MainWindow(QMainWindow):
         close_btn.setStyleSheet(HEADER_BUTTON_CLOSE)
         close_btn.setToolTip(t("close"))
         close_btn.clicked.connect(self.close)
-        close_btn._icon_normal = _make_icon(SVG_CLOSE, 16, TEXT_DIM)
-        close_btn._icon_hover = _make_icon(SVG_CLOSE, 16, RED)
+        setattr(close_btn, '_icon_normal', _make_icon(SVG_CLOSE, 16, TEXT_DIM))
+        setattr(close_btn, '_icon_hover', _make_icon(SVG_CLOSE, 16, RED))
         close_btn.installEventFilter(self)
         layout.addWidget(close_btn)
 
@@ -624,7 +629,7 @@ class MainWindow(QMainWindow):
         """Create a combo box with items, connect its signal, add to layout, and return it."""
         combo = QComboBox()
         combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        combo.wheelEvent = lambda e: e.ignore()
+        setattr(combo, 'wheelEvent', lambda e: e.ignore())
         for value, label in items.items():
             combo.addItem(label, value)
         combo.currentIndexChanged.connect(callback)
@@ -667,13 +672,13 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        scroll.setStyleSheet(f"""
-            QScrollArea {{ background-color: transparent; border: none; }}
-            QScrollArea > QWidget > QWidget {{ background-color: transparent; }}
-            QScrollBar:vertical {{ width: 6px; background-color: transparent; }}
-            QScrollBar::handle:vertical {{ background-color: rgba(255,255,255,0.15); border-radius: 3px; }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: none; }}
+        scroll.setStyleSheet("""
+            QScrollArea { background-color: transparent; border: none; }
+            QScrollArea > QWidget > QWidget { background-color: transparent; }
+            QScrollBar:vertical { width: 6px; background-color: transparent; }
+            QScrollBar::handle:vertical { background-color: rgba(255,255,255,0.15); border-radius: 3px; }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
         """)
         scroll.verticalScrollBar().setSingleStep(15)
 
@@ -855,7 +860,7 @@ class MainWindow(QMainWindow):
     def eventFilter(self, obj, event):
         if hasattr(obj, '_icon_hover'):
             if event.type() == QEvent.Type.Enter:
-                obj.setIcon(obj._icon_hover)
+                obj.setIcon(getattr(obj, '_icon_hover'))
             elif event.type() == QEvent.Type.Leave:
                 # Don't reset to dim if this button's panel is active
                 if obj is self.models_button and self._models_open:
@@ -863,7 +868,7 @@ class MainWindow(QMainWindow):
                 elif obj is self.settings_button and self._settings_open:
                     pass
                 else:
-                    obj.setIcon(obj._icon_normal)
+                    obj.setIcon(getattr(obj, '_icon_normal'))
         return super().eventFilter(obj, event)
 
     def _format_elapsed(self) -> str:
@@ -883,7 +888,7 @@ class MainWindow(QMainWindow):
             elif self.is_processing:
                 self.status_dot.setStyleSheet(DOT_PROCESSING)
         else:
-            self.status_dot.setStyleSheet(f"background-color: transparent; border-radius: 4px;")
+            self.status_dot.setStyleSheet("background-color: transparent; border-radius: 4px;")
 
     def _toggle_settings(self):
         if self._settings_open:
