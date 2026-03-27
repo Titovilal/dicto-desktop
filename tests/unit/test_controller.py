@@ -179,3 +179,101 @@ class TestNoTranscriber:
         with qtbot.waitSignal(controller.error_occurred, timeout=1000):
             controller._transcribe_audio("/tmp/test.wav")
         assert controller.current_state == AppState.ERROR
+
+
+class TestEditFlow:
+
+    def test_edit_hotkey_press_starts_recording(self, controller, qtbot):
+        controller.start()
+        with qtbot.waitSignal(controller.edit_started, timeout=1000):
+            controller._on_edit_hotkey_press()
+        assert controller.current_state == AppState.RECORDING
+
+    def test_edit_hotkey_press_ignored_during_processing(self, controller, qtbot):
+        controller.current_state = AppState.PROCESSING
+        controller._on_edit_hotkey_press()
+        assert controller.current_state == AppState.PROCESSING
+
+    def test_edit_hotkey_press_ignored_during_recording(self, controller, qtbot):
+        controller.current_state = AppState.RECORDING
+        controller._on_edit_hotkey_press()
+        assert controller.current_state == AppState.RECORDING
+
+    def test_edit_hotkey_release_emits_signal_when_recording(self, controller, qtbot):
+        controller.current_state = AppState.RECORDING
+        with qtbot.waitSignal(controller._edit_hotkey_released, timeout=1000):
+            controller._on_edit_hotkey_release()
+
+    def test_edit_hotkey_release_ignored_when_idle(self, controller, qtbot):
+        controller.start()
+        # Should not emit _edit_hotkey_released
+        controller._on_edit_hotkey_release()
+        assert controller.current_state == AppState.IDLE
+
+    @patch("src.controller.ClipboardManager")
+    def test_edit_finished_copies_to_clipboard(self, MockClipboard, controller, qtbot):
+        MockClipboard.copy.return_value = True
+        with qtbot.waitSignal(controller.edit_completed, timeout=1000):
+            controller._on_edit_finished("edited text")
+        MockClipboard.copy.assert_called_once_with("edited text")
+        assert controller.current_state == AppState.SUCCESS
+
+    @patch("src.controller.ClipboardManager")
+    def test_edit_finished_clipboard_failure(self, MockClipboard, controller, qtbot):
+        MockClipboard.copy.return_value = False
+        with qtbot.waitSignal(controller.error_occurred, timeout=1000):
+            controller._on_edit_finished("edited text")
+        assert controller.current_state == AppState.ERROR
+
+    def test_edit_finished_discarded_when_cancelled(self, controller, qtbot):
+        controller._cancelled = True
+        controller._on_edit_finished("edited text")
+        assert controller.current_state != AppState.SUCCESS
+        assert controller._cancelled is False
+
+    def test_edit_error_goes_to_error_state(self, controller, qtbot):
+        with qtbot.waitSignal(controller.error_occurred, timeout=1000):
+            controller._on_edit_error("Edit API failed")
+        assert controller.current_state == AppState.ERROR
+
+    def test_start_edit_without_transcriber(self, controller, qtbot):
+        controller.transcriber = None
+        with qtbot.waitSignal(controller.error_occurred, timeout=1000):
+            controller._start_edit_flow()
+        assert controller.current_state == AppState.ERROR
+
+    def test_start_edit_without_recorder(self, controller, qtbot):
+        controller.recorder = None
+        with qtbot.waitSignal(controller.error_occurred, timeout=1000):
+            controller._start_edit_flow()
+        assert controller.current_state == AppState.ERROR
+
+    def test_edit_can_start_from_success_state(self, controller, qtbot):
+        controller.current_state = AppState.SUCCESS
+        with qtbot.waitSignal(controller.edit_started, timeout=1000):
+            controller._on_edit_hotkey_press()
+        assert controller.current_state == AppState.RECORDING
+
+
+class TestTransform:
+
+    def test_transform_without_transcriber(self, controller, qtbot):
+        controller.transcriber = None
+        with qtbot.waitSignal(controller.transform_failed, timeout=1000):
+            controller.request_transform("formal", "hello", "make formal")
+
+    def test_transform_success(self, controller, qtbot):
+        controller.transcriber.transform.return_value = "Hello, good day."
+        controller.transcriber.last_transcription_id = 42
+        with qtbot.waitSignal(controller.transform_completed, timeout=1000) as blocker:
+            controller.request_transform("formal", "hello", "make formal")
+        assert blocker.args == ["formal", "Hello, good day."]
+        controller.transcriber.transform.assert_called_once_with("hello", "make formal", 42)
+
+    def test_transform_error(self, controller, qtbot):
+        controller.transcriber.transform.side_effect = Exception("API error")
+        controller.transcriber.last_transcription_id = None
+        with qtbot.waitSignal(controller.transform_failed, timeout=1000) as blocker:
+            controller.request_transform("formal", "hello", "make formal")
+        assert blocker.args[0] == "formal"
+        assert "API error" in blocker.args[1]
