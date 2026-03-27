@@ -57,27 +57,23 @@ from src.ui.main_window_styles import (
     FOOTER_TEXT_BUTTON,
     FOOTER_TEXT_BUTTON_SUCCESS,
     SECTION_LABEL,
-    SETTINGS_TITLE,
-    ICON_BUTTON,
     FLAT_BUTTON,
     ACCENT_BUTTON,
     SEPARATOR,
-    SVG_SETTINGS,
-    SVG_CLOSE,
-    SVG_EXTERNAL,
-    SVG_AUDIO_LINES,
-    SVG_BACK,
-    SVG_MODELS,
     BG,
     MUTED,
     BORDER,
     TEXT,
     TEXT_DIM,
     RED,
-    RED_HOVER,
-    AMBER,
-    GREEN,
     BLUE,
+)
+from src.ui.icons import (
+    SVG_SETTINGS,
+    SVG_CLOSE,
+    SVG_EXTERNAL,
+    SVG_AUDIO_LINES,
+    SVG_MODELS,
 )
 
 logger = logging.getLogger(__name__)
@@ -289,7 +285,7 @@ class MainWindow(QMainWindow):
 
         central_widget = QWidget()
         central_widget.setObjectName("centralCard")
-        central_widget.setStyleSheet(f"QWidget#centralCard {{ background-color: {MUTED}; border: 1px solid {BORDER}; border-radius: 10px; }}")
+        central_widget.setStyleSheet(f"QWidget#centralCard {{ background-color: {MUTED}; border: 1px solid {BORDER}; border-radius: 6px; }}")
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -379,6 +375,9 @@ class MainWindow(QMainWindow):
         self.settings_button.setStyleSheet(HEADER_BUTTON)
         self.settings_button.setToolTip(t("settings"))
         self.settings_button.clicked.connect(self._toggle_settings)
+        self.settings_button._icon_normal = _make_icon(SVG_SETTINGS, 16, TEXT_DIM)
+        self.settings_button._icon_hover = _make_icon(SVG_SETTINGS, 16, TEXT)
+        self.settings_button.installEventFilter(self)
         layout.addWidget(self.settings_button)
 
         # Close button
@@ -749,8 +748,8 @@ class MainWindow(QMainWindow):
         self.model_combo = self._add_combo(
             layout,
             {
-                "v3-turbo": t("model_fast"),
-                "v3": t("model_accurate"),
+                "v3-turbo": "Whisper V3 Turbo",
+                "v3": f"Whisper V3 ({t('recommended')})",
                 "gemini-3-flash-preview": "Gemini 3 Flash",
                 "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
             },
@@ -767,7 +766,7 @@ class MainWindow(QMainWindow):
             layout,
             {
                 "qwen/qwen3-32b": "Qwen 3 32B",
-                "openai/gpt-oss-120b": "GPT OSS 120B",
+                "openai/gpt-oss-120b": f"GPT OSS 120B ({t('recommended')})",
                 "openai/gpt-oss-20b": "GPT OSS 20B",
                 "gemini-3-flash-preview": "Gemini 3 Flash",
                 "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
@@ -780,7 +779,7 @@ class MainWindow(QMainWindow):
         self.edition_model_combo = self._add_combo(
             layout,
             {
-                "qwen/qwen3-32b": "Qwen 3 32B",
+                "qwen/qwen3-32b": f"Qwen 3 32B ({t('recommended')})",
                 "openai/gpt-oss-120b": "GPT OSS 120B",
                 "openai/gpt-oss-20b": "GPT OSS 20B",
                 "gemini-3-flash-preview": "Gemini 3 Flash",
@@ -858,7 +857,13 @@ class MainWindow(QMainWindow):
             if event.type() == QEvent.Type.Enter:
                 obj.setIcon(obj._icon_hover)
             elif event.type() == QEvent.Type.Leave:
-                obj.setIcon(obj._icon_normal)
+                # Don't reset to dim if this button's panel is active
+                if obj is self.models_button and self._models_open:
+                    pass
+                elif obj is self.settings_button and self._settings_open:
+                    pass
+                else:
+                    obj.setIcon(obj._icon_normal)
         return super().eventFilter(obj, event)
 
     def _format_elapsed(self) -> str:

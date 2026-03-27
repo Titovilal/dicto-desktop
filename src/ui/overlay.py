@@ -21,11 +21,7 @@ from src.ui.waveform import WaveformWidget
 FONT = '"JetBrains Mono", "Cascadia Code", "Consolas", monospace'
 LABEL_BASE = f"font-family: {FONT}; background: transparent; letter-spacing: -0.5px;"
 
-# SVG icons for overlay buttons
-SVG_SETTINGS_SMALL = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>'
-SVG_RECORD = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>'
-SVG_STOP = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>'
-SVG_RESET = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>'
+from src.ui.icons import SVG_SETTINGS_SMALL, SVG_RECORD, SVG_STOP, SVG_RESET
 
 # Button styles
 _BTN_BASE = (
@@ -406,7 +402,7 @@ class OverlayWindow(QWidget):
         self.waveform_processing.start()
         self._dot_pulse_timer.start(500)
         self._dots_timer.start(400)
-        self._set_action_mode("settings")
+        self._set_action_mode("stop")
 
     def show_success(self, auto_hide_delay: int = 1500):
         self.current_state = "success"

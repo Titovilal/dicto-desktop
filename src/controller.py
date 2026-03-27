@@ -399,6 +399,8 @@ class Controller(QObject):
     def stop_recording_manual(self):
         if self.current_state == AppState.RECORDING:
             self._stop_recording_and_process()
+        elif self.current_state == AppState.PROCESSING:
+            self.cancel()
 
     # ── Hotkey updates ──────────────────────────────────────────
 

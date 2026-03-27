@@ -5,7 +5,9 @@ Provides the visual layer of the Dicto desktop app: a main window for transcript
 
 ## Main Files
 - `src/ui/main_window.py` - Main application window with transcription display, record/stop/cancel controls, settings panel, models panel, and text transformation UI. The record button is context-sensitive: shows "Record" when idle, "Stop" when recording, and "Cancel" when processing. Emits `cancel_clicked` signal when clicked during processing. Uses builder helpers (`_add_checkbox`, `_add_combo`, `_add_section`, `_add_hotkey_row`), `_save_setting()`, and `_create_scroll_page()` to reduce settings/models page boilerplate. The header has two panel buttons (models and settings) that toggle separate scrollable pages (indices 4 and 3 respectively)
-- `src/ui/main_window_styles.py` - Shared style constants (colors, fonts, stylesheets, SVG icons) used across all UI components
+- `src/ui/main_window_styles.py` - Shared style constants (colors, fonts, stylesheets) used across all UI components
+- `src/ui/icons.py` - SVG icon loader that reads `.svg` files from `src/ui/assets/` with caching; exposes `SVG_*` constants via module `__getattr__`
+- `src/ui/assets/*.svg` - Individual SVG icon files (settings, close, external, audio_lines, back, models, settings_small, record, stop, reset)
 - `src/ui/waveform.py` - Unified `WaveformWidget` with configurable bar count, size, gap, color, optional fixed width, and animation `mode` (`"live"` for real-time audio level display driven externally via `set_level()`, `"wave"` for sine flow, `"pulse"` for processing center-outward ripple, `"settle"` for success rise-and-settle). Used by both MainWindow and OverlayWindow
 - `src/ui/overlay.py` - Fixed top-right overlay that shows recording/processing/success/error states using three WaveformWidget instances with different modes and colors
 - `src/ui/tray.py` - System tray icon with context menu (open window, settings, quit) and notification support
