@@ -6,7 +6,7 @@ Backend services that handle audio recording, speech-to-text transcription, clip
 ## Main Files
 - `src/services/recorder.py` - Records audio from the microphone using sounddevice, saves to temporary WAV files. Supports an optional audio level callback (`set_audio_level_callback`) that emits RMS-based levels (0.0-1.0) per chunk for real-time waveform visualization
 - `src/services/transcriber.py` - Sends audio to the Dicto API for transcription, text transformation, and voice-based text editing. Accepts separate model settings for transcription (`model`), transformation (`transformation_model`), and edition (`edition_model`)
-- `src/services/clipboard.py` - Copies transcribed text to the system clipboard using pyperclip
+- `src/services/clipboard.py` - Copies transcribed text to the system clipboard using win32clipboard on Windows (pyperclip fallback on Linux). Includes `wait_for_change()` for polling-based clipboard change detection
 - `src/services/hotkey.py` - Listens for global hotkey combinations using pynput to trigger recording
 - `src/services/keyboard_actions.py` - Centralizes keyboard simulation (paste, enter, copy) via pynput, used by Controller for auto-paste/auto-enter and edit flows
 - `src/controller.py` - Orchestrates all services, manages app state (idle/recording/processing/success/error), and bridges UI signals. Uses `KeyboardService` for keyboard automation and a generic `_update_hotkey_listener()` for hotkey reconfiguration. Emits `audio_level_changed(float)` signal from the recorder's audio callback for real-time waveform updates. Provides a `cancel()` method that aborts the current operation: if recording, stops and cleans up the temp file; if processing, sets a `_cancelled` flag so background task results are discarded when they arrive on the main thread. Emits `cancel_completed` signal after cancellation
@@ -19,9 +19,9 @@ Backend services that handle audio recording, speech-to-text transcription, clip
 
 ### Edit Selection Flow
 A second `HotkeyListener` (mode="hold", default: Ctrl+Shift+E) triggers the edit flow:
-1. On press: Controller simulates Ctrl+C to copy selected text, waits 150ms, reads clipboard, then starts recording voice instructions from the microphone
-2. On release: Stops recording, transcribes the voice audio to get text instructions, then sends both the selected text and transcribed instructions to `Transcriber.transform()`
-3. Copies the result to clipboard and optionally auto-pastes/auto-enters based on `edit` settings
+1. On press: starts recording voice instructions from the microphone
+2. On release: stops recording, saves the user's clipboard, simulates Ctrl+C to copy selected text, polls clipboard for change (up to 500ms), then sends both the selected text and audio to `Transcriber.edit()`
+3. Copies the result to clipboard, optionally auto-pastes/auto-enters, then restores the user's original clipboard contents
 
 ## HotkeyListener Modes
 - `"hold"` (default): fires `on_press` when hotkey is pressed, `on_release` when released (used for recording and edit selection)

@@ -62,9 +62,10 @@ class TestEditHappyPath:
         assert ctrl.current_state == AppState.PROCESSING
         recorder.stop_recording.assert_called_once()
 
-        # 3. Simulate clipboard timer firing: reads selected text, submits edit job
-        ctrl._edit_process_with_audio("/tmp/test_edit.wav", 1.0)
-        clipboard.paste.assert_called_once()
+        # 3. Simulate clipboard timer firing: passes selected text directly
+        ctrl._edit_process_with_audio(
+            "/tmp/test_edit.wav", 1.0, "selected text to edit"
+        )
 
         # 4. Simulate edit result arriving
         with qtbot.waitSignal(ctrl.edit_completed, timeout=1000):

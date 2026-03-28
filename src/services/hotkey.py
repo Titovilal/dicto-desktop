@@ -5,6 +5,7 @@ Global hotkey listener service using pynput.
 from __future__ import annotations
 
 import logging
+import sys
 from pynput import keyboard
 from typing import Callable, List, Set
 
@@ -221,7 +222,8 @@ class HotkeyListener:
         )
         if self.suppress_key:
             kwargs["suppress"] = True
-            kwargs["win32_event_filter"] = self._win32_filter
+            if sys.platform == "win32":
+                kwargs["win32_event_filter"] = self._win32_filter
 
         self.listener = keyboard.Listener(**kwargs)
 

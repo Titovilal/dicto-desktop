@@ -318,6 +318,9 @@ class Controller(QObject):
 
             self._set_state(AppState.PROCESSING)
 
+            # Save current clipboard so we can restore it later
+            self._saved_clipboard = ClipboardManager.paste()
+
             # Copy selected text NOW (after hotkey released, so Ctrl+C works cleanly)
             try:
                 self.keyboard.copy()
@@ -325,16 +328,27 @@ class Controller(QObject):
                 self._handle_error(f"Error simulating copy: {e}")
                 return
 
-            # Wait for clipboard to update, then read and process
+            # Poll clipboard until it changes (instead of a fixed delay)
             QTimer.singleShot(
-                150, lambda: self._edit_process_with_audio(audio_file_path, duration)
+                20,
+                lambda: self._edit_poll_clipboard(audio_file_path, duration),
             )
         except Exception as e:
             self._handle_error(f"Error stopping edit recording: {e}")
 
-    def _edit_process_with_audio(self, audio_file_path: str, duration: float):
-        """Read clipboard and submit edit job (text + audio in one API call)."""
-        selected_text = ClipboardManager.paste()
+    def _edit_poll_clipboard(self, audio_file_path: str, duration: float):
+        """Poll clipboard for the Ctrl+C result, then continue the edit flow."""
+        selected_text = ClipboardManager.wait_for_change(
+            self._saved_clipboard or "", timeout_ms=500, poll_ms=20
+        )
+        self._edit_process_with_audio(audio_file_path, duration, selected_text)
+
+    def _edit_process_with_audio(
+        self, audio_file_path: str, duration: float, selected_text: str | None = None
+    ):
+        """Submit edit job (text + audio in one API call)."""
+        if selected_text is None:
+            selected_text = ClipboardManager.paste()
         if not selected_text.strip():
             self._handle_error("No text selected (clipboard empty)")
             if self.recorder:
@@ -371,6 +385,12 @@ class Controller(QObject):
             self._perform_auto_actions(
                 self.settings.edit_auto_paste, self.settings.edit_auto_enter
             )
+            # Restore the user's original clipboard after auto-paste has had time
+            saved = getattr(self, "_saved_clipboard", None)
+            if saved is not None:
+                delay = 300 if self.settings.edit_auto_paste else 0
+                QTimer.singleShot(delay, lambda: ClipboardManager.copy(saved))
+                self._saved_clipboard = None
         else:
             self._handle_error("Failed to copy edited text to clipboard")
 
