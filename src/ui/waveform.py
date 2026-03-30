@@ -75,19 +75,23 @@ class WaveformWidget(QWidget):
                 self.bar_heights[i] = 0.15 + 0.85 * max(0, math.sin(phase)) ** 2
 
         elif self.mode == "settle":
-            progress = self._tick * 0.06
+            progress = self._tick * 0.15
             center = self.bar_count / 2
-            all_done = True
             for i in range(self.bar_count):
-                delay = abs(i - center) / max(1, center) * 0.3
+                dist = abs(i - center) / max(1, center)
+                delay = dist * 0.6
                 t = max(0.0, progress - delay)
-                # Smooth bell curve: rise then fade using a single easing
-                val = t * math.exp(1.0 - t) if t > 0 else 0.0
-                # Clamp and scale
-                self.bar_heights[i] = min(0.4, val * 0.35)
-                if self.bar_heights[i] > 0.01:
-                    all_done = False
-            if all_done and progress > 2.0:
+                if t <= 0:
+                    self.bar_heights[i] = 0.0
+                else:
+                    # Quick rise with overshoot, then damped settle
+                    rise = 1.0 - math.exp(-t * 4.0)
+                    bounce = math.sin(t * 5.0) * math.exp(-t * 2.0) * 0.35
+                    raw = rise + bounce
+                    # Fade out starting at progress 1.5
+                    fade = max(0.0, 1.0 - max(0.0, progress - 1.5) * 0.6)
+                    self.bar_heights[i] = max(0.0, raw * 0.7 * fade)
+            if progress > 3.2:
                 self.bar_heights = [0.0] * self.bar_count
                 self._timer.stop()
 

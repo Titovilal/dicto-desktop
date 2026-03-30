@@ -274,10 +274,14 @@ class OverlayWindow(QWidget):
         self.waveform_editing = WaveformWidget(
             bar_width=2, bar_gap=1, height=16, color=BLUE, mode="live"
         )
+        self.waveform_idle = WaveformWidget(
+            bar_width=2, bar_gap=1, height=16, color=TEXT_DIM, mode="live"
+        )
         self.icon_stack.addWidget(self.waveform_recording)  # index 0
         self.icon_stack.addWidget(self.waveform_processing)  # index 1
         self.icon_stack.addWidget(self.waveform_success)  # index 2
         self.icon_stack.addWidget(self.waveform_editing)  # index 3
+        self.icon_stack.addWidget(self.waveform_idle)  # index 4
         self.icon_stack.setCurrentIndex(0)
         self.icon_stack.hide()
         card_layout.addWidget(self.icon_stack)
@@ -382,6 +386,7 @@ class OverlayWindow(QWidget):
         self.waveform_processing.stop()
         self.waveform_success.stop()
         self.waveform_editing.stop()
+        self.waveform_idle.stop()
 
     def _show_icon(self, index: int):
         self.icon_stack.setCurrentIndex(index)
@@ -404,7 +409,9 @@ class OverlayWindow(QWidget):
             f"background-color: {TEXT_DIM}; border-radius: 3px;"
         )
         self._set_card_style()
-        self._hide_icon()
+        self.waveform_idle.bar_heights = [0.0] * self.waveform_idle.bar_count
+        self.waveform_idle.update()
+        self._show_icon(4)
         self._set_action_mode("settings")
 
     def show_recording(self):

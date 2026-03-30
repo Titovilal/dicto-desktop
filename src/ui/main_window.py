@@ -547,19 +547,11 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 0, 20, 0)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Icon circle
-        icon_container = QWidget()
-        icon_container.setFixedSize(28, 28)
-        icon_container.setStyleSheet(
-            f"border: 1px solid {BORDER}; border-radius: 14px;"
-        )
-        icon_layout = QVBoxLayout(icon_container)
-        icon_layout.setContentsMargins(5, 5, 5, 5)
+        # Icon
         icon_label = QLabel()
-        icon_label.setPixmap(_make_icon(SVG_AUDIO_LINES, 16, TEXT_DIM).pixmap(16, 16))
+        icon_label.setPixmap(_make_icon(SVG_AUDIO_LINES, 40, TEXT_DIM).pixmap(40, 40))
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_layout.addWidget(icon_label)
-        layout.addWidget(icon_container, 0, Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(icon_label, 0, Qt.AlignmentFlag.AlignCenter)
 
         layout.addSpacing(8)
 

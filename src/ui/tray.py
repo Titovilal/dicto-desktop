@@ -106,6 +106,27 @@ class TrayManager(QObject):
                 "error": t("status_error"),
             }
             self.tray_icon.setToolTip(f"Dicto — {status_labels.get(status, status)}")
+            self._update_tray_icon(status)
+
+    def _update_tray_icon(self, status: str):
+        """Update tray icon color based on status."""
+        if not self.tray_icon:
+            return
+        status_icon_map = {
+            "recording": "icon_red",
+            "processing": "icon_amber",
+            "editing": "icon_amber",
+            "success": "icon_green",
+            "idle": "icon_green",
+            "error": "icon_red",
+        }
+        icon_name = status_icon_map.get(status)
+        if icon_name:
+            icon_path = get_icon_path(icon_name)
+            if icon_path:
+                self.tray_icon.setIcon(QIcon(str(icon_path)))
+                return
+        self.tray_icon.setIcon(self._get_icon())
 
     def show_message(self, title: str, message: str, icon_type=None):
         if self.tray_icon:
