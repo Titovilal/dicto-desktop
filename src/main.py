@@ -272,6 +272,9 @@ class DictoApp:
         assert self.overlay is not None
         assert self.main_window is not None
 
+        # Give main window a reference to the controller
+        self.main_window.controller = self.controller
+
         # Controller state changes -> Update UI
         self.controller.state_changed.connect(self._on_state_changed)
 

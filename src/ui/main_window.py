@@ -272,6 +272,7 @@ class MainWindow(QMainWindow):
         self._format_cache: dict[str, str] = {}  # format_id -> transformed text
         self._transforming_format: str | None = None
         self._user_presets: list[dict] = []  # [{id, name, instructions}]
+        self.controller = None  # set externally after init
         self._section_labels: dict[str, QLabel] = {}  # key -> section QLabel
         self._hotkey_labels: dict[str, QLabel] = {}  # key -> hotkey row QLabel
         self._setup_ui()
