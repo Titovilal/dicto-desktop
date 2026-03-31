@@ -40,6 +40,7 @@ class Controller(QObject):
     audio_level_changed = Signal(float)
 
     cancel_completed = Signal()
+    presets_loaded = Signal(list)  # list of preset dicts
 
     # Edit selection signals
     edit_started = Signal()
@@ -130,7 +131,23 @@ class Controller(QObject):
         if self.edit_hotkey_listener:
             self.edit_hotkey_listener.start()
         self._set_state(AppState.IDLE)
+        self.fetch_presets()
         logger.info("Controller started successfully")
+
+    def fetch_presets(self):
+        """Fetch favorite presets from the API in the background."""
+        if not self.transcriber:
+            return
+
+        def _do_fetch():
+            try:
+                assert self.transcriber is not None
+                presets = self.transcriber.get_favorite_presets()
+                self.presets_loaded.emit(presets)
+            except Exception as e:
+                logger.warning(f"Failed to fetch presets: {e}")
+
+        self._pool.submit(_do_fetch)
 
     def stop(self):
         logger.info("Stopping controller...")

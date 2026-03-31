@@ -195,13 +195,17 @@ class Transcriber:
                 "Content-Type": "application/json",
             }
 
+            messages = []
+            if instructions:
+                messages.append({"role": "system", "content": instructions})
+            messages.append({"role": "user", "content": text})
+
             payload: dict = {
-                "text": text,
-                "instructions": instructions,
+                "messages": messages,
                 "model": self.transformation_model,
             }
             if transcription_id is not None:
-                payload["transcriptionId"] = transcription_id
+                payload["transcription_id"] = transcription_id
 
             response = self.client.post(
                 f"{BASE_URL}/api/transform",
@@ -293,6 +297,30 @@ class Transcriber:
             raise
         except Exception as e:
             raise TranscriptionError(f"Unexpected error during edit: {e}")
+
+    # ── Presets ─────────────────────────────────────────────
+
+    def get_favorite_presets(self) -> list[dict]:
+        """Fetch the user's favorite presets from the API.
+
+        Returns:
+            List of dicts with keys: id, name, instructions
+        """
+        try:
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+            response = self.client.get(
+                f"{BASE_URL}/api/presets",
+                headers=headers,
+            )
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("presets", [])
+
+            logger.warning(f"Failed to fetch presets: {response.status_code}")
+            return []
+        except Exception as e:
+            logger.warning(f"Error fetching presets: {e}")
+            return []
 
     # ── Error handling ──────────────────────────────────────
 

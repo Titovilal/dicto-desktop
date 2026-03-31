@@ -240,13 +240,11 @@ class MainWindow(QMainWindow):
         "ko": "한국어",
     }
 
-    @staticmethod
-    def _get_format_instructions():
-        return {
-            "email": t("fmt_email"),
-            "notes": t("fmt_notes"),
-            "tweet": t("fmt_tweet"),
-        }
+    def _get_format_instructions(self):
+        instructions = {}
+        for p in self._user_presets:
+            instructions[f"preset_{p['id']}"] = p["instructions"]
+        return instructions
 
     # Signals
     play_clicked = Signal()
@@ -273,6 +271,9 @@ class MainWindow(QMainWindow):
         self._models_open = False
         self._format_cache: dict[str, str] = {}  # format_id -> transformed text
         self._transforming_format: str | None = None
+        self._user_presets: list[dict] = []  # [{id, name, instructions}]
+        self._section_labels: dict[str, QLabel] = {}  # key -> section QLabel
+        self._hotkey_labels: dict[str, QLabel] = {}  # key -> hotkey row QLabel
         self._setup_ui()
         self._load_settings()
 
@@ -440,24 +441,15 @@ class MainWindow(QMainWindow):
         layout.setSpacing(6)
 
         self.format_tabs = []
-        formats = [
-            ("raw", t("tab_original")),
-            ("email", t("tab_email")),
-            ("notes", t("tab_notes")),
-            ("tweet", t("tab_post")),
-        ]
-        for fid, label in formats:
-            btn = QPushButton(label)
-            btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            is_raw = fid == "raw"
-            btn.setStyleSheet(TAB_BUTTON_ACTIVE if is_raw else TAB_BUTTON_DISABLED)
-            btn.setEnabled(
-                is_raw
-            )  # Only "Original" is clickable until transcription is available
-            btn.setProperty("format_id", fid)
-            btn.clicked.connect(lambda checked, b=btn: self._on_format_clicked(b))
-            self.format_tabs.append(btn)
-            layout.addWidget(btn)
+        # Only "Original" tab by default; user presets are added via set_presets()
+        raw_btn = QPushButton(t("tab_original"))
+        raw_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        raw_btn.setStyleSheet(TAB_BUTTON_ACTIVE)
+        raw_btn.setEnabled(True)
+        raw_btn.setProperty("format_id", "raw")
+        raw_btn.clicked.connect(lambda checked, b=raw_btn: self._on_format_clicked(b))
+        self.format_tabs.append(raw_btn)
+        layout.addWidget(raw_btn)
 
         layout.addStretch()
         parent_layout.addWidget(self.tabs_bar)
@@ -538,6 +530,48 @@ class MainWindow(QMainWindow):
             self.processing_label.hide()
             self.transcription_text.setText(f"Error: {error}")
             self.copy_button.hide()
+
+    @Slot(list)
+    def set_presets(self, presets: list[dict]):
+        """Update format tabs with user's favorite presets from the API."""
+        self._user_presets = presets
+        self._rebuild_format_tabs()
+
+    def _rebuild_format_tabs(self):
+        """Rebuild format tabs: Original + default formats + user presets."""
+        layout = self.tabs_bar.layout()
+
+        # Remove old buttons
+        for btn in self.format_tabs:
+            layout.removeWidget(btn)
+            btn.deleteLater()
+        self.format_tabs.clear()
+        self._format_cache.clear()
+
+        # Build format list: Original + user presets
+        formats: list[tuple[str, str]] = [("raw", t("tab_original"))]
+        for p in self._user_presets:
+            formats.append((f"preset_{p['id']}", p["name"]))
+
+        has_text = bool(self.last_transcription)
+        for fid, label in formats:
+            btn = QPushButton(label)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            is_raw = fid == "raw"
+            is_active = fid == self._active_format
+            if is_active:
+                btn.setStyleSheet(TAB_BUTTON_ACTIVE)
+                btn.setEnabled(True)
+            elif has_text or is_raw:
+                btn.setStyleSheet(TAB_BUTTON if has_text else TAB_BUTTON_DISABLED)
+                btn.setEnabled(has_text or is_raw)
+            else:
+                btn.setStyleSheet(TAB_BUTTON_DISABLED)
+                btn.setEnabled(is_raw)
+            btn.setProperty("format_id", fid)
+            btn.clicked.connect(lambda checked, b=btn: self._on_format_clicked(b))
+            self.format_tabs.append(btn)
+            layout.insertWidget(layout.count() - 1, btn)  # before the stretch
 
     # ── Idle Page ───────────────────────────────────────────
 
@@ -666,7 +700,9 @@ class MainWindow(QMainWindow):
         layout.addSpacing(12)
         layout.addWidget(self._make_separator())
         layout.addSpacing(12)
-        layout.addWidget(self._section_label(t(title_key)))
+        label = self._section_label(t(title_key))
+        self._section_labels[title_key] = label
+        layout.addWidget(label)
         layout.addSpacing(6)
 
     def _add_hotkey_row(
@@ -678,6 +714,7 @@ class MainWindow(QMainWindow):
         label = QLabel(t(label_key))
         label.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
         label.setFixedWidth(120)
+        self._hotkey_labels[label_key] = label
         row.addWidget(label)
 
         btn = HotkeyButton(modifiers, key)
@@ -723,7 +760,9 @@ class MainWindow(QMainWindow):
         page, layout = self._create_scroll_page()
 
         # API Key (first — essential to get started)
-        layout.addWidget(self._section_label(t("api_key")))
+        api_key_label = self._section_label(t("api_key"))
+        self._section_labels["api_key"] = api_key_label
+        layout.addWidget(api_key_label)
         layout.addSpacing(6)
         self.api_key_input = QLineEdit()
         self.api_key_input.setPlaceholderText("sk-dicto-...")
@@ -805,7 +844,9 @@ class MainWindow(QMainWindow):
         page, layout = self._create_scroll_page()
 
         # Transcription model
-        layout.addWidget(self._section_label(t("transcription_model")))
+        transcription_model_label = self._section_label(t("transcription_model"))
+        self._section_labels["transcription_model"] = transcription_model_label
+        layout.addWidget(transcription_model_label)
         layout.addSpacing(6)
         self.model_combo = self._add_combo(
             layout,
@@ -1151,11 +1192,13 @@ class MainWindow(QMainWindow):
             self._retranslate_ui()
 
     def _retranslate_ui(self):
-        """Update all visible text after language change. Requires app restart for full effect."""
-        # Update settings page labels that we can easily reach
+        """Update all visible text after language change."""
+        # Footer buttons
         self.record_button.setText(t("record"))
         self.copy_button.setText(t("copy"))
         self.cancel_button.setText(t("cancel"))
+
+        # Settings page checkboxes
         self.auto_paste_checkbox.setText(t("auto_paste_after_transcribe"))
         self.auto_enter_checkbox.setText(t("press_enter_after_paste"))
         self.always_on_top_checkbox.setText(t("always_on_top"))
@@ -1163,8 +1206,21 @@ class MainWindow(QMainWindow):
         self.edit_auto_paste_checkbox.setText(t("auto_paste_after_edit"))
         self.edit_auto_enter_checkbox.setText(t("press_enter_after_paste"))
         self.save_api_key_button.setText(t("save_key"))
+
+        # Toolbar tooltips
         self.settings_button.setToolTip(t("settings"))
         self.models_button.setToolTip(t("models"))
+
+        # Section labels
+        for key, label in self._section_labels.items():
+            label.setText(t(key).upper())
+
+        # Hotkey row labels
+        for key, label in self._hotkey_labels.items():
+            label.setText(t(key))
+
+        # Format tabs (default tab labels are translated)
+        self._rebuild_format_tabs()
 
     def _on_model_changed(self, index: int):
         self._save_setting("transcription_model", self.model_combo.itemData(index))

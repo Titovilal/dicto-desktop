@@ -301,6 +301,9 @@ class DictoApp:
         )
         self.controller.transform_failed.connect(self.main_window.on_transform_failed)
 
+        # Presets loaded -> Main window
+        self.controller.presets_loaded.connect(self.main_window.set_presets)
+
         # Audio level -> waveform widgets
         self.controller.audio_level_changed.connect(
             self.main_window.waveform.set_level, Qt.ConnectionType.QueuedConnection
@@ -373,6 +376,7 @@ class DictoApp:
             self.main_window.set_processing_state()
 
         elif state == AppState.IDLE:
+            self.overlay.show_idle()
             self.main_window.set_idle_state()
 
         elif state == AppState.ERROR:
