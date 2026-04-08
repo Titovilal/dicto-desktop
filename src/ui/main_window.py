@@ -888,7 +888,7 @@ class MainWindow(QMainWindow):
                 "qwen/qwen3-32b": f"Qwen 3 32B ({t('recommended')})",
                 "openai/gpt-oss-120b": "GPT OSS 120B",
                 "openai/gpt-oss-20b": "GPT OSS 20B",
-                "gemini-3-flash-preview": "Gemini 3 Flash",
+                "gemini-3-flash-preview": f"Gemini 3 Flash ({t('recommended')})",
                 "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
             },
             self._on_edition_model_changed,

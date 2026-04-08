@@ -20,113 +20,13 @@ if sys.platform == "win32":
 
 import os
 
-# Warn Linux users running under Wayland
+# Log Wayland session detection (hotkeys now supported via XDG GlobalShortcuts portal)
 if sys.platform == "linux" and os.environ.get("XDG_SESSION_TYPE") == "wayland":
-    from PySide6.QtWidgets import (
-        QApplication,
-        QComboBox,
-        QVBoxLayout,
-        QDialog,
-        QLabel,
-        QDialogButtonBox,
+    import logging as _logging
+
+    _logging.getLogger(__name__).info(
+        "Wayland session detected — using XDG GlobalShortcuts portal for hotkeys"
     )
-
-    _WAYLAND_MESSAGES = {
-        "en": {
-            "title": "Dicto - Wayland detected",
-            "text": (
-                "Dicto requires an X11 session to work correctly.\n\n"
-                "Global hotkeys and keyboard simulation do not work on Wayland.\n\n"
-                "To switch to X11:\n"
-                "1. Log out\n"
-                "2. On the login screen, select 'Ubuntu on Xorg' (or equivalent)\n"
-                "3. Log in and run Dicto again"
-            ),
-        },
-        "es": {
-            "title": "Dicto - Wayland detectado",
-            "text": (
-                "Dicto necesita una sesión X11 para funcionar correctamente.\n\n"
-                "Los hotkeys globales y la simulación de teclado no funcionan en Wayland.\n\n"
-                "Para cambiar a X11:\n"
-                "1. Cierra sesión\n"
-                "2. En la pantalla de login, selecciona 'Ubuntu on Xorg' (o equivalente)\n"
-                "3. Inicia sesión y vuelve a ejecutar Dicto"
-            ),
-        },
-        "de": {
-            "title": "Dicto - Wayland erkannt",
-            "text": (
-                "Dicto benötigt eine X11-Sitzung, um korrekt zu funktionieren.\n\n"
-                "Globale Hotkeys und Tastatursimulation funktionieren unter Wayland nicht.\n\n"
-                "So wechselst du zu X11:\n"
-                "1. Melde dich ab\n"
-                "2. Wähle im Anmeldebildschirm 'Ubuntu on Xorg' (oder äquivalent)\n"
-                "3. Melde dich an und starte Dicto erneut"
-            ),
-        },
-        "fr": {
-            "title": "Dicto - Wayland détecté",
-            "text": (
-                "Dicto nécessite une session X11 pour fonctionner correctement.\n\n"
-                "Les raccourcis globaux et la simulation clavier ne fonctionnent pas sous Wayland.\n\n"
-                "Pour passer à X11 :\n"
-                "1. Déconnectez-vous\n"
-                "2. Sur l'écran de connexion, sélectionnez 'Ubuntu on Xorg' (ou équivalent)\n"
-                "3. Connectez-vous et relancez Dicto"
-            ),
-        },
-        "pt": {
-            "title": "Dicto - Wayland detectado",
-            "text": (
-                "O Dicto precisa de uma sessão X11 para funcionar corretamente.\n\n"
-                "Atalhos globais e simulação de teclado não funcionam no Wayland.\n\n"
-                "Para mudar para X11:\n"
-                "1. Encerre a sessão\n"
-                "2. Na tela de login, selecione 'Ubuntu on Xorg' (ou equivalente)\n"
-                "3. Faça login e execute o Dicto novamente"
-            ),
-        },
-    }
-
-    _LANG_NAMES = {
-        "en": "English",
-        "es": "Español",
-        "de": "Deutsch",
-        "fr": "Français",
-        "pt": "Português",
-    }
-
-    _app = QApplication(sys.argv)
-
-    _dialog = QDialog()
-    _dialog.setWindowTitle("Dicto - Wayland")
-    _layout = QVBoxLayout(_dialog)
-
-    _combo = QComboBox()
-    for code, name in _LANG_NAMES.items():
-        _combo.addItem(name, code)
-    _combo.setCurrentIndex(1)  # Default: es
-    _layout.addWidget(_combo)
-
-    _label = QLabel(_WAYLAND_MESSAGES["es"]["text"])
-    _label.setWordWrap(True)
-    _layout.addWidget(_label)
-
-    _buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-    _buttons.accepted.connect(_dialog.accept)
-    _layout.addWidget(_buttons)
-
-    def _on_lang_changed(index):
-        lang = _combo.itemData(index)
-        msgs = _WAYLAND_MESSAGES[lang]
-        _dialog.setWindowTitle(msgs["title"])
-        _label.setText(msgs["text"])
-
-    _combo.currentIndexChanged.connect(_on_lang_changed)
-
-    _dialog.exec()
-    sys.exit(1)
 
 from dotenv import load_dotenv
 

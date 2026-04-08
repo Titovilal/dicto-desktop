@@ -244,3 +244,40 @@ class HotkeyListener:
     def is_running(self) -> bool:
         """Check if listener is currently running."""
         return self.listener is not None
+
+
+def create_hotkey_listener(
+    modifiers,
+    key,
+    on_press=None,
+    on_release=None,
+    mode="hold",
+    suppress_key=False,
+    shortcut_id="dicto-shortcut",
+    description="Dicto shortcut",
+):
+    """Factory: returns a WaylandHotkeyListener on Wayland, HotkeyListener otherwise."""
+    from src.services.hotkey_wayland import is_wayland
+
+    if is_wayland():
+        from src.services.hotkey_wayland import (
+            WaylandHotkeyListener,
+            format_portal_trigger,
+        )
+
+        return WaylandHotkeyListener(
+            shortcut_id=shortcut_id,
+            description=description,
+            preferred_trigger=format_portal_trigger(modifiers, key),
+            on_press=on_press,
+            on_release=on_release,
+            mode=mode,
+        )
+    return HotkeyListener(
+        modifiers=modifiers,
+        key=key,
+        on_press=on_press,
+        on_release=on_release,
+        mode=mode,
+        suppress_key=suppress_key,
+    )

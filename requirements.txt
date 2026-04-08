@@ -17,3 +17,6 @@ httpx>=0.24.0
 
 # Configuration file parsing
 pyyaml>=6.0
+
+# Wayland global shortcuts (Linux only, optional)
+dbus-next>=0.2.3; sys_platform == "linux"

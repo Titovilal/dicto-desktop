@@ -11,7 +11,7 @@ from enum import Enum
 from PySide6.QtCore import QObject, Signal, Slot, QTimer
 
 from src.config.settings import Settings
-from src.services.hotkey import HotkeyListener
+from src.services.hotkey import HotkeyListener, create_hotkey_listener
 from src.services.keyboard_actions import KeyboardService
 from src.services.recorder import AudioRecorder
 from src.services.transcriber import Transcriber, TranscriptionError, APIKeyError
@@ -103,20 +103,24 @@ class Controller(QObject):
                     edition_model=self.settings.edition_model,
                 )
 
-            self.hotkey_listener = HotkeyListener(
+            self.hotkey_listener = create_hotkey_listener(
                 modifiers=self.settings.hotkey_modifiers,
                 key=self.settings.hotkey_key,
                 on_press=self._on_hotkey_press,
                 on_release=self._on_hotkey_release,
+                shortcut_id="dicto-record",
+                description="Dicto: Record voice",
             )
 
-            self.edit_hotkey_listener = HotkeyListener(
+            self.edit_hotkey_listener = create_hotkey_listener(
                 modifiers=self.settings.edit_hotkey_modifiers,
                 key=self.settings.edit_hotkey_key,
                 on_press=self._on_edit_hotkey_press,
                 on_release=self._on_edit_hotkey_release,
                 mode="hold",
                 suppress_key=True,
+                shortcut_id="dicto-edit",
+                description="Dicto: Edit selection",
             )
         except Exception as e:
             logger.error(f"Error initializing services: {e}")
@@ -472,18 +476,22 @@ class Controller(QObject):
         on_release,
         mode: str = "hold",
         suppress_key: bool = False,
+        shortcut_id: str = "dicto-shortcut",
+        description: str = "Dicto shortcut",
     ):
         """Generic hotkey listener update: stop old -> create new -> start."""
         old_listener = getattr(self, listener_attr)
         if old_listener:
             old_listener.stop()
-        new_listener = HotkeyListener(
+        new_listener = create_hotkey_listener(
             modifiers=modifiers,
             key=key,
             on_press=on_press,
             on_release=on_release,
             mode=mode,
             suppress_key=suppress_key,
+            shortcut_id=shortcut_id,
+            description=description,
         )
         setattr(self, listener_attr, new_listener)
         new_listener.start()
@@ -496,6 +504,8 @@ class Controller(QObject):
             key,
             self._on_hotkey_press,
             self._on_hotkey_release,
+            shortcut_id="dicto-record",
+            description="Dicto: Record voice",
         )
 
     def update_edit_hotkey(self, modifiers: list[str], key: str):
@@ -507,6 +517,8 @@ class Controller(QObject):
             self._on_edit_hotkey_release,
             mode="hold",
             suppress_key=True,
+            shortcut_id="dicto-edit",
+            description="Dicto: Edit selection",
         )
 
     # ── Transform ─────────────────────────────────────────────
