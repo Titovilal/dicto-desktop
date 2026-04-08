@@ -34,31 +34,23 @@ sudo pacman -S portaudio xclip
 
 ---
 
-## 2. Instalar uv (gestor de paquetes Python)
+## 2. Descargar el binario
+
+Descarga la última versión desde [GitHub Releases](https://github.com/Titovilal/dicto-desktop/releases):
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# Descargar la última release
+curl -LO https://github.com/Titovilal/dicto-desktop/releases/latest/download/dicto-linux-amd64
+
+# Dar permisos de ejecución
+chmod +x dicto-linux-amd64
 ```
 
 ---
 
-## 3. Clonar e instalar
+## 3. Configurar
 
-```bash
-git clone https://github.com/user/dicto-desktop.git
-cd dicto-desktop
-uv sync
-```
-
----
-
-## 4. Configurar
-
-```bash
-cp config.yaml.example config.yaml
-```
-
-Edita `config.yaml` con tu API key, o usa variable de entorno:
+Configura tu API key con variable de entorno:
 
 ```bash
 export DICTO_API_KEY="tu-api-key"
@@ -66,21 +58,11 @@ export DICTO_API_KEY="tu-api-key"
 
 ---
 
-## 5. Ejecutar
+## 4. Ejecutar
 
 ```bash
-uv run dicto
+./dicto-linux-amd64
 ```
-
----
-
-## 6. Build (binario standalone)
-
-```bash
-make build
-```
-
-El binario se genera en `dist/Dicto`.
 
 ---
 
