@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import logging
 import sys
-from pynput import keyboard
 from typing import Callable, List, Set
 
 logger = logging.getLogger(__name__)
@@ -15,21 +14,31 @@ logger = logging.getLogger(__name__)
 class HotkeyListener:
     """Listens for global hotkey press and release events."""
 
-    # Map config modifier names to pynput Key objects
-    MODIFIER_MAP = {
-        "ctrl": keyboard.Key.ctrl,
-        "ctrl_l": keyboard.Key.ctrl_l,
-        "ctrl_r": keyboard.Key.ctrl_r,
-        "shift": keyboard.Key.shift,
-        "shift_l": keyboard.Key.shift_l,
-        "shift_r": keyboard.Key.shift_r,
-        "alt": keyboard.Key.alt,
-        "alt_l": keyboard.Key.alt_l,
-        "alt_r": keyboard.Key.alt_r,
-        "cmd": keyboard.Key.cmd,
-        "cmd_l": keyboard.Key.cmd_l,
-        "cmd_r": keyboard.Key.cmd_r,
-    }
+    _keyboard = None  # lazy-loaded pynput.keyboard module
+    MODIFIER_MAP: dict | None = None  # built lazily after pynput import
+
+    @classmethod
+    def _ensure_pynput(cls):
+        """Import pynput on first use (fails on Wayland/headless if called)."""
+        if cls._keyboard is not None:
+            return
+        from pynput import keyboard as _kb
+
+        cls._keyboard = _kb
+        cls.MODIFIER_MAP = {
+            "ctrl": _kb.Key.ctrl,
+            "ctrl_l": _kb.Key.ctrl_l,
+            "ctrl_r": _kb.Key.ctrl_r,
+            "shift": _kb.Key.shift,
+            "shift_l": _kb.Key.shift_l,
+            "shift_r": _kb.Key.shift_r,
+            "alt": _kb.Key.alt,
+            "alt_l": _kb.Key.alt_l,
+            "alt_r": _kb.Key.alt_r,
+            "cmd": _kb.Key.cmd,
+            "cmd_l": _kb.Key.cmd_l,
+            "cmd_r": _kb.Key.cmd_r,
+        }
 
     def __init__(
         self,
@@ -51,6 +60,9 @@ class HotkeyListener:
             mode: "hold" for press+release, "press" for single press trigger
             suppress_key: If True, suppress the hotkey so it doesn't reach other apps
         """
+        self._ensure_pynput()
+        kb = self._keyboard
+
         self.modifiers = self._parse_modifiers(modifiers)
         self.key = self._parse_key(key)
         self.on_press_callback = on_press
@@ -64,6 +76,7 @@ class HotkeyListener:
 
     def _parse_modifiers(self, modifiers: List[str]) -> Set:
         """Convert modifier strings to pynput Key objects."""
+        kb = self._keyboard
         parsed = set()
         for mod in modifiers:
             mod_lower = mod.lower()
@@ -71,63 +84,65 @@ class HotkeyListener:
                 parsed.add(self.MODIFIER_MAP[mod_lower])
             # Also add the generic version if specific L/R is given
             if mod_lower in ["ctrl_l", "ctrl_r"]:
-                parsed.add(keyboard.Key.ctrl)
+                parsed.add(kb.Key.ctrl)
             elif mod_lower in ["shift_l", "shift_r"]:
-                parsed.add(keyboard.Key.shift)
+                parsed.add(kb.Key.shift)
             elif mod_lower in ["alt_l", "alt_r"]:
-                parsed.add(keyboard.Key.alt)
+                parsed.add(kb.Key.alt)
         return parsed
 
     def _parse_key(self, key: str):
         """Convert key string to pynput Key object or character."""
+        kb = self._keyboard
         key_lower = key.lower()
 
         # Check if it's a special key
         special_keys = {
-            "space": keyboard.Key.space,
-            "enter": keyboard.Key.enter,
-            "tab": keyboard.Key.tab,
-            "esc": keyboard.Key.esc,
-            "backspace": keyboard.Key.backspace,
-            "delete": keyboard.Key.delete,
-            "up": keyboard.Key.up,
-            "down": keyboard.Key.down,
-            "left": keyboard.Key.left,
-            "right": keyboard.Key.right,
+            "space": kb.Key.space,
+            "enter": kb.Key.enter,
+            "tab": kb.Key.tab,
+            "esc": kb.Key.esc,
+            "backspace": kb.Key.backspace,
+            "delete": kb.Key.delete,
+            "up": kb.Key.up,
+            "down": kb.Key.down,
+            "left": kb.Key.left,
+            "right": kb.Key.right,
         }
 
         if key_lower in special_keys:
             return special_keys[key_lower]
 
         # It's a regular character key
-        return keyboard.KeyCode.from_char(key_lower)
+        return kb.KeyCode.from_char(key_lower)
 
     def _on_press(self, key):
         """Internal callback for key press events."""
+        kb = self._keyboard
         # Track modifiers
         if key in [
-            keyboard.Key.ctrl,
-            keyboard.Key.ctrl_l,
-            keyboard.Key.ctrl_r,
-            keyboard.Key.shift,
-            keyboard.Key.shift_l,
-            keyboard.Key.shift_r,
-            keyboard.Key.alt,
-            keyboard.Key.alt_l,
-            keyboard.Key.alt_r,
-            keyboard.Key.cmd,
-            keyboard.Key.cmd_l,
-            keyboard.Key.cmd_r,
+            kb.Key.ctrl,
+            kb.Key.ctrl_l,
+            kb.Key.ctrl_r,
+            kb.Key.shift,
+            kb.Key.shift_l,
+            kb.Key.shift_r,
+            kb.Key.alt,
+            kb.Key.alt_l,
+            kb.Key.alt_r,
+            kb.Key.cmd,
+            kb.Key.cmd_l,
+            kb.Key.cmd_r,
         ]:
             # Normalize L/R modifiers to generic
-            if key in [keyboard.Key.ctrl_l, keyboard.Key.ctrl_r]:
-                self.current_modifiers.add(keyboard.Key.ctrl)
-            elif key in [keyboard.Key.shift_l, keyboard.Key.shift_r]:
-                self.current_modifiers.add(keyboard.Key.shift)
-            elif key in [keyboard.Key.alt_l, keyboard.Key.alt_r]:
-                self.current_modifiers.add(keyboard.Key.alt)
-            elif key in [keyboard.Key.cmd_l, keyboard.Key.cmd_r]:
-                self.current_modifiers.add(keyboard.Key.cmd)
+            if key in [kb.Key.ctrl_l, kb.Key.ctrl_r]:
+                self.current_modifiers.add(kb.Key.ctrl)
+            elif key in [kb.Key.shift_l, kb.Key.shift_r]:
+                self.current_modifiers.add(kb.Key.shift)
+            elif key in [kb.Key.alt_l, kb.Key.alt_r]:
+                self.current_modifiers.add(kb.Key.alt)
+            elif key in [kb.Key.cmd_l, kb.Key.cmd_r]:
+                self.current_modifiers.add(kb.Key.cmd)
             else:
                 self.current_modifiers.add(key)
 
@@ -146,15 +161,16 @@ class HotkeyListener:
 
     def _on_release(self, key):
         """Internal callback for key release events."""
+        kb = self._keyboard
         # Track modifier release
-        if key in [keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r]:
-            self.current_modifiers.discard(keyboard.Key.ctrl)
-        elif key in [keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r]:
-            self.current_modifiers.discard(keyboard.Key.shift)
-        elif key in [keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r]:
-            self.current_modifiers.discard(keyboard.Key.alt)
-        elif key in [keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r]:
-            self.current_modifiers.discard(keyboard.Key.cmd)
+        if key in [kb.Key.ctrl, kb.Key.ctrl_l, kb.Key.ctrl_r]:
+            self.current_modifiers.discard(kb.Key.ctrl)
+        elif key in [kb.Key.shift, kb.Key.shift_l, kb.Key.shift_r]:
+            self.current_modifiers.discard(kb.Key.shift)
+        elif key in [kb.Key.alt, kb.Key.alt_l, kb.Key.alt_r]:
+            self.current_modifiers.discard(kb.Key.alt)
+        elif key in [kb.Key.cmd, kb.Key.cmd_l, kb.Key.cmd_r]:
+            self.current_modifiers.discard(kb.Key.cmd)
 
         # Check if hotkey is released
         if self.hotkey_pressed and self._key_matches(key):
@@ -173,13 +189,14 @@ class HotkeyListener:
     def _win32_filter(self, msg, data):
         """With suppress=True, all keys are blocked by default.
         We set _suppress=False to let everything through, except our hotkey combo."""
+        kb = self._keyboard
         # Default: let the key through
         setattr(self.listener, "_suppress", False)
 
         # Only check key events
         if msg in (0x0100, 0x0104, 0x0101, 0x0105):
             try:
-                key = keyboard.KeyCode.from_vk(data.vkCode)
+                key = kb.KeyCode.from_vk(data.vkCode)
                 if self.modifiers.issubset(
                     self.current_modifiers
                 ) and self._key_matches(key):
@@ -213,6 +230,7 @@ class HotkeyListener:
 
     def start(self):
         """Start listening for hotkeys in a separate thread."""
+        kb = self._keyboard
         if self.listener is not None:
             return  # Already running
 
@@ -225,7 +243,7 @@ class HotkeyListener:
             if sys.platform == "win32":
                 kwargs["win32_event_filter"] = self._win32_filter
 
-        self.listener = keyboard.Listener(**kwargs)
+        self.listener = kb.Listener(**kwargs)
 
         # keyboard.Listener is already a threading.Thread subclass
         # Just call start() directly - it runs in its own daemon thread
