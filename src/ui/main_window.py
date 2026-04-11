@@ -452,6 +452,14 @@ class MainWindow(QMainWindow):
         self.format_tabs.append(raw_btn)
         layout.addWidget(raw_btn)
 
+        # Loading indicator for presets (removed automatically by _rebuild_format_tabs)
+        loading_label = QLabel(t("presets_loading"))
+        loading_label.setStyleSheet(
+            f"color: {TEXT_DIM}; font-size: 12px; padding-left: 4px;"
+        )
+        self._presets_loading_label = loading_label
+        layout.addWidget(loading_label)
+
         layout.addStretch()
         parent_layout.addWidget(self.tabs_bar)
 
@@ -536,6 +544,9 @@ class MainWindow(QMainWindow):
     def set_presets(self, presets: list[dict]):
         """Update format tabs with user's favorite presets from the API."""
         self._user_presets = presets
+        if self._presets_loading_label is not None:
+            self._presets_loading_label.deleteLater()
+            self._presets_loading_label = None
         self._rebuild_format_tabs()
 
     def _rebuild_format_tabs(self):
@@ -555,7 +566,7 @@ class MainWindow(QMainWindow):
             formats.append((f"preset_{p['id']}", p["name"]))
 
         has_text = bool(self.last_transcription)
-        for fid, label in formats:
+        for idx, (fid, label) in enumerate(formats):
             btn = QPushButton(label)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             is_raw = fid == "raw"
@@ -572,7 +583,7 @@ class MainWindow(QMainWindow):
             btn.setProperty("format_id", fid)
             btn.clicked.connect(lambda checked, b=btn: self._on_format_clicked(b))
             self.format_tabs.append(btn)
-            layout.insertWidget(layout.count() - 1, btn)  # before the stretch
+            layout.insertWidget(idx, btn)
 
     # ── Idle Page ───────────────────────────────────────────
 
@@ -1332,6 +1343,7 @@ class MainWindow(QMainWindow):
 
         self.record_button.setText(t("record"))
         self.record_button.setStyleSheet(RECORD_BUTTON_IDLE)
+        self.processing_label.hide()
         self.cancel_button.hide()
         self.status_label.setText("")
 

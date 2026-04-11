@@ -198,6 +198,13 @@ class TestTranscriptionDisplay:
         win.update_transcription("done")
         assert win.processing_label.isHidden()
 
+    def test_processing_label_hidden_after_error_returns_to_idle(self, win):
+        """Regression: processing_label must hide when an error resets state to idle."""
+        win.set_processing_state()
+        assert not win.processing_label.isHidden()
+        win.set_idle_state()
+        assert win.processing_label.isHidden()
+
 
 class TestTimerLabel:
     def test_timer_shown_during_recording(self, win):
