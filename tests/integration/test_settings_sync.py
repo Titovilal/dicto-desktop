@@ -22,17 +22,17 @@ def controller(settings, qtbot):
     with (
         patch("src.controller.AudioRecorder") as MockRecorder,
         patch("src.controller.Transcriber"),
-        patch("src.controller.HotkeyListener") as MockHotkey,
+        patch("src.controller.create_hotkey_listener") as MockFactory,
         patch("src.controller.KeyboardService"),
     ):
         recorder = MockRecorder.return_value
         recorder.is_recording = False
 
-        # Each call to HotkeyListener() returns a new MagicMock
-        MockHotkey.side_effect = lambda **kwargs: MagicMock(**kwargs)
+        # Each call to create_hotkey_listener() returns a new MagicMock
+        MockFactory.side_effect = lambda **kwargs: MagicMock(**kwargs)
 
         ctrl = Controller(settings)
-        yield ctrl, MockHotkey
+        yield ctrl, MockFactory
         ctrl._pool.shutdown(wait=False, cancel_futures=True)
 
 

@@ -59,27 +59,33 @@ class TestModes:
 
 
 class TestStartStop:
-    @patch("src.services.hotkey.keyboard.Listener")
-    def test_start_creates_listener(self, MockListener):
-        listener = HotkeyListener(modifiers=["ctrl"], key="space")
-        listener.start()
-        assert listener.listener is not None
-        MockListener.return_value.start.assert_called_once()
+    def test_start_creates_listener(self):
+        from pynput import keyboard
 
-    @patch("src.services.hotkey.keyboard.Listener")
-    def test_start_twice_is_noop(self, MockListener):
-        listener = HotkeyListener(modifiers=["ctrl"], key="space")
-        listener.start()
-        listener.start()
-        assert MockListener.return_value.start.call_count == 1
+        with patch.object(keyboard, "Listener") as MockListener:
+            listener = HotkeyListener(modifiers=["ctrl"], key="space")
+            listener.start()
+            assert listener.listener is not None
+            MockListener.return_value.start.assert_called_once()
 
-    @patch("src.services.hotkey.keyboard.Listener")
-    def test_stop(self, MockListener):
-        listener = HotkeyListener(modifiers=["ctrl"], key="space")
-        listener.start()
-        listener.stop()
-        MockListener.return_value.stop.assert_called_once()
-        assert listener.listener is None
+    def test_start_twice_is_noop(self):
+        from pynput import keyboard
+
+        with patch.object(keyboard, "Listener") as MockListener:
+            listener = HotkeyListener(modifiers=["ctrl"], key="space")
+            listener.start()
+            listener.start()
+            assert MockListener.return_value.start.call_count == 1
+
+    def test_stop(self):
+        from pynput import keyboard
+
+        with patch.object(keyboard, "Listener") as MockListener:
+            listener = HotkeyListener(modifiers=["ctrl"], key="space")
+            listener.start()
+            listener.stop()
+            MockListener.return_value.stop.assert_called_once()
+            assert listener.listener is None
 
     def test_is_running(self):
         listener = HotkeyListener(modifiers=["ctrl"], key="space")

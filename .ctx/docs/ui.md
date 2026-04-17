@@ -4,7 +4,7 @@
 Provides the visual layer of Dicto: a settings/status window, a floating overlay for recording feedback, a system tray icon, a real-time waveform animation, and a startup splash screen. All built with PySide6 using a dark zinc-based theme.
 
 ## Main Files
-- `src/ui/main_window.py` - Main application window with settings panels, status display, and stacked pages (home, settings, models)
+- `src/ui/main_window.py` - Main application window with settings panels, status display, and stacked pages (home, settings, models, error report)
 - `src/ui/overlay.py` - Frameless floating overlay showing recording/processing/success state with a draggable card, settings popover, and record/stop button
 - `src/ui/tray.py` - System tray icon and context menu (show window, open config, quit)
 - `src/ui/waveform.py` - Animated waveform bar widget used by both the main window and the overlay

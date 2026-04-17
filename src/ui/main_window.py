@@ -86,6 +86,7 @@ from src.ui.icons import (
     SVG_EXTERNAL,
     SVG_AUDIO_LINES,
     SVG_MODELS,
+    SVG_BUG_REPORT,
 )
 
 logger = logging.getLogger(__name__)
@@ -228,7 +229,7 @@ class MainWindow(QMainWindow):
     """Main application window matching the web component design."""
 
     LANGUAGES = {
-        "auto": "Auto-detect",
+        "auto": "Auto-detect (Not Recommended)",
         "es": "Español",
         "en": "English",
         "fr": "Français",
@@ -269,6 +270,7 @@ class MainWindow(QMainWindow):
         self._copied = False
         self._settings_open = False
         self._models_open = False
+        self._report_open = False
         self._format_cache: dict[str, str] = {}  # format_id -> transformed text
         self._transforming_format: str | None = None
         self._user_presets: list[dict] = []  # [{id, name, instructions}]
@@ -322,6 +324,7 @@ class MainWindow(QMainWindow):
         self._create_done_page()
         self._create_settings_page()
         self._create_models_page()
+        self._create_report_page()
 
         self._create_footer(main_layout)
 
@@ -392,6 +395,22 @@ class MainWindow(QMainWindow):
         setattr(self.models_button, "_icon_hover", _make_icon(SVG_MODELS, 16, TEXT))
         self.models_button.installEventFilter(self)
         layout.addWidget(self.models_button)
+
+        # Report error button
+        self.report_button = QPushButton()
+        self.report_button.setFixedSize(28, 28)
+        self.report_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.report_button.setIcon(_make_icon(SVG_BUG_REPORT, 16, TEXT_DIM))
+        self.report_button.setIconSize(QSize(16, 16))
+        self.report_button.setStyleSheet(HEADER_BUTTON)
+        self.report_button.setToolTip(t("report_error"))
+        self.report_button.clicked.connect(self._toggle_report)
+        setattr(
+            self.report_button, "_icon_normal", _make_icon(SVG_BUG_REPORT, 16, TEXT_DIM)
+        )
+        setattr(self.report_button, "_icon_hover", _make_icon(SVG_BUG_REPORT, 16, TEXT))
+        self.report_button.installEventFilter(self)
+        layout.addWidget(self.report_button)
 
         # Settings button
         self.settings_button = QPushButton()
@@ -899,11 +918,54 @@ class MainWindow(QMainWindow):
                 "qwen/qwen3-32b": f"Qwen 3 32B ({t('recommended')})",
                 "openai/gpt-oss-120b": "GPT OSS 120B",
                 "openai/gpt-oss-20b": "GPT OSS 20B",
-                "gemini-3-flash-preview": f"Gemini 3 Flash ({t('recommended')})",
+                "gemini-3-flash-preview": "Gemini 3 Flash",
                 "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
             },
             self._on_edition_model_changed,
         )
+
+        layout.addStretch()
+        self.content_stack.addWidget(page)
+
+    def _create_report_page(self):
+        page, layout = self._create_scroll_page()
+
+        # Description
+        desc_label = QLabel(t("report_error_description"))
+        desc_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 12px;")
+        desc_label.setWordWrap(True)
+        layout.addWidget(desc_label)
+        self._report_desc_label = desc_label
+        layout.addSpacing(12)
+
+        # Logs section
+        logs_label = self._section_label(t("logs"))
+        self._section_labels["logs"] = logs_label
+        layout.addWidget(logs_label)
+        layout.addSpacing(6)
+
+        self.report_logs_text = QTextEdit()
+        self.report_logs_text.setReadOnly(True)
+        self.report_logs_text.setStyleSheet(
+            f"background-color: rgba(0,0,0,0.3); color: {TEXT_DIM}; border: 1px solid {BORDER}; "
+            f"border-radius: 4px; font-size: 11px; font-family: monospace; padding: 8px;"
+        )
+        self.report_logs_text.setMinimumHeight(160)
+        layout.addWidget(self.report_logs_text)
+        layout.addSpacing(12)
+
+        # Send button
+        self.send_report_button = QPushButton(t("send_report"))
+        self.send_report_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.send_report_button.setStyleSheet(ACCENT_BUTTON)
+        self.send_report_button.clicked.connect(self._send_report)
+        layout.addWidget(self.send_report_button)
+
+        # Status label
+        self.report_status_label = QLabel("")
+        self.report_status_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
+        self.report_status_label.hide()
+        layout.addWidget(self.report_status_label)
 
         layout.addStretch()
         self.content_stack.addWidget(page)
@@ -981,6 +1043,8 @@ class MainWindow(QMainWindow):
                     pass
                 elif obj is self.settings_button and self._settings_open:
                     pass
+                elif obj is self.report_button and self._report_open:
+                    pass
                 else:
                     obj.setIcon(getattr(obj, "_icon_normal"))
         return super().eventFilter(obj, event)
@@ -1010,7 +1074,7 @@ class MainWindow(QMainWindow):
         if self._settings_open:
             self._close_panel()
         else:
-            if self._models_open:
+            if self._models_open or self._report_open:
                 self._close_panel()
             self._open_settings()
 
@@ -1018,9 +1082,17 @@ class MainWindow(QMainWindow):
         if self._models_open:
             self._close_panel()
         else:
-            if self._settings_open:
+            if self._settings_open or self._report_open:
                 self._close_panel()
             self._open_models()
+
+    def _toggle_report(self):
+        if self._report_open:
+            self._close_panel()
+        else:
+            if self._settings_open or self._models_open or self._report_open:
+                self._close_panel()
+            self._open_report()
 
     def _open_settings(self):
         self._settings_open = True
@@ -1044,14 +1116,64 @@ class MainWindow(QMainWindow):
         self.tabs_bar.hide()
         self.tabs_sep.hide()
 
+    def _open_report(self):
+        from src.utils.logger import get_log_buffer
+
+        self._report_open = True
+        self._prev_page = self.content_stack.currentIndex()
+        self.content_stack.setCurrentIndex(5)  # report page
+        self.report_button.setIcon(_make_icon(SVG_BUG_REPORT, 16, TEXT))
+        self.report_button.setStyleSheet(HEADER_BUTTON_ACTIVE)
+        self.footer.hide()
+        self.footer_sep.hide()
+        self.tabs_bar.hide()
+        self.tabs_sep.hide()
+        # Refresh logs
+        self.report_logs_text.setPlainText("\n".join(get_log_buffer()))
+        self.report_status_label.hide()
+        self.send_report_button.setEnabled(True)
+
+    def _send_report(self):
+        import httpx
+
+        self.send_report_button.setEnabled(False)
+        self.report_status_label.hide()
+        logs = self.report_logs_text.toPlainText()
+
+        try:
+            api_key = self.settings.transcription_api_key if self.settings else ""
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            base_url = os.environ.get("DICTO_API_URL", "https://dicto.up.railway.app")
+            response = httpx.post(
+                f"{base_url}/api/report",
+                headers=headers,
+                json={"logs": logs, "source": "desktop_app"},
+                timeout=15.0,
+            )
+            if response.status_code in (200, 201):
+                self.report_status_label.setText(t("report_sent"))
+                self.report_status_label.setStyleSheet(f"color: #4ade80; font-size: 11px;")
+            else:
+                self.report_status_label.setText(t("report_send_failed"))
+                self.report_status_label.setStyleSheet(f"color: {RED}; font-size: 11px;")
+        except Exception:
+            self.report_status_label.setText(t("report_send_failed"))
+            self.report_status_label.setStyleSheet(f"color: {RED}; font-size: 11px;")
+
+        self.report_status_label.show()
+        self.send_report_button.setEnabled(True)
+
     def _close_panel(self):
         self._settings_open = False
         self._models_open = False
+        self._report_open = False
         self.content_stack.setCurrentIndex(getattr(self, "_prev_page", 0))
         self.settings_button.setIcon(_make_icon(SVG_SETTINGS, 16, TEXT_DIM))
         self.settings_button.setStyleSheet(HEADER_BUTTON)
         self.models_button.setIcon(_make_icon(SVG_MODELS, 16, TEXT_DIM))
         self.models_button.setStyleSheet(HEADER_BUTTON)
+        self.report_button.setIcon(_make_icon(SVG_BUG_REPORT, 16, TEXT_DIM))
+        self.report_button.setStyleSheet(HEADER_BUTTON)
         self.footer.show()
         self.footer_sep.show()
         self.tabs_bar.show()
@@ -1222,6 +1344,9 @@ class MainWindow(QMainWindow):
         # Toolbar tooltips
         self.settings_button.setToolTip(t("settings"))
         self.models_button.setToolTip(t("models"))
+        self.report_button.setToolTip(t("report_error"))
+        self.send_report_button.setText(t("send_report"))
+        self._report_desc_label.setText(t("report_error_description"))
 
         # Section labels
         for key, label in self._section_labels.items():
@@ -1293,7 +1418,7 @@ class MainWindow(QMainWindow):
         self._is_editing = False
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open or self._models_open:
+        if self._settings_open or self._models_open or self._report_open:
             self._prev_page = 1  # recording page
         else:
             self.content_stack.setCurrentIndex(1)  # recording page
@@ -1333,7 +1458,7 @@ class MainWindow(QMainWindow):
         self._is_editing = False
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open or self._models_open:
+        if self._settings_open or self._models_open or self._report_open:
             self._prev_page = 2 if self.last_transcription else 0
         else:
             if self.last_transcription:
@@ -1370,7 +1495,7 @@ class MainWindow(QMainWindow):
         self.is_processing = True
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open or self._models_open:
+        if self._settings_open or self._models_open or self._report_open:
             self._prev_page = 2  # done page
         else:
             self.content_stack.setCurrentIndex(2)  # done page
@@ -1404,7 +1529,7 @@ class MainWindow(QMainWindow):
         self.is_processing = False
         self._is_editing = True
 
-        if self._settings_open or self._models_open:
+        if self._settings_open or self._models_open or self._report_open:
             self._prev_page = 1
         else:
             self.content_stack.setCurrentIndex(1)  # recording page
@@ -1444,7 +1569,7 @@ class MainWindow(QMainWindow):
         self.is_processing = True
         self._is_editing = True
 
-        if self._settings_open or self._models_open:
+        if self._settings_open or self._models_open or self._report_open:
             self._prev_page = 2
         else:
             self.content_stack.setCurrentIndex(2)
@@ -1486,7 +1611,7 @@ class MainWindow(QMainWindow):
         self._transforming_format = None
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open or self._models_open:
+        if self._settings_open or self._models_open or self._report_open:
             self._prev_page = 2  # done page
         else:
             self.content_stack.setCurrentIndex(2)

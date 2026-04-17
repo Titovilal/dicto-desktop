@@ -205,7 +205,7 @@ class Transcriber:
                 "model": self.transformation_model,
             }
             if transcription_id is not None:
-                payload["transcription_id"] = transcription_id
+                payload["transcriptionId"] = transcription_id
 
             response = self.client.post(
                 f"{BASE_URL}/api/transform",

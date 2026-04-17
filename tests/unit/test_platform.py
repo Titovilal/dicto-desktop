@@ -10,33 +10,39 @@ from src.services.hotkey import HotkeyListener
 class TestHotkeyPlatformFilter:
     """win32_event_filter should only be passed on Windows."""
 
-    @patch("src.services.hotkey.sys")
-    @patch("src.services.hotkey.keyboard.Listener")
-    def test_win32_filter_passed_on_windows(self, MockListener, mock_sys):
-        mock_sys.platform = "win32"
-        listener = HotkeyListener(modifiers=["ctrl"], key="space", suppress_key=True)
-        listener.start()
-        kwargs = MockListener.call_args[1]
-        assert "win32_event_filter" in kwargs
-        assert kwargs["suppress"] is True
+    def test_win32_filter_passed_on_windows(self):
+        from pynput import keyboard
 
-    @patch("src.services.hotkey.sys")
-    @patch("src.services.hotkey.keyboard.Listener")
-    def test_win32_filter_not_passed_on_linux(self, MockListener, mock_sys):
-        mock_sys.platform = "linux"
-        listener = HotkeyListener(modifiers=["ctrl"], key="space", suppress_key=True)
-        listener.start()
-        kwargs = MockListener.call_args[1]
-        assert "win32_event_filter" not in kwargs
-        assert kwargs["suppress"] is True
+        with patch("src.services.hotkey.sys") as mock_sys, \
+             patch.object(keyboard, "Listener") as MockListener:
+            mock_sys.platform = "win32"
+            listener = HotkeyListener(modifiers=["ctrl"], key="space", suppress_key=True)
+            listener.start()
+            kwargs = MockListener.call_args[1]
+            assert "win32_event_filter" in kwargs
+            assert kwargs["suppress"] is True
 
-    @patch("src.services.hotkey.keyboard.Listener")
-    def test_no_suppress_no_filter(self, MockListener):
-        listener = HotkeyListener(modifiers=["ctrl"], key="space", suppress_key=False)
-        listener.start()
-        kwargs = MockListener.call_args[1]
-        assert "win32_event_filter" not in kwargs
-        assert "suppress" not in kwargs
+    def test_win32_filter_not_passed_on_linux(self):
+        from pynput import keyboard
+
+        with patch("src.services.hotkey.sys") as mock_sys, \
+             patch.object(keyboard, "Listener") as MockListener:
+            mock_sys.platform = "linux"
+            listener = HotkeyListener(modifiers=["ctrl"], key="space", suppress_key=True)
+            listener.start()
+            kwargs = MockListener.call_args[1]
+            assert "win32_event_filter" not in kwargs
+            assert kwargs["suppress"] is True
+
+    def test_no_suppress_no_filter(self):
+        from pynput import keyboard
+
+        with patch.object(keyboard, "Listener") as MockListener:
+            listener = HotkeyListener(modifiers=["ctrl"], key="space", suppress_key=False)
+            listener.start()
+            kwargs = MockListener.call_args[1]
+            assert "win32_event_filter" not in kwargs
+            assert "suppress" not in kwargs
 
 
 class TestWaylandDetection:

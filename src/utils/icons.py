@@ -11,7 +11,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def get_icon_path(icon_name: str = "icon") -> Path | None:
+def get_icon_path(icon_name: str = "icon_green") -> Path | None:
     """
     Get the path to an icon file.
 

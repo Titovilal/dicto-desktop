@@ -27,6 +27,7 @@ _ICON_NAMES = [
     "record",
     "stop",
     "reset",
+    "bug_report",
 ]
 
 

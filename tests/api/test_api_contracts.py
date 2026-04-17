@@ -93,10 +93,12 @@ class TestTransformContract:
 
         # JSON body
         payload = call_kwargs.kwargs["json"]
-        assert payload["text"] == "some text"
-        assert payload["instructions"] == "format as email"
         assert payload["model"] == "qwen/qwen3-32b"
         assert payload["transcriptionId"] == 42
+        # Text and instructions are sent as messages
+        messages = payload["messages"]
+        assert any(m["role"] == "system" and m["content"] == "format as email" for m in messages)
+        assert any(m["role"] == "user" and m["content"] == "some text" for m in messages)
 
     def test_no_transcription_id(self, transcriber):
         mock_response = MagicMock()
