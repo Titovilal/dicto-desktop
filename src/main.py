@@ -279,7 +279,7 @@ class DictoApp:
             self.main_window.set_processing_state()
 
         elif state == AppState.IDLE:
-            self.overlay.show_idle()
+            self.overlay.hide()
             self.main_window.set_idle_state()
 
         elif state == AppState.ERROR:
