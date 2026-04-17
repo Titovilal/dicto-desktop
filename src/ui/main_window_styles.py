@@ -135,7 +135,7 @@ GLOBAL_STYLE = f"""
 
 # ── Status Dots ──────────────────────────────────────────────
 
-DOT_IDLE = _dot(TEXT_DIM)
+DOT_IDLE = _dot(GREEN)
 DOT_RECORDING = _dot(RED)
 DOT_PROCESSING = _dot(AMBER)
 DOT_SUCCESS = _dot(GREEN)
