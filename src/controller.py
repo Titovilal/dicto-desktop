@@ -87,6 +87,8 @@ class Controller(QObject):
                 sample_rate=self.settings.audio_sample_rate,
                 channels=self.settings.audio_channels,
                 max_duration=self.settings.audio_max_duration,
+                input_device=self.settings.audio_input_device,
+                include_system_audio=self.settings.audio_include_system_audio,
             )
 
             api_key = self.settings.transcription_api_key
@@ -452,6 +454,16 @@ class Controller(QObject):
     @Slot()
     def return_to_idle(self):
         self._set_state(AppState.IDLE)
+
+    @Slot(object)
+    def update_input_device(self, device_id):
+        if self.recorder:
+            self.recorder.set_input_device(device_id)
+
+    @Slot(bool)
+    def update_include_system_audio(self, enabled: bool):
+        if self.recorder:
+            self.recorder.set_include_system_audio(enabled)
 
     @Slot()
     def start_recording_manual(self):

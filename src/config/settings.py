@@ -65,7 +65,13 @@ class Settings:
         "hotkey": {"modifiers": ["ctrl", "shift"], "key": "space"},
         "overlay": {"position": "top-right", "size": 100, "opacity": 0.9},
         "transcription": {"api_key": "", "language": "es", "model": "v3-turbo"},
-        "audio": {"sample_rate": 16000, "max_duration": 120, "channels": 1},
+        "audio": {
+            "sample_rate": 16000,
+            "max_duration": 120,
+            "channels": 1,
+            "input_device": None,
+            "include_system_audio": False,
+        },
         "behavior": {
             "auto_paste": False,
             "auto_enter": False,
@@ -142,6 +148,10 @@ class Settings:
     audio_sample_rate: int = _config_property("audio", "sample_rate", 16000)
     audio_max_duration: int = _config_property("audio", "max_duration", 120)
     audio_channels: int = _config_property("audio", "channels", 1)
+    audio_input_device: int | None = _config_property("audio", "input_device", None)
+    audio_include_system_audio: bool = _config_property(
+        "audio", "include_system_audio", False
+    )
 
     # ── Behavior settings ────────────────────────────────────
 

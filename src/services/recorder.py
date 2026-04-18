@@ -3,6 +3,7 @@ Audio recording service using sounddevice.
 """
 
 import logging
+import sys
 import sounddevice as sd
 import soundfile as sf
 import numpy as np
@@ -15,118 +16,199 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+def list_input_devices() -> list[dict]:
+    """Return available input devices as [{id, name, channels, is_default}].
+
+    On Windows, PortAudio exposes each physical device once per host API
+    (MME, DirectSound, WASAPI, WDM-KS), which produces many duplicate
+    entries. We filter to the system's default host API to show a single
+    entry per device.
+    """
+    devices = []
+    try:
+        raw = sd.query_devices()
+        try:
+            default_in = sd.default.device[0]
+        except Exception:
+            default_in = None
+        try:
+            default_hostapi = sd.default.hostapi
+        except Exception:
+            default_hostapi = None
+        if default_hostapi is None and default_in is not None:
+            default_hostapi = raw[default_in].get("hostapi")
+        for i, dev in enumerate(raw):
+            if dev.get("max_input_channels", 0) <= 0:
+                continue
+            if default_hostapi is not None and dev.get("hostapi") != default_hostapi:
+                continue
+            devices.append(
+                {
+                    "id": i,
+                    "name": dev["name"],
+                    "channels": dev["max_input_channels"],
+                    "is_default": i == default_in,
+                }
+            )
+    except Exception as e:
+        logger.warning(f"Failed to list audio devices: {e}")
+    return devices
+
+
+def _find_stereo_mix_device() -> tuple[int, int] | None:
+    """Find a Stereo Mix (or similar loopback) input device.
+
+    Returns (device_index, max_input_channels) or None.
+    """
+    if sys.platform != "win32":
+        return None
+    try:
+        keywords = ("stereo mix", "mezcla estéreo", "mezcla estereo", "loopback")
+        for i, dev in enumerate(sd.query_devices()):
+            name = dev.get("name", "").lower()
+            ch = dev.get("max_input_channels", 0)
+            if ch > 0 and any(kw in name for kw in keywords):
+                logger.info(f"Stereo Mix device found: [{i}] {dev['name']} ({ch}ch)")
+                return i, ch
+    except Exception as e:
+        logger.warning(f"Failed to search for Stereo Mix device: {e}")
+    return None
+
+
 class AudioRecorder:
-    """Records audio from the microphone."""
+    """Records audio from the microphone, optionally mixing system audio (Windows)."""
 
     def __init__(
-        self, sample_rate: int = 16000, channels: int = 1, max_duration: int = 120
+        self,
+        sample_rate: int = 16000,
+        channels: int = 1,
+        max_duration: int = 120,
+        input_device: int | None = None,
+        include_system_audio: bool = False,
     ):
-        """
-        Initialize audio recorder.
-
-        Args:
-            sample_rate: Sample rate in Hz (default: 16000 for speech)
-            channels: Number of channels, 1 for mono, 2 for stereo
-            max_duration: Maximum recording duration in seconds
-        """
         self.sample_rate = sample_rate
         self.channels = channels
         self.max_duration = max_duration
-        self.chunk_size = 1024  # Number of frames per buffer
+        self.input_device = input_device
+        self.include_system_audio = include_system_audio
+        self.chunk_size = 1024
 
         self.frames = []
         self.is_recording = False
         self.recording_thread = None
         self.temp_file_path = None
-        self.stream = None
         self._audio_level_callback = None
+        self._loopback_frames: list[np.ndarray] = []
+        self._loopback_lock = threading.Lock()
+
+    # ── Configuration updates ─────────────────────────────────
+
+    def set_input_device(self, device_id: int | None):
+        self.input_device = device_id
+
+    def set_include_system_audio(self, enabled: bool):
+        self.include_system_audio = enabled
 
     def set_audio_level_callback(self, callback):
         """Set a callback that receives audio level (0.0-1.0) for each chunk."""
         self._audio_level_callback = callback
 
-    def start_recording(self) -> bool:
-        """
-        Start recording audio.
+    # ── Recording lifecycle ──────────────────────────────────
 
-        Returns:
-            True if recording started successfully, False otherwise
-        """
+    def start_recording(self) -> bool:
         if self.is_recording:
             logger.warning("Recording already in progress")
             return False
-
         try:
             self.frames = []
+            self._loopback_frames = []
             self.is_recording = True
-
-            # Start recording in a separate thread
             self.recording_thread = threading.Thread(
                 target=self._record_audio, daemon=True
             )
             self.recording_thread.start()
-
-            logger.info(f"Recording started (max {self.max_duration}s)")
+            logger.info(
+                f"Recording started (device={self.input_device}, "
+                f"system_audio={self.include_system_audio}, max {self.max_duration}s)"
+            )
             return True
-
         except Exception as e:
             logger.error(f"Error starting recording: {e}")
             self.is_recording = False
             return False
 
     def stop_recording(self) -> Optional[str]:
-        """
-        Stop recording and save to a temporary file.
-
-        Returns:
-            Path to the temporary audio file, or None if recording failed
-        """
         if not self.is_recording:
             logger.warning("No recording in progress")
             return None
 
-        # Signal recording to stop
         self.is_recording = False
-
-        # Wait for recording thread to finish
         if self.recording_thread:
             self.recording_thread.join(timeout=2.0)
 
-        # Save to temporary file
         if len(self.frames) == 0:
             logger.warning("No audio data recorded")
             return None
 
         try:
-            # Create temporary file
             temp_file = tempfile.NamedTemporaryFile(
                 suffix=".wav", delete=False, prefix="voice_recording_"
             )
             self.temp_file_path = temp_file.name
             temp_file.close()
 
-            # Concatenate all frames and write WAV file
             audio_data = np.concatenate(self.frames, axis=0)
-            sf.write(self.temp_file_path, audio_data, self.sample_rate)
+
+            if self.include_system_audio and self._loopback_frames:
+                mixed = self._mix_with_loopback(audio_data)
+                sf.write(self.temp_file_path, mixed, self.sample_rate)
+            else:
+                sf.write(self.temp_file_path, audio_data, self.sample_rate)
 
             duration = len(audio_data) / self.sample_rate
             logger.info(f"Recording saved: {self.temp_file_path} ({duration:.1f}s)")
 
-            # Clear frames to free memory
             self.frames = []
-
+            self._loopback_frames = []
             return self.temp_file_path
 
         except Exception as e:
             logger.error(f"Error saving recording: {e}")
-            self.frames = []  # Clear frames to free memory even on error
+            self.frames = []
+            self._loopback_frames = []
             return None
 
+    def _mix_with_loopback(self, mic_int16: np.ndarray) -> np.ndarray:
+        """Sum mic and loopback buffers as int16, clipping to avoid overflow."""
+        try:
+            with self._loopback_lock:
+                loopback = (
+                    np.concatenate(self._loopback_frames, axis=0)
+                    if self._loopback_frames
+                    else None
+                )
+            if loopback is None:
+                return mic_int16
+
+            if loopback.ndim > 1 and loopback.shape[1] > 1:
+                loopback = loopback.mean(axis=1).astype(np.int16)
+            else:
+                loopback = loopback.reshape(-1).astype(np.int16)
+
+            length = min(len(mic_int16.reshape(-1)), len(loopback))
+            mic_flat = mic_int16.reshape(-1)[:length].astype(np.int32)
+            loopback = loopback[:length].astype(np.int32)
+            mixed = np.clip(mic_flat + loopback, -32768, 32767).astype(np.int16)
+            return mixed.reshape(-1, 1) if self.channels == 1 else mixed
+        except Exception as e:
+            logger.warning(f"Failed to mix loopback audio: {e}")
+            return mic_int16
+
     def _record_audio(self):
-        """Internal method that records audio in a loop until stopped or max duration reached."""
+        """Records audio in a loop until stopped or max duration reached."""
         start_time = time.time()
 
-        def callback(indata, frames, time_info, status):
+        def mic_callback(indata, frames, time_info, status):
             if status:
                 logger.warning(f"Audio stream status: {status}")
             if self.is_recording:
@@ -136,14 +218,30 @@ class AudioRecorder:
                     level = min(1.0, rms / 400.0)
                     self._audio_level_callback(level)
 
+        def loopback_callback(indata, frames, time_info, status):
+            if status:
+                logger.debug(f"Loopback stream status: {status}")
+            if self.is_recording:
+                with self._loopback_lock:
+                    self._loopback_frames.append(indata.copy())
+
+        loopback_stream = None
         try:
-            with sd.InputStream(
+            mic_stream = sd.InputStream(
                 samplerate=self.sample_rate,
                 channels=self.channels,
                 dtype="int16",
                 blocksize=self.chunk_size,
-                callback=callback,
-            ):
+                callback=mic_callback,
+                device=self.input_device,
+            )
+
+            if self.include_system_audio:
+                loopback_stream = self._open_loopback_stream(loopback_callback)
+
+            with mic_stream:
+                if loopback_stream is not None:
+                    loopback_stream.start()
                 while self.is_recording:
                     elapsed = time.time() - start_time
                     if elapsed > self.max_duration:
@@ -152,14 +250,43 @@ class AudioRecorder:
                         )
                         break
                     time.sleep(0.1)
-
         except Exception as e:
             logger.error(f"Error in recording thread: {e}")
         finally:
+            if loopback_stream is not None:
+                try:
+                    loopback_stream.stop()
+                    loopback_stream.close()
+                except Exception as e:
+                    logger.debug(f"Error closing loopback stream: {e}")
             self.is_recording = False
 
+    def _open_loopback_stream(self, callback):
+        """Open a Stereo Mix input stream on Windows for system audio capture."""
+        if sys.platform != "win32":
+            logger.warning("System audio capture is only supported on Windows")
+            return None
+        try:
+            result = _find_stereo_mix_device()
+            if result is None:
+                logger.warning(
+                    "No Stereo Mix device found. Enable it in Sound → Recording."
+                )
+                return None
+            device, channels = result
+            return sd.InputStream(
+                samplerate=self.sample_rate,
+                channels=channels,
+                dtype="int16",
+                blocksize=self.chunk_size,
+                callback=callback,
+                device=device,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to open loopback stream: {e}")
+            return None
+
     def cleanup_temp_file(self):
-        """Delete the temporary audio file."""
         if self.temp_file_path and Path(self.temp_file_path).exists():
             try:
                 Path(self.temp_file_path).unlink()
@@ -169,33 +296,139 @@ class AudioRecorder:
                 logger.error(f"Error deleting temporary file: {e}")
 
     def get_recording_duration(self) -> float:
-        """
-        Get current recording duration in seconds.
-
-        Returns:
-            Duration in seconds
-        """
         if not self.frames:
             return 0.0
         total_frames = sum(len(f) for f in self.frames)
         return total_frames / self.sample_rate
 
-    def list_audio_devices(self):
-        """List all available audio input devices."""
-        logger.info("Available audio input devices:")
-        devices = sd.query_devices()
-        for i, dev in enumerate(devices):
-            if dev["max_input_channels"] > 0:
-                logger.info(
-                    f"  [{i}] {dev['name']} (channels: {dev['max_input_channels']})"
-                )
-
     def close(self):
-        """Clean up resources."""
         if self.is_recording:
             self.stop_recording()
         self.cleanup_temp_file()
 
     def __del__(self):
-        """Destructor to ensure cleanup."""
         self.close()
+
+
+class AudioMonitor:
+    """Duplex live monitor: forwards input device samples to default output."""
+
+    def __init__(
+        self,
+        sample_rate: int = 16000,
+        input_device: int | None = None,
+        include_system_audio: bool = False,
+    ):
+        self.sample_rate = sample_rate
+        self.input_device = input_device
+        self.include_system_audio = include_system_audio
+        self._mic_stream: sd.InputStream | None = None
+        self._loopback_stream: sd.InputStream | None = None
+        self._output_stream: sd.OutputStream | None = None
+        self._running = False
+        self._lock = threading.Lock()
+        self._mic_buffer = np.zeros(0, dtype=np.int16)
+        self._loopback_buffer = np.zeros(0, dtype=np.int16)
+
+    def start(self) -> bool:
+        if self._running:
+            return True
+
+        try:
+            self._output_stream = sd.OutputStream(
+                samplerate=self.sample_rate,
+                channels=1,
+                dtype="int16",
+                blocksize=1024,
+                callback=self._output_callback,
+            )
+
+            self._mic_stream = sd.InputStream(
+                samplerate=self.sample_rate,
+                channels=1,
+                dtype="int16",
+                blocksize=1024,
+                callback=self._mic_callback,
+                device=self.input_device,
+            )
+
+            if self.include_system_audio and sys.platform == "win32":
+                result = _find_stereo_mix_device()
+                if result is not None:
+                    dev, channels = result
+                    try:
+                        self._loopback_stream = sd.InputStream(
+                            samplerate=self.sample_rate,
+                            channels=channels,
+                            dtype="int16",
+                            blocksize=1024,
+                            callback=self._loopback_callback,
+                            device=dev,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Monitor: failed to open loopback: {e}")
+
+            self._mic_stream.start()
+            if self._loopback_stream is not None:
+                self._loopback_stream.start()
+            self._output_stream.start()
+            self._running = True
+            return True
+        except Exception as e:
+            logger.error(f"Error starting audio monitor: {e}")
+            self.stop()
+            return False
+
+    def stop(self):
+        self._running = False
+        for stream in (self._mic_stream, self._loopback_stream, self._output_stream):
+            if stream is not None:
+                try:
+                    stream.stop()
+                    stream.close()
+                except Exception:
+                    pass
+        self._mic_stream = None
+        self._loopback_stream = None
+        self._output_stream = None
+        with self._lock:
+            self._mic_buffer = np.zeros(0, dtype=np.int16)
+            self._loopback_buffer = np.zeros(0, dtype=np.int16)
+
+    @property
+    def is_running(self) -> bool:
+        return self._running
+
+    def _mic_callback(self, indata, frames, time_info, status):
+        with self._lock:
+            self._mic_buffer = np.concatenate(
+                [self._mic_buffer, indata.reshape(-1).astype(np.int16)]
+            )
+
+    def _loopback_callback(self, indata, frames, time_info, status):
+        mono = indata.mean(axis=1).astype(np.int16) if indata.ndim > 1 else indata
+        with self._lock:
+            self._loopback_buffer = np.concatenate(
+                [self._loopback_buffer, mono.reshape(-1)]
+            )
+
+    def _output_callback(self, outdata, frames, time_info, status):
+        with self._lock:
+            mic = self._mic_buffer[:frames]
+            self._mic_buffer = self._mic_buffer[frames:]
+            loop = self._loopback_buffer[:frames]
+            self._loopback_buffer = self._loopback_buffer[frames:]
+
+        if len(mic) < frames:
+            mic = np.concatenate([mic, np.zeros(frames - len(mic), dtype=np.int16)])
+        if self.include_system_audio and len(loop) > 0:
+            if len(loop) < frames:
+                loop = np.concatenate(
+                    [loop, np.zeros(frames - len(loop), dtype=np.int16)]
+                )
+            mixed = np.clip(
+                mic.astype(np.int32) + loop.astype(np.int32), -32768, 32767
+            ).astype(np.int16)
+            outdata[:] = mixed.reshape(-1, 1)
+        else:
+            outdata[:] = mic.reshape(-1, 1)

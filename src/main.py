@@ -230,6 +230,14 @@ class DictoApp:
         )
         self.main_window.edit_hotkey_changed.connect(self.controller.update_edit_hotkey)
 
+        # Audio device / system audio -> Controller
+        self.main_window.input_device_changed.connect(
+            self.controller.update_input_device
+        )
+        self.main_window.include_system_audio_changed.connect(
+            self.controller.update_include_system_audio
+        )
+
         # Overlay record/stop buttons
         self.overlay.record_requested.connect(self.controller.start_recording_manual)
         self.overlay.stop_requested.connect(self.controller.stop_recording_manual)

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -86,7 +87,6 @@ from src.ui.icons import (
     SVG_EXTERNAL,
     SVG_AUDIO_LINES,
     SVG_MODELS,
-    SVG_BUG_REPORT,
 )
 
 logger = logging.getLogger(__name__)
@@ -256,6 +256,8 @@ class MainWindow(QMainWindow):
     persistent_overlay_changed = Signal(bool)
     recording_hotkey_changed = Signal(list, str)  # (modifiers, key)
     edit_hotkey_changed = Signal(list, str)  # (modifiers, key)
+    input_device_changed = Signal(object)  # int or None
+    include_system_audio_changed = Signal(bool)
 
     FULL_SIZE = (420, 370)
 
@@ -270,14 +272,15 @@ class MainWindow(QMainWindow):
         self._copied = False
         self._settings_open = False
         self._models_open = False
-        self._report_open = False
         self._format_cache: dict[str, str] = {}  # format_id -> transformed text
         self._transforming_format: str | None = None
         self._user_presets: list[dict] = []  # [{id, name, instructions}]
         self.controller = None  # set externally after init
         self._section_labels: dict[str, QLabel] = {}  # key -> section QLabel
         self._hotkey_labels: dict[str, QLabel] = {}  # key -> hotkey row QLabel
+        self._audio_monitor = None  # AudioMonitor while test is active
         self._setup_ui()
+        self._populate_input_devices()
         self._load_settings()
 
         # Elapsed timer
@@ -324,7 +327,6 @@ class MainWindow(QMainWindow):
         self._create_done_page()
         self._create_settings_page()
         self._create_models_page()
-        self._create_report_page()
 
         self._create_footer(main_layout)
 
@@ -395,22 +397,6 @@ class MainWindow(QMainWindow):
         setattr(self.models_button, "_icon_hover", _make_icon(SVG_MODELS, 16, TEXT))
         self.models_button.installEventFilter(self)
         layout.addWidget(self.models_button)
-
-        # Report error button
-        self.report_button = QPushButton()
-        self.report_button.setFixedSize(28, 28)
-        self.report_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.report_button.setIcon(_make_icon(SVG_BUG_REPORT, 16, TEXT_DIM))
-        self.report_button.setIconSize(QSize(16, 16))
-        self.report_button.setStyleSheet(HEADER_BUTTON)
-        self.report_button.setToolTip(t("report_error"))
-        self.report_button.clicked.connect(self._toggle_report)
-        setattr(
-            self.report_button, "_icon_normal", _make_icon(SVG_BUG_REPORT, 16, TEXT_DIM)
-        )
-        setattr(self.report_button, "_icon_hover", _make_icon(SVG_BUG_REPORT, 16, TEXT))
-        self.report_button.installEventFilter(self)
-        layout.addWidget(self.report_button)
 
         # Settings button
         self.settings_button = QPushButton()
@@ -775,12 +761,13 @@ class MainWindow(QMainWindow):
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
             QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
         """)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.verticalScrollBar().setSingleStep(15)
 
         scroll_content = QWidget()
         scroll_content.setStyleSheet("background-color: transparent;")
         layout = QVBoxLayout(scroll_content)
-        layout.setContentsMargins(24, 16, 24, 16)
+        layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(0)
 
         scroll.setWidget(scroll_content)
@@ -853,6 +840,37 @@ class MainWindow(QMainWindow):
             layout, "press_enter_after_paste", self._on_edit_auto_enter_changed
         )
 
+        # Audio input
+        self._add_section(layout, "audio_input")
+        self.input_device_combo = QComboBox()
+        self.input_device_combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        # Prevent long device names from expanding the combo (and the whole page) beyond the window width.
+        self.input_device_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.input_device_combo.setMinimumContentsLength(10)
+        setattr(self.input_device_combo, "wheelEvent", lambda e: e.ignore())
+        self.input_device_combo.currentIndexChanged.connect(
+            self._on_input_device_changed
+        )
+        layout.addWidget(self.input_device_combo)
+        layout.addSpacing(6)
+        self.include_system_audio_checkbox = self._add_checkbox(
+            layout, "include_system_audio", self._on_include_system_audio_changed
+        )
+        if sys.platform != "win32":
+            self.include_system_audio_checkbox.setEnabled(False)
+            self.include_system_audio_checkbox.setToolTip(
+                t("system_audio_windows_only")
+            )
+        layout.addSpacing(4)
+        self.test_audio_button = QPushButton(t("test_audio"))
+        self.test_audio_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.test_audio_button.setFixedHeight(32)
+        self.test_audio_button.setStyleSheet(FLAT_BUTTON)
+        self.test_audio_button.clicked.connect(self._on_test_audio_clicked)
+        layout.addWidget(self.test_audio_button)
+
         # Window (application + overlay merged)
         self._add_section(layout, "application")
         self.always_on_top_checkbox = self._add_checkbox(
@@ -867,6 +885,24 @@ class MainWindow(QMainWindow):
         self.ui_language_combo = self._add_combo(
             layout, UI_LANGUAGES, self._on_ui_language_changed
         )
+
+        # Report error
+        self._add_section(layout, "report_error")
+        self._report_desc_label = QLabel(t("report_error_description"))
+        self._report_desc_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 12px;")
+        self._report_desc_label.setWordWrap(True)
+        layout.addWidget(self._report_desc_label)
+        layout.addSpacing(8)
+        self.send_report_button = QPushButton(t("send_report"))
+        self.send_report_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.send_report_button.setFixedHeight(32)
+        self.send_report_button.setStyleSheet(FLAT_BUTTON)
+        self.send_report_button.clicked.connect(self._send_report)
+        layout.addWidget(self.send_report_button)
+        self.report_status_label = QLabel("")
+        self.report_status_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
+        self.report_status_label.hide()
+        layout.addWidget(self.report_status_label)
 
         layout.addStretch()
         self.content_stack.addWidget(page)
@@ -923,49 +959,6 @@ class MainWindow(QMainWindow):
             },
             self._on_edition_model_changed,
         )
-
-        layout.addStretch()
-        self.content_stack.addWidget(page)
-
-    def _create_report_page(self):
-        page, layout = self._create_scroll_page()
-
-        # Description
-        desc_label = QLabel(t("report_error_description"))
-        desc_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 12px;")
-        desc_label.setWordWrap(True)
-        layout.addWidget(desc_label)
-        self._report_desc_label = desc_label
-        layout.addSpacing(12)
-
-        # Logs section
-        logs_label = self._section_label(t("logs"))
-        self._section_labels["logs"] = logs_label
-        layout.addWidget(logs_label)
-        layout.addSpacing(6)
-
-        self.report_logs_text = QTextEdit()
-        self.report_logs_text.setReadOnly(True)
-        self.report_logs_text.setStyleSheet(
-            f"background-color: rgba(0,0,0,0.3); color: {TEXT_DIM}; border: 1px solid {BORDER}; "
-            f"border-radius: 4px; font-size: 11px; font-family: monospace; padding: 8px;"
-        )
-        self.report_logs_text.setMinimumHeight(160)
-        layout.addWidget(self.report_logs_text)
-        layout.addSpacing(12)
-
-        # Send button
-        self.send_report_button = QPushButton(t("send_report"))
-        self.send_report_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.send_report_button.setStyleSheet(ACCENT_BUTTON)
-        self.send_report_button.clicked.connect(self._send_report)
-        layout.addWidget(self.send_report_button)
-
-        # Status label
-        self.report_status_label = QLabel("")
-        self.report_status_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
-        self.report_status_label.hide()
-        layout.addWidget(self.report_status_label)
 
         layout.addStretch()
         self.content_stack.addWidget(page)
@@ -1043,8 +1036,6 @@ class MainWindow(QMainWindow):
                     pass
                 elif obj is self.settings_button and self._settings_open:
                     pass
-                elif obj is self.report_button and self._report_open:
-                    pass
                 else:
                     obj.setIcon(getattr(obj, "_icon_normal"))
         return super().eventFilter(obj, event)
@@ -1074,7 +1065,7 @@ class MainWindow(QMainWindow):
         if self._settings_open:
             self._close_panel()
         else:
-            if self._models_open or self._report_open:
+            if self._models_open:
                 self._close_panel()
             self._open_settings()
 
@@ -1082,17 +1073,9 @@ class MainWindow(QMainWindow):
         if self._models_open:
             self._close_panel()
         else:
-            if self._settings_open or self._report_open:
+            if self._settings_open:
                 self._close_panel()
             self._open_models()
-
-    def _toggle_report(self):
-        if self._report_open:
-            self._close_panel()
-        else:
-            if self._settings_open or self._models_open or self._report_open:
-                self._close_panel()
-            self._open_report()
 
     def _open_settings(self):
         self._settings_open = True
@@ -1116,29 +1099,13 @@ class MainWindow(QMainWindow):
         self.tabs_bar.hide()
         self.tabs_sep.hide()
 
-    def _open_report(self):
-        from src.utils.logger import get_log_buffer
-
-        self._report_open = True
-        self._prev_page = self.content_stack.currentIndex()
-        self.content_stack.setCurrentIndex(5)  # report page
-        self.report_button.setIcon(_make_icon(SVG_BUG_REPORT, 16, TEXT))
-        self.report_button.setStyleSheet(HEADER_BUTTON_ACTIVE)
-        self.footer.hide()
-        self.footer_sep.hide()
-        self.tabs_bar.hide()
-        self.tabs_sep.hide()
-        # Refresh logs
-        self.report_logs_text.setPlainText("\n".join(get_log_buffer()))
-        self.report_status_label.hide()
-        self.send_report_button.setEnabled(True)
-
     def _send_report(self):
         import httpx
+        from src.utils.logger import get_log_buffer
 
         self.send_report_button.setEnabled(False)
         self.report_status_label.hide()
-        logs = self.report_logs_text.toPlainText()
+        logs = "\n".join(get_log_buffer())
 
         try:
             api_key = self.settings.transcription_api_key if self.settings else ""
@@ -1152,7 +1119,7 @@ class MainWindow(QMainWindow):
             )
             if response.status_code in (200, 201):
                 self.report_status_label.setText(t("report_sent"))
-                self.report_status_label.setStyleSheet(f"color: #4ade80; font-size: 11px;")
+                self.report_status_label.setStyleSheet("color: #4ade80; font-size: 11px;")
             else:
                 self.report_status_label.setText(t("report_send_failed"))
                 self.report_status_label.setStyleSheet(f"color: {RED}; font-size: 11px;")
@@ -1166,14 +1133,11 @@ class MainWindow(QMainWindow):
     def _close_panel(self):
         self._settings_open = False
         self._models_open = False
-        self._report_open = False
         self.content_stack.setCurrentIndex(getattr(self, "_prev_page", 0))
         self.settings_button.setIcon(_make_icon(SVG_SETTINGS, 16, TEXT_DIM))
         self.settings_button.setStyleSheet(HEADER_BUTTON)
         self.models_button.setIcon(_make_icon(SVG_MODELS, 16, TEXT_DIM))
         self.models_button.setStyleSheet(HEADER_BUTTON)
-        self.report_button.setIcon(_make_icon(SVG_BUG_REPORT, 16, TEXT_DIM))
-        self.report_button.setStyleSheet(HEADER_BUTTON)
         self.footer.show()
         self.footer_sep.show()
         self.tabs_bar.show()
@@ -1181,9 +1145,30 @@ class MainWindow(QMainWindow):
 
     # ── Load settings ───────────────────────────────────────
 
+    def _populate_input_devices(self):
+        """Populate input device combo with available microphones."""
+        from src.services.recorder import list_input_devices
+
+        self.input_device_combo.blockSignals(True)
+        self.input_device_combo.clear()
+        self.input_device_combo.addItem(t("system_default"), None)
+        for dev in list_input_devices():
+            suffix = f" ({t('default')})" if dev["is_default"] else ""
+            self.input_device_combo.addItem(f"{dev['name']}{suffix}", dev["id"])
+        self.input_device_combo.blockSignals(False)
+
     def _load_settings(self):
         if not self.settings:
             return
+
+        current_device = self.settings.audio_input_device
+        idx = self.input_device_combo.findData(current_device)
+        if idx < 0:
+            idx = 0
+        self.input_device_combo.setCurrentIndex(idx)
+        self.include_system_audio_checkbox.setChecked(
+            self.settings.audio_include_system_audio
+        )
 
         self.auto_paste_checkbox.setChecked(self.settings.auto_paste)
         self.auto_enter_checkbox.setChecked(self.settings.auto_enter)
@@ -1310,6 +1295,55 @@ class MainWindow(QMainWindow):
         self._save_setting("persistent_overlay", checked)
         self.persistent_overlay_changed.emit(checked)
 
+    def _on_input_device_changed(self, index: int):
+        device_id = self.input_device_combo.itemData(index)
+        self._save_setting("audio_input_device", device_id)
+        self.input_device_changed.emit(device_id)
+        if self._audio_monitor and self._audio_monitor.is_running:
+            self._stop_audio_monitor()
+            self._start_audio_monitor()
+
+    def _on_include_system_audio_changed(self, state: int):
+        checked = state == Qt.CheckState.Checked.value
+        self._save_setting("audio_include_system_audio", checked)
+        self.include_system_audio_changed.emit(checked)
+        if self._audio_monitor and self._audio_monitor.is_running:
+            self._stop_audio_monitor()
+            self._start_audio_monitor()
+
+    def _on_test_audio_clicked(self):
+        if self._audio_monitor and self._audio_monitor.is_running:
+            self._stop_audio_monitor()
+        else:
+            self._start_audio_monitor()
+
+    def _start_audio_monitor(self):
+        from src.services.recorder import AudioMonitor
+
+        if self._audio_monitor and self._audio_monitor.is_running:
+            return
+        sample_rate = self.settings.audio_sample_rate if self.settings else 16000
+        device = self.settings.audio_input_device if self.settings else None
+        include_sys = (
+            self.settings.audio_include_system_audio if self.settings else False
+        )
+        self._audio_monitor = AudioMonitor(
+            sample_rate=sample_rate,
+            input_device=device,
+            include_system_audio=include_sys,
+        )
+        if self._audio_monitor.start():
+            self.test_audio_button.setText(t("test_audio_stop"))
+        else:
+            self._audio_monitor = None
+            self.status_label.setText(t("test_audio_failed"))
+
+    def _stop_audio_monitor(self):
+        if self._audio_monitor:
+            self._audio_monitor.stop()
+            self._audio_monitor = None
+        self.test_audio_button.setText(t("test_audio"))
+
     def _on_edit_auto_paste_changed(self, state: int):
         self._save_setting("edit_auto_paste", state == Qt.CheckState.Checked.value)
 
@@ -1340,11 +1374,19 @@ class MainWindow(QMainWindow):
         self.edit_auto_paste_checkbox.setText(t("auto_paste_after_edit"))
         self.edit_auto_enter_checkbox.setText(t("press_enter_after_paste"))
         self.save_api_key_button.setText(t("save_key"))
+        self.include_system_audio_checkbox.setText(t("include_system_audio"))
+        if sys.platform != "win32":
+            self.include_system_audio_checkbox.setToolTip(
+                t("system_audio_windows_only")
+            )
+        if self._audio_monitor and self._audio_monitor.is_running:
+            self.test_audio_button.setText(t("test_audio_stop"))
+        else:
+            self.test_audio_button.setText(t("test_audio"))
 
         # Toolbar tooltips
         self.settings_button.setToolTip(t("settings"))
         self.models_button.setToolTip(t("models"))
-        self.report_button.setToolTip(t("report_error"))
         self.send_report_button.setText(t("send_report"))
         self._report_desc_label.setText(t("report_error_description"))
 
@@ -1418,7 +1460,7 @@ class MainWindow(QMainWindow):
         self._is_editing = False
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open or self._models_open or self._report_open:
+        if self._settings_open or self._models_open:
             self._prev_page = 1  # recording page
         else:
             self.content_stack.setCurrentIndex(1)  # recording page
@@ -1458,7 +1500,7 @@ class MainWindow(QMainWindow):
         self._is_editing = False
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open or self._models_open or self._report_open:
+        if self._settings_open or self._models_open:
             self._prev_page = 2 if self.last_transcription else 0
         else:
             if self.last_transcription:
@@ -1495,7 +1537,7 @@ class MainWindow(QMainWindow):
         self.is_processing = True
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open or self._models_open or self._report_open:
+        if self._settings_open or self._models_open:
             self._prev_page = 2  # done page
         else:
             self.content_stack.setCurrentIndex(2)  # done page
@@ -1529,7 +1571,7 @@ class MainWindow(QMainWindow):
         self.is_processing = False
         self._is_editing = True
 
-        if self._settings_open or self._models_open or self._report_open:
+        if self._settings_open or self._models_open:
             self._prev_page = 1
         else:
             self.content_stack.setCurrentIndex(1)  # recording page
@@ -1569,7 +1611,7 @@ class MainWindow(QMainWindow):
         self.is_processing = True
         self._is_editing = True
 
-        if self._settings_open or self._models_open or self._report_open:
+        if self._settings_open or self._models_open:
             self._prev_page = 2
         else:
             self.content_stack.setCurrentIndex(2)
@@ -1611,7 +1653,7 @@ class MainWindow(QMainWindow):
         self._transforming_format = None
 
         # If settings are open, don't switch the view — just remember the target page
-        if self._settings_open or self._models_open or self._report_open:
+        if self._settings_open or self._models_open:
             self._prev_page = 2  # done page
         else:
             self.content_stack.setCurrentIndex(2)
@@ -1647,6 +1689,8 @@ class MainWindow(QMainWindow):
         self.activateWindow()
 
     def closeEvent(self, event):
+        if self._audio_monitor and self._audio_monitor.is_running:
+            self._stop_audio_monitor()
         event.ignore()
         self.hide()
         logger.info("Main window hidden to tray")

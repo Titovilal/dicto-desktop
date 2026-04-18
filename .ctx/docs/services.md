@@ -4,7 +4,7 @@
 The services layer provides all the core capabilities that the controller orchestrates: recording audio, transcribing it via an external API, listening for global hotkeys, and interacting with the clipboard and keyboard to deliver results to the user.
 
 ## Main Files
-- `src/services/recorder.py` - Records microphone audio using `sounddevice`; streams chunks in a background thread, calculates real-time audio levels for the UI waveform, and saves output as a temporary WAV file
+- `src/services/recorder.py` - Records microphone audio using `sounddevice`; supports selecting a specific input device and optionally mixing system output audio (WASAPI loopback on Windows); streams chunks in a background thread, calculates real-time audio levels, saves output as a temporary WAV file, and exposes a live `AudioMonitor` for the settings "test microphone" button
 - `src/services/transcriber.py` - Sends audio to the Dicto API for transcription; also supports text transformation and editing via LLM endpoints, with retry logic and detailed error handling (rate limits, file size validation, API key errors)
 - `src/services/hotkey.py` - Cross-platform global hotkey listener using `pynput`; supports "hold" mode (press-to-record, release-to-stop) and "press" mode; includes a factory function (`create_hotkey_listener`) that selects the Wayland backend when appropriate
 - `src/services/hotkey_wayland.py` - Wayland-specific hotkey listener that uses the XDG GlobalShortcuts portal over D-Bus (`dbus-next`); needed because Wayland compositors don't allow direct key grabbing
