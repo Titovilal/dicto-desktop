@@ -311,38 +311,32 @@ class AudioRecorder:
 
 
 class AudioMonitor:
-    """Duplex live monitor: forwards input device samples to default output."""
+    """Live mic level monitor: captures input device samples and reports RMS levels via callback.
+
+    Does not play audio back to the speakers — just reports a 0.0-1.0 level so the UI
+    can show a waveform to confirm the selected mic is picking up sound.
+    """
 
     def __init__(
         self,
         sample_rate: int = 16000,
         input_device: int | None = None,
-        include_system_audio: bool = False,
+        include_system_audio: bool = False,  # kept for signature compatibility, ignored
     ):
         self.sample_rate = sample_rate
         self.input_device = input_device
-        self.include_system_audio = include_system_audio
         self._mic_stream: sd.InputStream | None = None
-        self._loopback_stream: sd.InputStream | None = None
-        self._output_stream: sd.OutputStream | None = None
         self._running = False
-        self._lock = threading.Lock()
-        self._mic_buffer = np.zeros(0, dtype=np.int16)
-        self._loopback_buffer = np.zeros(0, dtype=np.int16)
+        self._level_callback = None
+
+    def set_level_callback(self, callback):
+        """Set a callback that receives audio level (0.0-1.0) for each chunk."""
+        self._level_callback = callback
 
     def start(self) -> bool:
         if self._running:
             return True
-
         try:
-            self._output_stream = sd.OutputStream(
-                samplerate=self.sample_rate,
-                channels=1,
-                dtype="int16",
-                blocksize=1024,
-                callback=self._output_callback,
-            )
-
             self._mic_stream = sd.InputStream(
                 samplerate=self.sample_rate,
                 channels=1,
@@ -351,27 +345,7 @@ class AudioMonitor:
                 callback=self._mic_callback,
                 device=self.input_device,
             )
-
-            if self.include_system_audio and sys.platform == "win32":
-                result = _find_stereo_mix_device()
-                if result is not None:
-                    dev, channels = result
-                    try:
-                        self._loopback_stream = sd.InputStream(
-                            samplerate=self.sample_rate,
-                            channels=channels,
-                            dtype="int16",
-                            blocksize=1024,
-                            callback=self._loopback_callback,
-                            device=dev,
-                        )
-                    except Exception as e:
-                        logger.warning(f"Monitor: failed to open loopback: {e}")
-
             self._mic_stream.start()
-            if self._loopback_stream is not None:
-                self._loopback_stream.start()
-            self._output_stream.start()
             self._running = True
             return True
         except Exception as e:
@@ -381,54 +355,24 @@ class AudioMonitor:
 
     def stop(self):
         self._running = False
-        for stream in (self._mic_stream, self._loopback_stream, self._output_stream):
-            if stream is not None:
-                try:
-                    stream.stop()
-                    stream.close()
-                except Exception:
-                    pass
+        if self._mic_stream is not None:
+            try:
+                self._mic_stream.stop()
+                self._mic_stream.close()
+            except Exception:
+                pass
         self._mic_stream = None
-        self._loopback_stream = None
-        self._output_stream = None
-        with self._lock:
-            self._mic_buffer = np.zeros(0, dtype=np.int16)
-            self._loopback_buffer = np.zeros(0, dtype=np.int16)
 
     @property
     def is_running(self) -> bool:
         return self._running
 
     def _mic_callback(self, indata, frames, time_info, status):
-        with self._lock:
-            self._mic_buffer = np.concatenate(
-                [self._mic_buffer, indata.reshape(-1).astype(np.int16)]
-            )
-
-    def _loopback_callback(self, indata, frames, time_info, status):
-        mono = indata.mean(axis=1).astype(np.int16) if indata.ndim > 1 else indata
-        with self._lock:
-            self._loopback_buffer = np.concatenate(
-                [self._loopback_buffer, mono.reshape(-1)]
-            )
-
-    def _output_callback(self, outdata, frames, time_info, status):
-        with self._lock:
-            mic = self._mic_buffer[:frames]
-            self._mic_buffer = self._mic_buffer[frames:]
-            loop = self._loopback_buffer[:frames]
-            self._loopback_buffer = self._loopback_buffer[frames:]
-
-        if len(mic) < frames:
-            mic = np.concatenate([mic, np.zeros(frames - len(mic), dtype=np.int16)])
-        if self.include_system_audio and len(loop) > 0:
-            if len(loop) < frames:
-                loop = np.concatenate(
-                    [loop, np.zeros(frames - len(loop), dtype=np.int16)]
-                )
-            mixed = np.clip(
-                mic.astype(np.int32) + loop.astype(np.int32), -32768, 32767
-            ).astype(np.int16)
-            outdata[:] = mixed.reshape(-1, 1)
-        else:
-            outdata[:] = mic.reshape(-1, 1)
+        if self._level_callback is None:
+            return
+        try:
+            rms = np.sqrt(np.mean(indata.astype(np.float32) ** 2))
+            level = min(1.0, rms / 400.0)
+            self._level_callback(level)
+        except Exception:
+            pass

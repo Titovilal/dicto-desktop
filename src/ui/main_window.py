@@ -33,6 +33,7 @@ from PySide6.QtGui import (
     QDesktopServices,
     QMouseEvent,
 )
+from PySide6.QtWidgets import QGraphicsDropShadowEffect
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -258,6 +259,7 @@ class MainWindow(QMainWindow):
     edit_hotkey_changed = Signal(list, str)  # (modifiers, key)
     input_device_changed = Signal(object)  # int or None
     include_system_audio_changed = Signal(bool)
+    _test_audio_level = Signal(float)
 
     FULL_SIZE = (420, 370)
 
@@ -294,7 +296,7 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self):
         self.setWindowTitle("Dicto")
-        self.setFixedSize(420, 390)
+        self.setFixedSize(468, 438)
         self.setStyleSheet(GLOBAL_STYLE)
 
         # Frameless window with transparent background for rounded corners
@@ -305,12 +307,27 @@ class MainWindow(QMainWindow):
         if icon_path:
             self.setWindowIcon(QIcon(str(icon_path)))
 
+        # Outer container (transparent) gives the shadow room to render
+        outer = QWidget()
+        outer.setStyleSheet("background: transparent;")
+        self.setCentralWidget(outer)
+        outer_layout = QVBoxLayout(outer)
+        outer_layout.setContentsMargins(24, 20, 24, 28)
+        outer_layout.setSpacing(0)
+
         central_widget = QWidget()
         central_widget.setObjectName("centralCard")
         central_widget.setStyleSheet(
             f"QWidget#centralCard {{ background-color: {MUTED}; border: 1px solid {BORDER}; border-radius: 9px; }}"
         )
-        self.setCentralWidget(central_widget)
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(48)
+        shadow.setXOffset(0)
+        shadow.setYOffset(4)
+        shadow.setColor(QColor(0, 0, 0, 110))
+        central_widget.setGraphicsEffect(shadow)
+        outer_layout.addWidget(central_widget)
+
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -870,6 +887,15 @@ class MainWindow(QMainWindow):
         self.test_audio_button.setStyleSheet(FLAT_BUTTON)
         self.test_audio_button.clicked.connect(self._on_test_audio_clicked)
         layout.addWidget(self.test_audio_button)
+        layout.addSpacing(6)
+        self.test_audio_waveform = WaveformWidget(
+            bar_count=32, bar_width=2, bar_gap=2, height=28, mode="live"
+        )
+        self.test_audio_waveform.hide()
+        layout.addWidget(self.test_audio_waveform)
+        self._test_audio_level.connect(
+            self.test_audio_waveform.set_level, Qt.ConnectionType.QueuedConnection
+        )
 
         # Window (application + overlay merged)
         self._add_section(layout, "application")
@@ -1332,10 +1358,15 @@ class MainWindow(QMainWindow):
             input_device=device,
             include_system_audio=include_sys,
         )
+        self._audio_monitor.set_level_callback(self._on_test_audio_level)
+        self.test_audio_waveform.start()
+        self.test_audio_waveform.show()
         if self._audio_monitor.start():
             self.test_audio_button.setText(t("test_audio_stop"))
         else:
             self._audio_monitor = None
+            self.test_audio_waveform.stop()
+            self.test_audio_waveform.hide()
             self.status_label.setText(t("test_audio_failed"))
 
     def _stop_audio_monitor(self):
@@ -1343,6 +1374,11 @@ class MainWindow(QMainWindow):
             self._audio_monitor.stop()
             self._audio_monitor = None
         self.test_audio_button.setText(t("test_audio"))
+        self.test_audio_waveform.stop()
+        self.test_audio_waveform.hide()
+
+    def _on_test_audio_level(self, level: float):
+        self._test_audio_level.emit(level)
 
     def _on_edit_auto_paste_changed(self, state: int):
         self._save_setting("edit_auto_paste", state == Qt.CheckState.Checked.value)
