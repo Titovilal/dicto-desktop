@@ -35,7 +35,7 @@ LABEL_BASE = f"font-family: {FONT}; background: transparent; letter-spacing: -0.
 
 # Button styles
 _BTN_BASE = (
-    "background: transparent; border: none; border-radius: 4px; padding: 2px;"
+    "background: transparent; border: none; border-radius: 6px; padding: 2px;"
     f" font-family: {FONT};"
 )
 _BTN_HOVER = f"background: {SECONDARY};"
@@ -335,7 +335,7 @@ class OverlayWindow(QWidget):
             f"QWidget#overlayCard {{ "
             f"background-color: {BG}; "
             f"border: 1px solid {border_accent}; "
-            "border-radius: 8px; "
+            "border-radius: 10px; "
             "}"
         )
 

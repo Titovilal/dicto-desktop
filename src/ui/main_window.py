@@ -308,7 +308,7 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         central_widget.setObjectName("centralCard")
         central_widget.setStyleSheet(
-            f"QWidget#centralCard {{ background-color: {MUTED}; border: 1px solid {BORDER}; border-radius: 6px; }}"
+            f"QWidget#centralCard {{ background-color: {MUTED}; border: 1px solid {BORDER}; border-radius: 9px; }}"
         )
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
