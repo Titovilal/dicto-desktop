@@ -88,6 +88,8 @@ from src.ui.icons import (
     SVG_EXTERNAL,
     SVG_AUDIO_LINES,
     SVG_MODELS,
+    SVG_SPEAKER,
+    SVG_SPEAKER_OFF,
 )
 
 logger = logging.getLogger(__name__)
@@ -871,15 +873,6 @@ class MainWindow(QMainWindow):
             self._on_input_device_changed
         )
         layout.addWidget(self.input_device_combo)
-        layout.addSpacing(6)
-        self.include_system_audio_checkbox = self._add_checkbox(
-            layout, "include_system_audio", self._on_include_system_audio_changed
-        )
-        if sys.platform != "win32":
-            self.include_system_audio_checkbox.setEnabled(False)
-            self.include_system_audio_checkbox.setToolTip(
-                t("system_audio_windows_only")
-            )
         layout.addSpacing(4)
         self.test_audio_button = QPushButton(t("test_audio"))
         self.test_audio_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1034,6 +1027,26 @@ class MainWindow(QMainWindow):
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
         layout.addWidget(self.status_label)
+
+        self.include_system_audio_checkbox = QPushButton()
+        self.include_system_audio_checkbox.setCheckable(True)
+        self.include_system_audio_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.include_system_audio_checkbox.setFixedSize(32, 32)
+        self.include_system_audio_checkbox.setToolTip(t("include_system_audio"))
+        self.include_system_audio_checkbox.setStyleSheet(HEADER_BUTTON)
+        self.include_system_audio_checkbox.toggled.connect(
+            self._on_include_system_audio_changed
+        )
+        self.include_system_audio_checkbox.toggled.connect(
+            self._update_include_system_audio_icon
+        )
+        if sys.platform == "darwin":
+            self.include_system_audio_checkbox.setEnabled(False)
+            self.include_system_audio_checkbox.setToolTip(
+                t("system_audio_unsupported")
+            )
+        self._update_include_system_audio_icon(False)
+        layout.addWidget(self.include_system_audio_checkbox)
 
         parent_layout.addWidget(self.footer)
 
@@ -1329,8 +1342,12 @@ class MainWindow(QMainWindow):
             self._stop_audio_monitor()
             self._start_audio_monitor()
 
-    def _on_include_system_audio_changed(self, state: int):
-        checked = state == Qt.CheckState.Checked.value
+    def _update_include_system_audio_icon(self, checked: bool):
+        svg = SVG_SPEAKER if checked else SVG_SPEAKER_OFF
+        color = TEXT if checked else TEXT_DIM
+        self.include_system_audio_checkbox.setIcon(_make_icon(svg, 16, color))
+
+    def _on_include_system_audio_changed(self, checked: bool):
         self._save_setting("audio_include_system_audio", checked)
         self.include_system_audio_changed.emit(checked)
         if self._audio_monitor and self._audio_monitor.is_running:
@@ -1410,11 +1427,12 @@ class MainWindow(QMainWindow):
         self.edit_auto_paste_checkbox.setText(t("auto_paste_after_edit"))
         self.edit_auto_enter_checkbox.setText(t("press_enter_after_paste"))
         self.save_api_key_button.setText(t("save_key"))
-        self.include_system_audio_checkbox.setText(t("include_system_audio"))
-        if sys.platform != "win32":
+        if sys.platform == "darwin":
             self.include_system_audio_checkbox.setToolTip(
-                t("system_audio_windows_only")
+                t("system_audio_unsupported")
             )
+        else:
+            self.include_system_audio_checkbox.setToolTip(t("include_system_audio"))
         if self._audio_monitor and self._audio_monitor.is_running:
             self.test_audio_button.setText(t("test_audio_stop"))
         else:

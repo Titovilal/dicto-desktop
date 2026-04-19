@@ -2,17 +2,19 @@
 
 ## Web App
 
+- [ ] Botón en el overlay para ocultarlo.
+
 - [ ] Crear Dicto page con terturions template.
 
-- [ ] Crear precio por subscripción.
+- [ ] Crear precio por subscripción y otps.
 
-- [ ] Guardar en base de datos las transcripciones, con su fecha, duración, precio, etc.
+- [X] Guardar en base de datos las transcripciones, con su fecha, duración, precio, etc.
 
-- [ ] Crear página de historial de transcripciones para el usuario, con opción de descargar cada una.
+- [X] Crear página de historial de transcripciones para el usuario, con opción de descargar cada una.
 
-- [ ] Crear página de configuración que permita gestionar API keys, borrar historial, etc.
+- [X] Crear página de configuración que permita gestionar API keys, borrar historial, etc.
 
-- [ ] Crear página de estadísticas de uso, mostrando número de transcripciones, duración total, gasto total, etc.
+- [X] Crear página de estadísticas de uso, mostrando número de transcripciones, duración total, gasto total, etc.
 
 ## Desktop App
 

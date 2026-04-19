@@ -16,7 +16,7 @@ Provides the visual layer of Dicto: a settings/status window, a floating overlay
 
 ## Flow
 1. On startup, `SplashWindow` displays while the app initializes; once ready the main window and overlay are created
-2. The `MainWindow` lets users configure settings (API key, hotkeys, audio input device, system-audio mixing, overlay options, language) and includes a live microphone test button; the `TrayManager` provides quick access from the system tray
+2. The `MainWindow` lets users configure settings (API key, hotkeys, audio input device, overlay options, language) and includes a live microphone test button; a system-audio toggle sits in the footer next to the record button on the home page. The `TrayManager` provides quick access from the system tray
 3. During recording the overlay switches to its recording view with a live `WaveformWidget`, then shows processing and success/error states as the controller transitions
 
 ---

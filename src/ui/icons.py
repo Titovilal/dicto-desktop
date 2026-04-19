@@ -28,6 +28,8 @@ _ICON_NAMES = [
     "stop",
     "reset",
     "bug_report",
+    "speaker",
+    "speaker_off",
 ]
 
 
