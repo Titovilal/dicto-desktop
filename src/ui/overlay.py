@@ -27,7 +27,14 @@ from src.ui.main_window_styles import (
     BLUE,
 )
 from src.ui.waveform import WaveformWidget
-from src.ui.icons import SVG_SETTINGS_SMALL, SVG_RECORD, SVG_STOP, SVG_RESET
+from src.ui.icons import (
+    SVG_SETTINGS_SMALL,
+    SVG_RECORD,
+    SVG_STOP,
+    SVG_RESET,
+    SVG_CLOSE,
+    SVG_EXTERNAL,
+)
 
 
 FONT = '"JetBrains Mono", "Cascadia Code", "Consolas", monospace'
@@ -63,7 +70,8 @@ class OverlayPopover(QWidget):
     """Small popover shown when clicking the settings button."""
 
     reset_position_clicked = Signal()
-    record_clicked = Signal()
+    open_app_clicked = Signal()
+    hide_overlay_clicked = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -98,16 +106,27 @@ class OverlayPopover(QWidget):
         self.reset_btn.clicked.connect(self._on_reset)
         clayout.addWidget(self.reset_btn)
 
-        # Record button
-        self.record_btn = QPushButton(t("record"))
-        self.record_btn.setIcon(_make_overlay_icon(SVG_RECORD, 12, RED))
-        self.record_btn.setStyleSheet(
+        # Hide overlay button (disables persistent_overlay setting)
+        self.hide_overlay_btn = QPushButton(t("hide_overlay"))
+        self.hide_overlay_btn.setIcon(_make_overlay_icon(SVG_CLOSE, 12, TEXT_DIM))
+        self.hide_overlay_btn.setStyleSheet(
             f"QPushButton {{ {_BTN_BASE} color: {TEXT}; font-size: 11px; padding: 4px 8px; text-align: left; }}"
             f"QPushButton:hover {{ {_BTN_HOVER} }}"
         )
-        self.record_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.record_btn.clicked.connect(self._on_record)
-        clayout.addWidget(self.record_btn)
+        self.hide_overlay_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.hide_overlay_btn.clicked.connect(self._on_hide_overlay)
+        clayout.addWidget(self.hide_overlay_btn)
+
+        # Open app button
+        self.open_app_btn = QPushButton(t("open_app"))
+        self.open_app_btn.setIcon(_make_overlay_icon(SVG_EXTERNAL, 12, TEXT_DIM))
+        self.open_app_btn.setStyleSheet(
+            f"QPushButton {{ {_BTN_BASE} color: {TEXT}; font-size: 11px; padding: 4px 8px; text-align: left; }}"
+            f"QPushButton:hover {{ {_BTN_HOVER} }}"
+        )
+        self.open_app_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.open_app_btn.clicked.connect(self._on_open_app)
+        clayout.addWidget(self.open_app_btn)
 
         layout.addWidget(container)
         self.adjustSize()
@@ -116,9 +135,13 @@ class OverlayPopover(QWidget):
         self.hide()
         self.reset_position_clicked.emit()
 
-    def _on_record(self):
+    def _on_open_app(self):
         self.hide()
-        self.record_clicked.emit()
+        self.open_app_clicked.emit()
+
+    def _on_hide_overlay(self):
+        self.hide()
+        self.hide_overlay_clicked.emit()
 
 
 class OverlayWindow(QWidget):
@@ -126,6 +149,8 @@ class OverlayWindow(QWidget):
 
     record_requested = Signal()
     stop_requested = Signal()
+    hide_overlay_requested = Signal()
+    open_app_requested = Signal()
 
     def __init__(
         self, position: str = "top-right", size: int = 100, opacity: float = 0.85
@@ -152,7 +177,8 @@ class OverlayWindow(QWidget):
         self._setup_ui()
         self._setup_window()
         self._popover.reset_position_clicked.connect(self._reset_position)
-        self._popover.record_clicked.connect(self._on_popover_record)
+        self._popover.open_app_clicked.connect(self.open_app_requested)
+        self._popover.hide_overlay_clicked.connect(self.hide_overlay_requested)
         self._popover.hide()
 
     # ── Window setup ─────────────────────────────────────────
@@ -245,6 +271,18 @@ class OverlayWindow(QWidget):
         )
         status_row.addWidget(self.status_label, 1)
 
+        # Record button — visible only in idle; hidden while recording/processing
+        self.record_btn = QPushButton()
+        self.record_btn.setFixedSize(22, 22)
+        self.record_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.record_btn.setToolTip(t("record"))
+        self.record_btn.setStyleSheet(
+            f"QPushButton {{ {_BTN_BASE} }}QPushButton:hover {{ {_BTN_HOVER} }}"
+        )
+        self.record_btn.setIcon(_make_overlay_icon(SVG_RECORD, 14, RED))
+        self.record_btn.clicked.connect(self._on_record_btn_clicked)
+        status_row.addWidget(self.record_btn, 0, Qt.AlignmentFlag.AlignVCenter)
+
         # Action button: settings (idle) / stop (recording/editing)
         self.action_btn = QPushButton()
         self.action_btn.setFixedSize(22, 22)
@@ -293,21 +331,26 @@ class OverlayWindow(QWidget):
         main_layout.addWidget(self.card)
 
     def _update_action_btn_icon(self):
+        self.action_btn.setIcon(_make_overlay_icon(SVG_SETTINGS_SMALL, 14, TEXT_DIM))
+
+    def _update_record_btn_icon(self):
         if self._action_mode == "settings":
-            self.action_btn.setIcon(
-                _make_overlay_icon(SVG_SETTINGS_SMALL, 14, TEXT_DIM)
-            )
+            self.record_btn.setIcon(_make_overlay_icon(SVG_RECORD, 14, RED))
+            self.record_btn.setToolTip(t("record"))
         else:
-            self.action_btn.setIcon(_make_overlay_icon(SVG_STOP, 14, RED))
+            self.record_btn.setIcon(_make_overlay_icon(SVG_STOP, 14, RED))
+            self.record_btn.setToolTip(t("stop"))
 
     def _on_action_btn_clicked(self):
-        if self._action_mode == "settings":
-            if self._popover.isVisible():
-                self._popover.hide()
-            else:
-                self._show_popover_at_button()
+        if self._popover.isVisible():
+            self._popover.hide()
         else:
-            # Stop mode
+            self._show_popover_at_button()
+
+    def _on_record_btn_clicked(self):
+        if self._action_mode == "settings":
+            self.record_requested.emit()
+        else:
             self.stop_requested.emit()
 
     def _show_popover_at_button(self):
@@ -320,15 +363,9 @@ class OverlayWindow(QWidget):
         self._popover.show()
         self._popover.raise_()
 
-    def _on_popover_record(self):
-        self.record_requested.emit()
-
     def _set_action_mode(self, mode: str):
         self._action_mode = mode
-        self._update_action_btn_icon()
-        # Hide popover when switching away from settings
-        if mode != "settings" and self._popover.isVisible():
-            self._popover.hide()
+        self._update_record_btn_icon()
 
     def _set_card_style(self, border_accent: str = BORDER):
         self.card.setStyleSheet(

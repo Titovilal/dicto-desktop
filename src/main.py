@@ -244,6 +244,8 @@ class DictoApp:
 
         # Persistent overlay setting
         self.main_window.persistent_overlay_changed.connect(self.overlay.set_persistent)
+        self.overlay.hide_overlay_requested.connect(self._on_hide_overlay_requested)
+        self.overlay.open_app_requested.connect(self._show_main_window)
         if self.settings.persistent_overlay:
             self.overlay.set_persistent(True)
 
@@ -357,6 +359,15 @@ class DictoApp:
         QTimer.singleShot(1500, self.controller.return_to_idle)
 
     @Slot()
+    def _on_hide_overlay_requested(self):
+        """User clicked 'Hide overlay' in the overlay popover: disable persistent mode."""
+        self.settings.persistent_overlay = False
+        self.settings.save()
+        self.overlay.set_persistent(False)
+        self.overlay.hide()
+        if self.main_window:
+            self.main_window.sync_persistent_overlay_checkbox(False)
+
     def _show_main_window(self):
         """Show and bring main window to front."""
         if self.main_window:

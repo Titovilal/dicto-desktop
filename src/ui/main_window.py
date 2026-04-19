@@ -1334,6 +1334,12 @@ class MainWindow(QMainWindow):
         self._save_setting("persistent_overlay", checked)
         self.persistent_overlay_changed.emit(checked)
 
+    def sync_persistent_overlay_checkbox(self, checked: bool):
+        """Update the checkbox without re-triggering the save/emit cycle."""
+        self.persistent_overlay_checkbox.blockSignals(True)
+        self.persistent_overlay_checkbox.setChecked(checked)
+        self.persistent_overlay_checkbox.blockSignals(False)
+
     def _on_input_device_changed(self, index: int):
         device_id = self.input_device_combo.itemData(index)
         self._save_setting("audio_input_device", device_id)
