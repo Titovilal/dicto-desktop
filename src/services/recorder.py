@@ -55,8 +55,38 @@ def list_input_devices() -> list[dict]:
     return devices
 
 
+def _find_wasapi_loopback_device() -> tuple[int, int, int] | None:
+    """Find the default WASAPI output device to use as a loopback input.
+
+    Returns (device_index, channels, native_samplerate) or None.
+    """
+    if sys.platform != "win32":
+        return None
+    try:
+        hostapis = sd.query_hostapis()
+        wasapi_idx = next(
+            (i for i, h in enumerate(hostapis) if "WASAPI" in h.get("name", "")),
+            None,
+        )
+        if wasapi_idx is None:
+            return None
+        out_idx = hostapis[wasapi_idx].get("default_output_device", -1)
+        if out_idx is None or out_idx < 0:
+            return None
+        dev = sd.query_devices(out_idx)
+        channels = max(1, int(dev.get("max_output_channels", 2)))
+        rate = int(dev.get("default_samplerate", 48000))
+        logger.info(
+            f"WASAPI loopback device: [{out_idx}] {dev['name']} ({channels}ch @ {rate}Hz)"
+        )
+        return out_idx, channels, rate
+    except Exception as e:
+        logger.warning(f"Failed to find WASAPI loopback device: {e}")
+        return None
+
+
 def _find_stereo_mix_device() -> tuple[int, int] | None:
-    """Find a Stereo Mix (or similar loopback) input device.
+    """Find a Stereo Mix (or similar loopback) input device — fallback only.
 
     Returns (device_index, max_input_channels) or None.
     """
@@ -73,6 +103,127 @@ def _find_stereo_mix_device() -> tuple[int, int] | None:
     except Exception as e:
         logger.warning(f"Failed to search for Stereo Mix device: {e}")
     return None
+
+
+class _SoundcardLoopbackStream:
+    """Wraps `soundcard` loopback capture behind a start/stop/close interface
+    compatible with `sd.InputStream`, pushing int16 blocks to a callback.
+
+    - Windows: captures the default speaker with `include_loopback=True`.
+    - Linux (PulseAudio/PipeWire): uses the default speaker's monitor source.
+    """
+
+    def __init__(self, callback, blocksize: int, samplerate: int, channels: int):
+        import soundcard as sc
+
+        self._callback = callback
+        self._blocksize = blocksize
+        self._samplerate = samplerate
+        self._channels = channels
+        self._running = False
+        self._thread: threading.Thread | None = None
+
+        speaker = sc.default_speaker()
+        # get_microphone(..., include_loopback=True) returns a loopback mic for
+        # the given speaker on Windows; on Linux soundcard auto-selects the
+        # monitor source.
+        self._mic = sc.get_microphone(
+            id=str(speaker.name), include_loopback=True
+        )
+
+    def start(self):
+        if self._running:
+            return
+        self._running = True
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def _run(self):
+        try:
+            with self._mic.recorder(
+                samplerate=self._samplerate,
+                channels=self._channels,
+                blocksize=self._blocksize,
+            ) as rec:
+                while self._running:
+                    data = rec.record(numframes=self._blocksize)
+                    if not self._running:
+                        break
+                    # soundcard returns float32 in [-1, 1]; convert to int16
+                    int16 = np.clip(data * 32767.0, -32768, 32767).astype(np.int16)
+                    try:
+                        self._callback(int16, len(int16), None, None)
+                    except Exception as e:
+                        logger.debug(f"Loopback callback error: {e}")
+        except Exception as e:
+            logger.warning(f"Soundcard loopback stream error: {e}")
+            self._running = False
+
+    def stop(self):
+        self._running = False
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+            self._thread = None
+
+    def close(self):
+        self.stop()
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+
+def _open_loopback_input_stream(
+    callback, blocksize: int, dtype: str = "int16"
+):
+    """Open a loopback input stream for system audio. Returns (stream, native_samplerate) or None.
+
+    Primary path (Windows + Linux): `soundcard` capture of the default speaker's
+    loopback / monitor source. Fallback on Windows: Stereo Mix via sounddevice.
+    Caller is responsible for start/stop.
+    """
+    # Primary: soundcard (works on Windows WASAPI loopback and Linux monitor sources)
+    try:
+        import soundcard as sc  # noqa: F401
+
+        native_rate = 48000
+        channels = 2
+        stream = _SoundcardLoopbackStream(
+            callback, blocksize=blocksize, samplerate=native_rate, channels=channels
+        )
+        logger.info(
+            f"Loopback via soundcard (default speaker monitor, {channels}ch @ {native_rate}Hz)"
+        )
+        return stream, native_rate
+    except Exception as e:
+        logger.warning(f"Soundcard loopback unavailable: {e}")
+
+    # Fallback: Stereo Mix on Windows
+    if sys.platform != "win32":
+        return None
+    try:
+        result = _find_stereo_mix_device()
+        if result is None:
+            logger.warning("No loopback device available (no Stereo Mix found).")
+            return None
+        device, channels = result
+        dev_info = sd.query_devices(device)
+        native_rate = int(dev_info.get("default_samplerate", 48000))
+        stream = sd.InputStream(
+            samplerate=native_rate,
+            channels=channels,
+            dtype=dtype,
+            blocksize=blocksize,
+            callback=callback,
+            device=device,
+        )
+        return stream, native_rate
+    except Exception as e:
+        logger.warning(f"Failed to open Stereo Mix fallback: {e}")
+        return None
 
 
 class AudioRecorder:
@@ -100,6 +251,9 @@ class AudioRecorder:
         self._audio_level_callback = None
         self._loopback_frames: list[np.ndarray] = []
         self._loopback_lock = threading.Lock()
+        self._loopback_samplerate = sample_rate
+        self._mic_level = 0.0
+        self._loopback_level = 0.0
 
     # ── Configuration updates ─────────────────────────────────
 
@@ -195,6 +349,19 @@ class AudioRecorder:
             else:
                 loopback = loopback.reshape(-1).astype(np.int16)
 
+            # Resample loopback to mic sample rate if they differ (e.g., WASAPI
+            # loopback at 48 kHz vs mic at 16 kHz).
+            if self._loopback_samplerate != self.sample_rate:
+                n_out = int(
+                    round(len(loopback) * self.sample_rate / self._loopback_samplerate)
+                )
+                if n_out > 0:
+                    x_old = np.linspace(0, 1, len(loopback), endpoint=False)
+                    x_new = np.linspace(0, 1, n_out, endpoint=False)
+                    loopback = np.interp(
+                        x_new, x_old, loopback.astype(np.float32)
+                    ).astype(np.int16)
+
             length = min(len(mic_int16.reshape(-1)), len(loopback))
             mic_flat = mic_int16.reshape(-1)[:length].astype(np.int32)
             loopback = loopback[:length].astype(np.int32)
@@ -208,15 +375,18 @@ class AudioRecorder:
         """Records audio in a loop until stopped or max duration reached."""
         start_time = time.time()
 
+        def emit_level():
+            if self._audio_level_callback is not None:
+                self._audio_level_callback(max(self._mic_level, self._loopback_level))
+
         def mic_callback(indata, frames, time_info, status):
             if status:
                 logger.warning(f"Audio stream status: {status}")
             if self.is_recording:
                 self.frames.append(indata.copy())
-                if self._audio_level_callback is not None:
-                    rms = np.sqrt(np.mean(indata.astype(np.float32) ** 2))
-                    level = min(1.0, rms / 400.0)
-                    self._audio_level_callback(level)
+                rms = np.sqrt(np.mean(indata.astype(np.float32) ** 2))
+                self._mic_level = min(1.0, rms / 400.0)
+                emit_level()
 
         def loopback_callback(indata, frames, time_info, status):
             if status:
@@ -224,6 +394,9 @@ class AudioRecorder:
             if self.is_recording:
                 with self._loopback_lock:
                     self._loopback_frames.append(indata.copy())
+                rms = np.sqrt(np.mean(indata.astype(np.float32) ** 2))
+                self._loopback_level = min(1.0, rms / 400.0)
+                emit_level()
 
         loopback_stream = None
         try:
@@ -262,29 +435,12 @@ class AudioRecorder:
             self.is_recording = False
 
     def _open_loopback_stream(self, callback):
-        """Open a Stereo Mix input stream on Windows for system audio capture."""
-        if sys.platform != "win32":
-            logger.warning("System audio capture is only supported on Windows")
+        result = _open_loopback_input_stream(callback, self.chunk_size)
+        if result is None:
             return None
-        try:
-            result = _find_stereo_mix_device()
-            if result is None:
-                logger.warning(
-                    "No Stereo Mix device found. Enable it in Sound → Recording."
-                )
-                return None
-            device, channels = result
-            return sd.InputStream(
-                samplerate=self.sample_rate,
-                channels=channels,
-                dtype="int16",
-                blocksize=self.chunk_size,
-                callback=callback,
-                device=device,
-            )
-        except Exception as e:
-            logger.warning(f"Failed to open loopback stream: {e}")
-            return None
+        stream, native_rate = result
+        self._loopback_samplerate = native_rate
+        return stream
 
     def cleanup_temp_file(self):
         if self.temp_file_path and Path(self.temp_file_path).exists():
@@ -321,13 +477,17 @@ class AudioMonitor:
         self,
         sample_rate: int = 16000,
         input_device: int | None = None,
-        include_system_audio: bool = False,  # kept for signature compatibility, ignored
+        include_system_audio: bool = False,
     ):
         self.sample_rate = sample_rate
         self.input_device = input_device
+        self.include_system_audio = include_system_audio
         self._mic_stream: sd.InputStream | None = None
+        self._loopback_stream: sd.InputStream | None = None
         self._running = False
         self._level_callback = None
+        self._mic_level = 0.0
+        self._loopback_level = 0.0
 
     def set_level_callback(self, callback):
         """Set a callback that receives audio level (0.0-1.0) for each chunk."""
@@ -346,6 +506,15 @@ class AudioMonitor:
                 device=self.input_device,
             )
             self._mic_stream.start()
+            if self.include_system_audio:
+                result = _open_loopback_input_stream(self._loopback_callback, 1024)
+                if result is not None:
+                    self._loopback_stream, _ = result
+                    try:
+                        self._loopback_stream.start()
+                    except Exception as e:
+                        logger.warning(f"Failed to start loopback monitor stream: {e}")
+                        self._loopback_stream = None
             self._running = True
             return True
         except Exception as e:
@@ -355,24 +524,40 @@ class AudioMonitor:
 
     def stop(self):
         self._running = False
-        if self._mic_stream is not None:
-            try:
-                self._mic_stream.stop()
-                self._mic_stream.close()
-            except Exception:
-                pass
-        self._mic_stream = None
+        for stream_attr in ("_mic_stream", "_loopback_stream"):
+            stream = getattr(self, stream_attr)
+            if stream is not None:
+                try:
+                    stream.stop()
+                    stream.close()
+                except Exception:
+                    pass
+            setattr(self, stream_attr, None)
+        self._mic_level = 0.0
+        self._loopback_level = 0.0
 
     @property
     def is_running(self) -> bool:
         return self._running
 
     def _mic_callback(self, indata, frames, time_info, status):
-        if self._level_callback is None:
-            return
         try:
             rms = np.sqrt(np.mean(indata.astype(np.float32) ** 2))
-            level = min(1.0, rms / 400.0)
-            self._level_callback(level)
+            self._mic_level = min(1.0, rms / 400.0)
+            self._emit_level()
         except Exception:
             pass
+
+    def _loopback_callback(self, indata, frames, time_info, status):
+        try:
+            rms = np.sqrt(np.mean(indata.astype(np.float32) ** 2))
+            self._loopback_level = min(1.0, rms / 400.0)
+            self._emit_level()
+        except Exception:
+            pass
+
+    def _emit_level(self):
+        if self._level_callback is None:
+            return
+        level = max(self._mic_level, self._loopback_level)
+        self._level_callback(level)
