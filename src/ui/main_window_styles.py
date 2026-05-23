@@ -153,13 +153,48 @@ HEADER_BUTTON_ACTIVE = _btn(
 
 # ── Format Tabs ──────────────────────────────────────────────
 
-TAB_BUTTON = _btn(
-    color=TEXT_DIM, radius=3, padding="4px 10px", hover_bg=MUTED, hover_color=TEXT
-)
-TAB_BUTTON_ACTIVE = _btn(bg=PRIMARY, color=PRIMARY_FG, radius=3, padding="4px 10px")
-TAB_BUTTON_DISABLED = _btn(
-    color="rgba(113, 113, 122, 0.5)", radius=3, padding="4px 10px"
-)
+TAB_BUTTON = f"""
+    QPushButton {{
+        background-color: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0px;
+        color: {TEXT_DIM};
+        font-size: 13px;
+        font-weight: 500;
+        padding: 6px 12px 4px 12px;
+    }}
+    QPushButton:hover {{
+        color: {TEXT};
+        border-bottom: 2px solid {SECONDARY};
+    }}
+"""
+
+TAB_BUTTON_ACTIVE = f"""
+    QPushButton {{
+        background-color: transparent;
+        border: none;
+        border-bottom: 2px solid {PRIMARY};
+        border-radius: 0px;
+        color: {TEXT};
+        font-size: 13px;
+        font-weight: 600;
+        padding: 6px 12px 4px 12px;
+    }}
+"""
+
+TAB_BUTTON_DISABLED = f"""
+    QPushButton {{
+        background-color: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0px;
+        color: rgba(113, 113, 122, 0.4);
+        font-size: 13px;
+        font-weight: 500;
+        padding: 6px 12px 4px 12px;
+    }}
+"""
 
 # ── Content ──────────────────────────────────────────────────
 

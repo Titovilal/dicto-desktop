@@ -11,12 +11,12 @@ Provides the visual layer of Dicto: a settings/status window, a floating overlay
 - `src/ui/splash.py` - Frameless splash window shown during app startup
 - `src/ui/icons.py` - SVG icon loader that reads and caches icons from the assets directory
 - `src/ui/main_window_styles.py` - Centralized dark-mode color palette (zinc scale), font definitions, and Qt stylesheet helpers
-- `src/ui/assets/` - SVG icon files (settings, record, stop, reset, close, models, etc.)
+- `src/ui/assets/` - SVG icon files (settings, record, stop, reset, close, models, openai, googlegemini, qwen, etc.)
 - `src/i18n/translations.py` - UI string translations for multi-language support
 
 ## Flow
 1. On startup, `SplashWindow` displays while the app initializes; once ready the main window and overlay are created
-2. The `MainWindow` lets users configure settings (API key, hotkeys, audio input device, overlay options, language) and includes a live microphone test button; a system-audio toggle sits in the footer next to the record button on the home page. The `TrayManager` provides quick access from the system tray
+2. The `MainWindow` lets users configure settings (API key, hotkeys, audio input device, overlay options, language) and includes a live microphone test button; a system-audio toggle sits in the footer next to the record button on the home page. The `TrayManager` provides quick access from the system tray. During processing/editing states the footer record button shows a spinning loader icon (animated via `_loader_timer` at 30 ms intervals, rotating the SVG pixmap 12° per tick)
 3. During recording the overlay switches to its recording view with a live `WaveformWidget`, then shows processing and success/error states as the controller transitions
 
 ---

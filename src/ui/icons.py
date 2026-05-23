@@ -30,6 +30,11 @@ _ICON_NAMES = [
     "bug_report",
     "speaker",
     "speaker_off",
+    "pin",
+    "loader",
+    "openai",
+    "googlegemini",
+    "qwen",
 ]
 
 

@@ -90,6 +90,14 @@ from src.ui.icons import (
     SVG_MODELS,
     SVG_SPEAKER,
     SVG_SPEAKER_OFF,
+    SVG_PIN,
+    SVG_OPENAI,
+    SVG_GOOGLEGEMINI,
+    SVG_QWEN,
+    SVG_RECORD,
+    SVG_STOP,
+    SVG_RESET,
+    SVG_LOADER,
 )
 
 logger = logging.getLogger(__name__)
@@ -132,6 +140,31 @@ def _make_icon(svg_data: str, size: int, color: str) -> QIcon:
         _icon_cache.pop(next(iter(_icon_cache)))
     _icon_cache[key] = icon
     return icon
+
+
+# Maps model key prefixes/substrings to their provider SVG icon
+_MODEL_PROVIDER_SVG: list[tuple[str, str]] = []
+
+
+def _get_provider_svg_for_model(model_key: str) -> str | None:
+    """Return the provider SVG string for a given model key, or None."""
+    # Lazy-build the list on first call so SVG constants are already resolved
+    global _MODEL_PROVIDER_SVG
+    if not _MODEL_PROVIDER_SVG:
+        _MODEL_PROVIDER_SVG = [
+            ("gemini", SVG_GOOGLEGEMINI),
+            ("qwen", SVG_QWEN),
+            # OpenAI / Whisper models
+            ("openai", SVG_OPENAI),
+            ("v3-turbo", SVG_OPENAI),
+            ("v3", SVG_OPENAI),
+            ("gpt", SVG_OPENAI),
+        ]
+    key_lower = model_key.lower()
+    for prefix, svg in _MODEL_PROVIDER_SVG:
+        if prefix in key_lower:
+            return svg
+    return None
 
 
 class HotkeyButton(QPushButton):
@@ -310,6 +343,12 @@ class MainWindow(QMainWindow):
         self._dot_pulse_timer = QTimer(self)
         self._dot_pulse_timer.timeout.connect(self._pulse_dot)
 
+        # Loader spin timer
+        self._loader_angle = 0
+        self._loader_timer = QTimer(self)
+        self._loader_timer.setInterval(30)  # ~33 fps
+        self._loader_timer.timeout.connect(self._spin_loader)
+
     def _setup_ui(self):
         self.setWindowTitle("Dicto")
         self.setFixedSize(468, 438)
@@ -382,11 +421,14 @@ class MainWindow(QMainWindow):
         self.status_dot.setStyleSheet(DOT_IDLE)
         layout.addWidget(self.status_dot)
 
-        # Title
-        title = QLabel("dicto")
+        # Title (clickable — goes back to main page)
+        title = QPushButton("dicto")
         title.setStyleSheet(
             f"font-size: 14px; font-weight: 600; color: {TEXT}; letter-spacing: -0.5px;"
+            "border: none; background: transparent; padding: 0;"
         )
+        title.setCursor(Qt.CursorShape.PointingHandCursor)
+        title.clicked.connect(self._close_panel)
         layout.addWidget(title)
 
         # Web button (next to title)
@@ -431,6 +473,18 @@ class MainWindow(QMainWindow):
         self.models_button.installEventFilter(self)
         layout.addWidget(self.models_button)
 
+        # Pin (always on top) button
+        self.always_on_top_button = QPushButton()
+        self.always_on_top_button.setCheckable(True)
+        self.always_on_top_button.setFixedSize(28, 28)
+        self.always_on_top_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.always_on_top_button.setIconSize(QSize(16, 16))
+        self.always_on_top_button.setStyleSheet(HEADER_BUTTON)
+        self.always_on_top_button.setToolTip(t("always_on_top"))
+        self.always_on_top_button.toggled.connect(self._on_always_on_top_toggle)
+        self._update_always_on_top_icon(False)
+        layout.addWidget(self.always_on_top_button)
+
         # Settings button
         self.settings_button = QPushButton()
         self.settings_button.setFixedSize(28, 28)
@@ -473,11 +527,12 @@ class MainWindow(QMainWindow):
 
     def _create_tabs_bar(self, parent_layout):
         self.tabs_bar = QWidget()
-        self.tabs_bar.setFixedHeight(38)
+        self.tabs_bar.setFixedHeight(42)
+        self.tabs_bar.setStyleSheet("QWidget { border: none; }")
 
         layout = QHBoxLayout(self.tabs_bar)
-        layout.setContentsMargins(20, 0, 20, 0)
-        layout.setSpacing(6)
+        layout.setContentsMargins(12, 0, 12, 0)
+        layout.setSpacing(2)
 
         self.format_tabs = []
         # Only "Original" tab by default; user presets are added via set_presets()
@@ -501,11 +556,6 @@ class MainWindow(QMainWindow):
         layout.addStretch()
         parent_layout.addWidget(self.tabs_bar)
 
-        # Separator line
-        self.tabs_sep = QWidget()
-        self.tabs_sep.setFixedHeight(1)
-        self.tabs_sep.setStyleSheet(f"background-color: {BORDER};")
-        parent_layout.addWidget(self.tabs_sep)
 
         self._active_format = "raw"
 
@@ -737,12 +787,24 @@ class MainWindow(QMainWindow):
         layout.addWidget(cb)
         return cb
 
-    def _add_combo(self, layout, items: dict, callback) -> QComboBox:
-        """Create a combo box with items, connect its signal, add to layout, and return it."""
+    def _add_combo(self, layout, items: dict, callback, with_provider_icons: bool = False) -> QComboBox:
+        """Create a combo box with items, connect its signal, add to layout, and return it.
+
+        If ``with_provider_icons`` is True, a small provider logo is shown next to
+        each item using the model key to detect the provider automatically.
+        """
         combo = QComboBox()
         combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         setattr(combo, "wheelEvent", lambda e: e.ignore())
         for value, label in items.items():
+            if with_provider_icons:
+                provider_svg = _get_provider_svg_for_model(value)
+                if provider_svg:
+                    # Simple Icons SVGs don't use currentColor — inject fill directly
+                    colored_svg = provider_svg.replace("<svg ", f'<svg fill="{TEXT}" ', 1)
+                    icon = _make_icon(colored_svg, 14, TEXT)
+                    combo.addItem(icon, label, value)
+                    continue
             combo.addItem(label, value)
         combo.currentIndexChanged.connect(callback)
         layout.addWidget(combo)
@@ -960,6 +1022,7 @@ class MainWindow(QMainWindow):
                 "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
             },
             self._on_model_changed,
+            with_provider_icons=True,
         )
 
         # Transcription language
@@ -980,6 +1043,7 @@ class MainWindow(QMainWindow):
                 "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
             },
             self._on_transformation_model_changed,
+            with_provider_icons=True,
         )
 
         # Edition model
@@ -994,6 +1058,7 @@ class MainWindow(QMainWindow):
                 "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
             },
             self._on_edition_model_changed,
+            with_provider_icons=True,
         )
 
         layout.addStretch()
@@ -1016,6 +1081,8 @@ class MainWindow(QMainWindow):
         layout.setSpacing(4)
 
         self.record_button = QPushButton(t("record"))
+        self.record_button.setFixedSize(90, 36)
+        self.record_button.setIconSize(QSize(16, 16))
         self.record_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.record_button.setStyleSheet(RECORD_BUTTON_IDLE)
         self.record_button.clicked.connect(self._on_play_stop_clicked)
@@ -1045,10 +1112,10 @@ class MainWindow(QMainWindow):
         )
         layout.addWidget(self.status_label)
 
-        self.include_system_audio_checkbox = QPushButton()
+        self.include_system_audio_checkbox = QPushButton(t("system_audio_short"))
         self.include_system_audio_checkbox.setCheckable(True)
         self.include_system_audio_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.include_system_audio_checkbox.setFixedSize(32, 32)
+        self.include_system_audio_checkbox.setFixedHeight(32)
         self.include_system_audio_checkbox.setToolTip(t("include_system_audio"))
         self.include_system_audio_checkbox.setStyleSheet(HEADER_BUTTON)
         self.include_system_audio_checkbox.toggled.connect(
@@ -1117,6 +1184,35 @@ class MainWindow(QMainWindow):
                 "background-color: transparent; border-radius: 4px;"
             )
 
+    def _spin_loader(self):
+        """Rotate the loader icon on the record button by 12° per tick (~400ms/rev)."""
+        from PySide6.QtSvg import QSvgRenderer
+
+        self._loader_angle = (self._loader_angle + 12) % 360
+        size = 16
+        scale = 2
+        app = QApplication.instance()
+        if app and isinstance(app, QApplication):
+            screen = app.primaryScreen()
+            if screen:
+                scale = max(2, int(screen.devicePixelRatio()))
+
+        colored = SVG_LOADER.replace("currentColor", "#18181b")
+        renderer = QSvgRenderer(colored.encode())
+        px = QPixmap(QSize(size * scale, size * scale))
+        px.fill(QColor(0, 0, 0, 0))
+        # Draw rotated
+        painter = QPainter(px)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        painter.translate(size * scale / 2, size * scale / 2)
+        painter.rotate(self._loader_angle)
+        painter.translate(-size * scale / 2, -size * scale / 2)
+        renderer.render(painter)
+        painter.end()
+        px.setDevicePixelRatio(scale)
+        icon = QIcon(px)
+        self.record_button.setIcon(icon)
+
     def _toggle_settings(self):
         if self._settings_open:
             self._close_panel()
@@ -1142,7 +1238,6 @@ class MainWindow(QMainWindow):
         self.footer.hide()
         self.footer_sep.hide()
         self.tabs_bar.hide()
-        self.tabs_sep.hide()
 
     def _open_models(self):
         self._models_open = True
@@ -1153,7 +1248,6 @@ class MainWindow(QMainWindow):
         self.footer.hide()
         self.footer_sep.hide()
         self.tabs_bar.hide()
-        self.tabs_sep.hide()
 
     def _send_report(self):
         import httpx
@@ -1197,7 +1291,6 @@ class MainWindow(QMainWindow):
         self.footer.show()
         self.footer_sep.show()
         self.tabs_bar.show()
-        self.tabs_sep.show()
 
     # ── Load settings ───────────────────────────────────────
 
@@ -1230,6 +1323,10 @@ class MainWindow(QMainWindow):
         self.auto_enter_checkbox.setChecked(self.settings.auto_enter)
 
         self.always_on_top_checkbox.setChecked(self.settings.always_on_top)
+        self.always_on_top_button.blockSignals(True)
+        self.always_on_top_button.setChecked(self.settings.always_on_top)
+        self._update_always_on_top_icon(self.settings.always_on_top)
+        self.always_on_top_button.blockSignals(False)
         self.persistent_overlay_checkbox.setChecked(self.settings.persistent_overlay)
         if self.settings.always_on_top:
             self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
@@ -1340,6 +1437,11 @@ class MainWindow(QMainWindow):
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, checked)
         self.show()
         self._save_setting("always_on_top", checked)
+        # Keep footer toggle in sync
+        self.always_on_top_button.blockSignals(True)
+        self.always_on_top_button.setChecked(checked)
+        self._update_always_on_top_icon(checked)
+        self.always_on_top_button.blockSignals(False)
 
     def _on_language_changed(self, index: int):
         self._save_setting(
@@ -1369,6 +1471,27 @@ class MainWindow(QMainWindow):
         svg = SVG_SPEAKER if checked else SVG_SPEAKER_OFF
         color = TEXT if checked else TEXT_DIM
         self.include_system_audio_checkbox.setIcon(_make_icon(svg, 16, color))
+        self.include_system_audio_checkbox.setText(t("system_audio_short"))
+        if checked:
+            self.include_system_audio_checkbox.setStyleSheet(HEADER_BUTTON)
+        else:
+            self.include_system_audio_checkbox.setStyleSheet(
+                HEADER_BUTTON + f"QPushButton {{ color: {TEXT_DIM}; text-decoration: line-through; }}"
+            )
+
+    def _update_always_on_top_icon(self, checked: bool):
+        color = TEXT if checked else TEXT_DIM
+        self.always_on_top_button.setIcon(_make_icon(SVG_PIN, 16, color))
+
+    def _on_always_on_top_toggle(self, checked: bool):
+        self._update_always_on_top_icon(checked)
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, checked)
+        self.show()
+        self._save_setting("always_on_top", checked)
+        # Keep settings checkbox in sync
+        self.always_on_top_checkbox.blockSignals(True)
+        self.always_on_top_checkbox.setChecked(checked)
+        self.always_on_top_checkbox.blockSignals(False)
 
     def _on_include_system_audio_changed(self, checked: bool):
         self._save_setting("audio_include_system_audio", checked)
@@ -1439,6 +1562,7 @@ class MainWindow(QMainWindow):
         """Update all visible text after language change."""
         # Footer buttons
         self.record_button.setText(t("record"))
+        self.record_button.setIcon(QIcon())
         self.copy_button.setText(t("copy"))
         self.cancel_button.setText(t("cancel"))
 
@@ -1535,6 +1659,7 @@ class MainWindow(QMainWindow):
         self.is_recording = True
         self.is_processing = False
         self._is_editing = False
+        self.include_system_audio_checkbox.setEnabled(False)
 
         # If settings are open, don't switch the view — just remember the target page
         if self._settings_open or self._models_open:
@@ -1543,7 +1668,8 @@ class MainWindow(QMainWindow):
             self.content_stack.setCurrentIndex(1)  # recording page
         self.recording_label.setText(t("listening"))
         self.recording_label.setStyleSheet(RECORDING_LABEL)
-        self.record_button.setText(t("stop"))
+        self.record_button.setText("")
+        self.record_button.setIcon(_make_icon(SVG_STOP, 16, "white"))
         self.record_button.setStyleSheet(RECORD_BUTTON_RECORDING)
         self.copy_button.hide()
         self.cancel_button.show()
@@ -1575,6 +1701,8 @@ class MainWindow(QMainWindow):
         self.is_recording = False
         self.is_processing = False
         self._is_editing = False
+        if sys.platform != "darwin":
+            self.include_system_audio_checkbox.setEnabled(True)
 
         # If settings are open, don't switch the view — just remember the target page
         if self._settings_open or self._models_open:
@@ -1586,6 +1714,7 @@ class MainWindow(QMainWindow):
                 self.content_stack.setCurrentIndex(0)  # idle page
 
         self.record_button.setText(t("record"))
+        self.record_button.setIcon(QIcon())
         self.record_button.setStyleSheet(RECORD_BUTTON_IDLE)
         self.processing_label.hide()
         self.cancel_button.hide()
@@ -1595,6 +1724,7 @@ class MainWindow(QMainWindow):
         self._elapsed_timer.stop()
         self._dot_pulse_timer.stop()
         self._dots_timer.stop()
+        self._loader_timer.stop()
         self.timer_label.hide()
         self.waveform.stop()
 
@@ -1622,10 +1752,15 @@ class MainWindow(QMainWindow):
         self.processing_label.setText(t("processing"))
         self.processing_label.setStyleSheet(PROCESSING_LABEL)
         self.processing_label.show()
-        self.record_button.setText(t("processing_ellipsis"))
+        self.record_button.setText("")
+        self.record_button.setIcon(_make_icon(SVG_LOADER, 16, "#18181b"))
         self.record_button.setStyleSheet(RECORD_BUTTON_PROCESSING)
         self.copy_button.hide()
         self.cancel_button.show()
+
+        # Start loader spin animation
+        self._loader_angle = 0
+        self._loader_timer.start()
 
         # Stop recording animations
         self.waveform.stop()
@@ -1654,7 +1789,8 @@ class MainWindow(QMainWindow):
             self.content_stack.setCurrentIndex(1)  # recording page
         self.recording_label.setText(t("listening"))
         self.recording_label.setStyleSheet(EDITING_LABEL)
-        self.record_button.setText(t("stop"))
+        self.record_button.setText("")
+        self.record_button.setIcon(_make_icon(SVG_STOP, 16, "#18181b"))
         self.record_button.setStyleSheet(RECORD_BUTTON_EDITING)
         self.copy_button.hide()
         self.cancel_button.show()
@@ -1696,10 +1832,15 @@ class MainWindow(QMainWindow):
         self.processing_label.show()
         self.processing_label.setText(t("editing"))
         self.processing_label.setStyleSheet(EDITING_LABEL)
-        self.record_button.setText(t("processing_ellipsis"))
+        self.record_button.setText("")
+        self.record_button.setIcon(_make_icon(SVG_LOADER, 16, "#18181b"))
         self.record_button.setStyleSheet(RECORD_BUTTON_EDITING)
         self.copy_button.hide()
         self.cancel_button.show()
+
+        # Start loader spin animation
+        self._loader_angle = 0
+        self._loader_timer.start()
 
         # Stop recording animations
         self.waveform.stop()
@@ -1739,6 +1880,7 @@ class MainWindow(QMainWindow):
 
         # Button states
         self.record_button.setText(t("record"))
+        self.record_button.setIcon(QIcon())
         self.record_button.setStyleSheet(RECORD_BUTTON_IDLE)
         self.cancel_button.hide()
         self.copy_button.setText(t("copy"))
@@ -1749,6 +1891,7 @@ class MainWindow(QMainWindow):
         self._elapsed_timer.stop()
         self._dot_pulse_timer.stop()
         self._dots_timer.stop()
+        self._loader_timer.stop()
         self.timer_label.hide()
 
         # Dot
