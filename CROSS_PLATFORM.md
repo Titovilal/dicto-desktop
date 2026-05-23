@@ -94,35 +94,6 @@ Las ventanas sin marco (`FramelessWindowHint`) pueden comportarse distinto en al
 
 ---
 
-### 8. `Makefile` - Comandos Windows-only
-
-```makefile
-clean:
-    rmdir /s /q build dist 2>nul & del /q *.spec 2>nul & echo Done
-
-build:
-    # usa ";" como separador de --add-data (Windows)
-```
-
-**Cambio**: Hacer cross-platform:
-```makefile
-clean:
-ifeq ($(OS),Windows_NT)
-    rmdir /s /q build dist 2>nul & del /q *.spec 2>nul & echo Done
-else
-    rm -rf build dist *.spec && echo Done
-endif
-
-build:
-ifeq ($(OS),Windows_NT)
-    pyinstaller ... --add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" ...
-else
-    pyinstaller ... --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" ...
-endif
-```
-
----
-
 ## Dependencias de sistema en Linux
 
 | Paquete | Propósito | Instalación (Ubuntu/Debian) |
@@ -149,7 +120,6 @@ Las siguientes funciones **no funcionan en Wayland** por restricciones de seguri
 
 | Área | Esfuerzo | Notas |
 |---|---|---|
-| Makefile | Bajo | Condicionales por OS |
 | Hotkey service | Bajo-Medio | Testear sin `_win32_filter` en Linux |
 | Keyboard simulation | Bajo | Testear en X11 |
 | Clipboard | Bajo | Documentar `xclip` |

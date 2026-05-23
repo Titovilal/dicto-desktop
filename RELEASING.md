@@ -25,13 +25,11 @@ git push origin main
 
 Hay dos formas de disparar el workflow de release:
 
-#### Opcion A: Usando el Makefile (recomendado)
+#### Opcion A: Disparar el workflow manualmente
 
 ```bash
-make release
+gh workflow run build.yml -f create_release=true
 ```
-
-Esto ejecuta `gh workflow run build.yml -f create_release=true` para disparar el workflow manualmente.
 
 #### Opcion B: Crear un tag manualmente
 
@@ -61,20 +59,14 @@ El workflow (`.github/workflows/build.yml`) ejecuta estos pasos:
 
 ## Build local
 
-Para generar el ejecutable localmente (solo Windows):
-
-```bash
-make build
-```
-
-Esto instala las dependencias de desarrollo y ejecuta PyInstaller. El binario queda en `dist/Dicto.exe`.
+Para generar el ejecutable localmente ver los comandos en `COMMANDS.md`. El binario queda en `dist/Dicto.exe`.
 
 ## Checklist pre-release
 
 - [ ] Version actualizada en `pyproject.toml`
 - [ ] Tests pasan (`pytest`)
-- [ ] Linting limpio (`make lint`)
-- [ ] Formato correcto (`make format`)
+- [ ] Linting limpio (`uvx ruff check`)
+- [ ] Formato correcto (`uvx ruff format`)
 - [ ] Cambios commiteados y pusheados a `main`
 
 ## Versionado

@@ -75,7 +75,9 @@ class Transcriber:
         self.model = model
         self.transformation_model = transformation_model
         self.edition_model = edition_model
-        self.client = httpx.Client(timeout=30.0)
+        # keepalive_expiry=30s closes idle TCP connections after 30 s of inactivity,
+        # reducing kernel socket/memory usage during long idle sessions.
+        self.client = httpx.Client(timeout=30.0, keepalive_expiry=30.0)
         self._last_transcription_id: int | None = None
 
     @property

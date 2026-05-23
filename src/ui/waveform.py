@@ -6,6 +6,7 @@ Used by both the main window and the overlay with different parameters.
 from __future__ import annotations
 
 import math
+from collections import deque
 
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt, QTimer
@@ -32,7 +33,8 @@ class WaveformWidget(QWidget):
         self.bar_count = bar_count
         self.bar_width = bar_width
         self.bar_gap = bar_gap
-        self.bar_heights = [0.3] * bar_count
+        # Use a deque for O(1) append/pop instead of list slicing
+        self.bar_heights = deque([0.3] * bar_count, maxlen=bar_count)
         self.color = color
         self.mode = mode
         self._fixed_width = fixed_width is not None
@@ -46,15 +48,18 @@ class WaveformWidget(QWidget):
 
     def set_level(self, level: float):
         """Push a new audio level (0.0-1.0) into the bar display (scrolling left)."""
-        self.bar_heights = self.bar_heights[1:] + [level]
+        # deque with maxlen=bar_count automatically discards the leftmost element
+        self.bar_heights.append(level)
         self.update()
 
     def start(self):
         self._tick = 0
+        # Reuse existing deque in-place instead of allocating a new one
+        self.bar_heights.clear()
+        for _ in range(self.bar_count):
+            self.bar_heights.append(0.0)
         if self.mode == "live":
-            self.bar_heights = [0.0] * self.bar_count
             return
-        self.bar_heights = [0.0] * self.bar_count
         self.update()
         self._timer.start(50)
 
@@ -77,6 +82,7 @@ class WaveformWidget(QWidget):
         elif self.mode == "settle":
             progress = self._tick * 0.15
             center = self.bar_count / 2
+            # Update deque in-place to avoid allocating a new list + deque
             for i in range(self.bar_count):
                 dist = abs(i - center) / max(1, center)
                 delay = dist * 0.6
@@ -92,7 +98,9 @@ class WaveformWidget(QWidget):
                     fade = max(0.0, 1.0 - max(0.0, progress - 1.5) * 0.6)
                     self.bar_heights[i] = max(0.0, raw * 0.7 * fade)
             if progress > 3.2:
-                self.bar_heights = [0.0] * self.bar_count
+                self.bar_heights.clear()
+                for _ in range(self.bar_count):
+                    self.bar_heights.append(0.0)
                 self._timer.stop()
 
         else:  # "wave" (default)
@@ -108,7 +116,8 @@ class WaveformWidget(QWidget):
         count = max(1, (self.width() + self.bar_gap) // step)
         if count != self.bar_count:
             self.bar_count = count
-            self.bar_heights = [0.3] * count
+            # Recreate with new maxlen (maxlen is immutable on deque)
+            self.bar_heights = deque([0.3] * count, maxlen=count)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

@@ -95,8 +95,17 @@ from src.ui.icons import (
 logger = logging.getLogger(__name__)
 
 
+_icon_cache: dict[tuple[str, int, str], QIcon] = {}  # (svg_data, size, color) -> QIcon
+_ICON_CACHE_MAX = 64  # bound icon cache to avoid unbounded pixmap memory
+
+
 def _make_icon(svg_data: str, size: int, color: str) -> QIcon:
-    """Create a QIcon from inline SVG data with a given color."""
+    """Create a QIcon from inline SVG data with a given color (cached, max 64 entries)."""
+    key = (svg_data, size, color)
+    cached = _icon_cache.get(key)
+    if cached is not None:
+        return cached
+
     from PySide6.QtSvg import QSvgRenderer
     from PySide6.QtWidgets import QApplication
 
@@ -117,6 +126,11 @@ def _make_icon(svg_data: str, size: int, color: str) -> QIcon:
     px.setDevicePixelRatio(scale)
     icon = QIcon()
     icon.addPixmap(px)
+
+    # Evict oldest entry if cache is full (simple FIFO — icons are small & stable)
+    if len(_icon_cache) >= _ICON_CACHE_MAX:
+        _icon_cache.pop(next(iter(_icon_cache)))
+    _icon_cache[key] = icon
     return icon
 
 
@@ -276,7 +290,7 @@ class MainWindow(QMainWindow):
         self._copied = False
         self._settings_open = False
         self._models_open = False
-        self._format_cache: dict[str, str] = {}  # format_id -> transformed text
+        self._format_cache: dict[str, str] = {}  # format_id -> transformed text (LRU, max 30)
         self._transforming_format: str | None = None
         self._user_presets: list[dict] = []  # [{id, name, instructions}]
         self.controller = None  # set externally after init
@@ -545,6 +559,9 @@ class MainWindow(QMainWindow):
 
     @Slot(str, str)
     def on_transform_completed(self, format_id: str, text: str):
+        # Bounded LRU cache: evict oldest entry when limit is reached
+        if format_id not in self._format_cache and len(self._format_cache) >= 30:
+            self._format_cache.pop(next(iter(self._format_cache)))
         self._format_cache[format_id] = text
         self._transforming_format = None
         self._dots_timer.stop()
@@ -1751,6 +1768,18 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         if self._audio_monitor and self._audio_monitor.is_running:
             self._stop_audio_monitor()
+        # Stop animation timers to avoid unnecessary CPU/memory activity while hidden
+        for attr in ("_elapsed_timer", "_dot_pulse_timer", "_dots_timer"):
+            timer = getattr(self, attr, None)
+            if timer is not None:
+                timer.stop()
+        # Stop waveforms
+        for attr in ("waveform", "test_audio_waveform"):
+            w = getattr(self, attr, None)
+            if w is not None:
+                w.stop()
+        # Clear in-session caches to free memory while the window is hidden
+        self._format_cache.clear()
         event.ignore()
         self.hide()
         logger.info("Main window hidden to tray")

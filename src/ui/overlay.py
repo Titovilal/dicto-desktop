@@ -48,7 +48,15 @@ _BTN_BASE = (
 _BTN_HOVER = f"background: {SECONDARY};"
 
 
+_overlay_icon_cache: dict[tuple[str, int, str], object] = {}
+
+
 def _make_overlay_icon(svg: str, size: int, color: str):
+    key = (svg, size, color)
+    cached = _overlay_icon_cache.get(key)
+    if cached is not None:
+        return cached
+
     from PySide6.QtSvg import QSvgRenderer
     from PySide6.QtGui import QPixmap, QPainter, QColor, QIcon
     from PySide6.QtCore import QSize
@@ -63,6 +71,8 @@ def _make_overlay_icon(svg: str, size: int, color: str):
     px.setDevicePixelRatio(2)
     icon = QIcon()
     icon.addPixmap(px)
+
+    _overlay_icon_cache[key] = icon
     return icon
 
 

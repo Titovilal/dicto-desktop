@@ -33,7 +33,6 @@ jobs:
         id: check_release
         run: |
           VERSION=${{ steps.get_version.outputs.version }}
-          # Check if tag already exists
           if git rev-parse "v$VERSION" >/dev/null 2>&1; then
             echo "Tag v$VERSION already exists"
             echo "should_release=false" >> $GITHUB_OUTPUT
@@ -48,30 +47,48 @@ jobs:
             echo "should_release=false" >> $GITHUB_OUTPUT
           fi
 
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            artifact_name: Dicto.exe
-            asset_name: dicto-windows-amd64.exe
-          - os: ubuntu-latest
-            artifact_name: dicto
-            asset_name: dicto-linux-amd64
-
-    runs-on: ${{ matrix.os }}
-
+  build-windows:
+    runs-on: windows-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Build with PyInstaller (onedir)
+        run: |
+          pyinstaller --name "Dicto" --onedir --windowed --noconfirm --add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" --icon "assets/icons/icon.ico" src/main.py
+
+      - name: Build installer with Inno Setup
+        run: |
+          $version = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matches.Groups[1].Value
+          (Get-Content installer.iss) -replace '#define MyAppVersion ".*"', "#define MyAppVersion `"$version`"" | Set-Content installer.iss
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: dicto-windows-installer
+          path: dist/Dicto-*-setup.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y portaudio19-dev libasound2-dev
@@ -81,24 +98,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Build with PyInstaller (Windows)
-        if: runner.os == 'Windows'
+      - name: Build with PyInstaller (onedir)
         run: |
-          pyinstaller --name "Dicto" --onefile --windowed --noconfirm --add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" --icon "assets/icons/icon.ico" src/main.py
-
-      - name: Build with PyInstaller (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          pyinstaller --name "dicto" --onefile --windowed --noconfirm --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" src/main.py
+          pyinstaller --name "dicto" --onedir --windowed --noconfirm --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" src/main.py
+          tar -czf dist/dicto-linux-amd64.tar.gz -C dist dicto
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.asset_name }}
-          path: dist/${{ matrix.artifact_name }}
+          name: dicto-linux-amd64
+          path: dist/dicto-linux-amd64.tar.gz
 
   release:
-    needs: [version, build]
+    needs: [version, build-windows, build-linux]
     runs-on: ubuntu-latest
     if: needs.version.outputs.should_release == 'true' || startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -107,10 +119,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Windows artifact
+      - name: Download Windows installer
         uses: actions/download-artifact@v4
         with:
-          name: dicto-windows-amd64.exe
+          name: dicto-windows-installer
           path: dist/
 
       - name: Download Linux artifact
@@ -119,19 +131,14 @@ jobs:
           name: dicto-linux-amd64
           path: dist/
 
-      - name: Rename artifacts
-        run: |
-          mv dist/Dicto.exe dist/dicto-windows-amd64.exe
-          mv dist/dicto dist/dicto-linux-amd64
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.version.outputs.version }}
           name: v${{ needs.version.outputs.version }}
           files: |
-            dist/dicto-windows-amd64.exe
-            dist/dicto-linux-amd64
+            dist/Dicto-*-setup.exe
+            dist/dicto-linux-amd64.tar.gz
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

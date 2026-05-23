@@ -312,60 +312,74 @@ class AudioRecorder:
             temp_file.close()
 
             audio_data = np.concatenate(self.frames, axis=0)
-
-            if self.include_system_audio and self._loopback_frames:
-                mixed = self._mix_with_loopback(audio_data)
-                sf.write(self.temp_file_path, mixed, self.sample_rate)
-            else:
-                sf.write(self.temp_file_path, audio_data, self.sample_rate)
-
+            # Free frame buffers immediately after concatenation
+            self.frames = []
             duration = len(audio_data) / self.sample_rate
+
+            try:
+                if self.include_system_audio and self._loopback_frames:
+                    mixed = self._mix_with_loopback(audio_data)
+                    del audio_data
+                    sf.write(self.temp_file_path, mixed, self.sample_rate)
+                    del mixed
+                else:
+                    sf.write(self.temp_file_path, audio_data, self.sample_rate)
+                    del audio_data
+            finally:
+                with self._loopback_lock:
+                    self._loopback_frames = []
+
             logger.info(f"Recording saved: {self.temp_file_path} ({duration:.1f}s)")
 
-            self.frames = []
-            self._loopback_frames = []
             return self.temp_file_path
 
         except Exception as e:
             logger.error(f"Error saving recording: {e}")
             self.frames = []
-            self._loopback_frames = []
+            with self._loopback_lock:
+                self._loopback_frames = []
             return None
 
     def _mix_with_loopback(self, mic_int16: np.ndarray) -> np.ndarray:
         """Sum mic and loopback buffers as int16, clipping to avoid overflow."""
         try:
             with self._loopback_lock:
-                loopback = (
-                    np.concatenate(self._loopback_frames, axis=0)
-                    if self._loopback_frames
-                    else None
-                )
+                loopback_frames = self._loopback_frames
+                self._loopback_frames = []  # release immediately under lock
+            loopback = np.concatenate(loopback_frames, axis=0) if loopback_frames else None
+            del loopback_frames  # free list of chunks
+
             if loopback is None:
                 return mic_int16
 
             if loopback.ndim > 1 and loopback.shape[1] > 1:
-                loopback = loopback.mean(axis=1).astype(np.int16)
+                loopback_mono = loopback.mean(axis=1).astype(np.int16)
+                del loopback
             else:
-                loopback = loopback.reshape(-1).astype(np.int16)
+                loopback_mono = loopback.reshape(-1).astype(np.int16)
+                del loopback
 
             # Resample loopback to mic sample rate if they differ (e.g., WASAPI
             # loopback at 48 kHz vs mic at 16 kHz).
             if self._loopback_samplerate != self.sample_rate:
                 n_out = int(
-                    round(len(loopback) * self.sample_rate / self._loopback_samplerate)
+                    round(len(loopback_mono) * self.sample_rate / self._loopback_samplerate)
                 )
                 if n_out > 0:
-                    x_old = np.linspace(0, 1, len(loopback), endpoint=False)
-                    x_new = np.linspace(0, 1, n_out, endpoint=False)
-                    loopback = np.interp(
-                        x_new, x_old, loopback.astype(np.float32)
-                    ).astype(np.int16)
+                    x_old = np.linspace(0, 1, len(loopback_mono), endpoint=False, dtype=np.float32)
+                    x_new = np.linspace(0, 1, n_out, endpoint=False, dtype=np.float32)
+                    loopback_mono = np.interp(x_new, x_old, loopback_mono.astype(np.float32, copy=False)).astype(np.int16)
+                    del x_old, x_new
 
-            length = min(len(mic_int16.reshape(-1)), len(loopback))
-            mic_flat = mic_int16.reshape(-1)[:length].astype(np.int32)
-            loopback = loopback[:length].astype(np.int32)
-            mixed = np.clip(mic_flat + loopback, -32768, 32767).astype(np.int16)
+            length = min(len(mic_int16.reshape(-1)), len(loopback_mono))
+            mic_flat = mic_int16.reshape(-1)[:length].astype(np.int32, copy=False)
+            loopback_i32 = loopback_mono[:length].astype(np.int32, copy=False)
+            del loopback_mono
+            np.add(mic_flat, loopback_i32, out=mic_flat)
+            del loopback_i32
+            np.clip(mic_flat, -32768, 32767, out=mic_flat)
+            mixed = mic_flat.astype(np.int16)
+            del mic_flat
             return mixed.reshape(-1, 1) if self.channels == 1 else mixed
         except Exception as e:
             logger.warning(f"Failed to mix loopback audio: {e}")
@@ -432,6 +446,15 @@ class AudioRecorder:
                     loopback_stream.close()
                 except Exception as e:
                     logger.debug(f"Error closing loopback stream: {e}")
+            # Always clean up loopback buffer on abnormal exit to prevent leaks
+            if not self.is_recording:
+                # Recording was already stopped normally — frames were cleaned in stop_recording
+                pass
+            else:
+                # Abnormal exit (max duration or exception): clear buffers
+                self.frames.clear()
+                with self._loopback_lock:
+                    self._loopback_frames.clear()
             self.is_recording = False
 
     def _open_loopback_stream(self, callback):
