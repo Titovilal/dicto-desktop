@@ -1,0 +1,75 @@
+{
+  "app": {
+    "name": "Dicto Desktop",
+    "status": {
+      "idle": "Bereit",
+      "recording": "Aufnahme...",
+      "processing": "Verarbeitung...",
+      "editing": "Bearbeitung...",
+      "success": "Fertig!",
+      "error": "Fehler"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "apiKey": "API-Schlüssel",
+    "apiKeyPlaceholder": "sk-dicto-...",
+    "language": "Transkriptionssprache",
+    "transcriptionModel": "Transkriptionsmodell",
+    "transcriptionLanguage": "Transkriptionssprache",
+    "uiLanguage": "Oberflächensprache",
+    "hotkey": "Aufnahme-Hotkey",
+    "editHotkey": "Bearbeitungs-Hotkey",
+    "recordHotkey": "Aufnahme-Hotkey",
+    "editHotkeyLabel": "Bearbeitungs-Hotkey",
+    "saveHotkeys": "Hotkeys speichern",
+    "autoPaste": "Nach Transkription automatisch einfügen",
+    "autoEnter": "Nach dem Einfügen automatisch Enter drücken",
+    "editAutoPaste": "Nach Bearbeitung automatisch einfügen",
+    "editAutoEnter": "Nach dem Einfügen bei Bearbeitung Enter drücken",
+    "microphone": "Mikrofongerät",
+    "systemAudio": "Systemaudio aufnehmen (nur Windows)",
+    "persistentOverlay": "Overlay immer anzeigen",
+    "overlayOpacity": "Overlay-Deckkraft",
+    "overlayPosition": "Overlay-Position",
+    "alwaysOnTop": "Fenster immer im Vordergrund",
+    "transformModel": "KI-Modell für Transformation",
+    "editModel": "KI-Modell für Bearbeitung",
+    "save": "Speichern",
+    "saved": "Gespeichert!",
+    "sections": {
+      "api": "API & Modelle",
+      "hotkeys": "Hotkeys",
+      "behavior": "Verhalten",
+      "audio": "Audio",
+      "overlay": "Overlay",
+      "interface": "Benutzeroberfläche"
+    }
+  },
+  "presets": {
+    "title": "Voreinstellungen",
+    "reload": "Neu laden",
+    "inputPlaceholder": "Text zum Transformieren einfügen oder eingeben...",
+    "customPrompt": "Benutzerdefinierte Anweisung",
+    "customPromptPlaceholder": "z.B. In Aufzählungspunkte umwandeln",
+    "apply": "Anwenden",
+    "applyCustom": "Benutzerdefiniert anwenden",
+    "result": "Ergebnis",
+    "copy": "Kopieren",
+    "copied": "Kopiert!",
+    "noPresets": "Keine Voreinstellungen gefunden. API-Schlüssel prüfen.",
+    "loading": "Voreinstellungen werden geladen...",
+    "empty": "Noch keine Voreinstellungen. Erstelle sie in der Dicto-Web-App."
+  },
+  "tabs": {
+    "transcription": "Transkription",
+    "presets": "Voreinstellungen",
+    "settings": "Einstellungen"
+  },
+  "languages": {
+    "es": "Spanisch",
+    "en": "Englisch",
+    "de": "Deutsch",
+    "auto": "Automatisch erkennen"
+  }
+}

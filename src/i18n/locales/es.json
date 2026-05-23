@@ -1,0 +1,75 @@
+{
+  "app": {
+    "name": "Dicto Desktop",
+    "status": {
+      "idle": "Listo",
+      "recording": "Grabando...",
+      "processing": "Procesando...",
+      "editing": "Editando...",
+      "success": "¡Hecho!",
+      "error": "Error"
+    }
+  },
+  "settings": {
+    "title": "Ajustes",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "sk-dicto-...",
+    "language": "Idioma de transcripción",
+    "transcriptionModel": "Modelo de transcripción",
+    "transcriptionLanguage": "Idioma de transcripción",
+    "uiLanguage": "Idioma de interfaz",
+    "hotkey": "Hotkey de grabación",
+    "editHotkey": "Hotkey de edición",
+    "recordHotkey": "Hotkey de grabación",
+    "editHotkeyLabel": "Hotkey de edición",
+    "saveHotkeys": "Guardar hotkeys",
+    "autoPaste": "Auto-pegar tras transcripción",
+    "autoEnter": "Auto-enter tras pegar",
+    "editAutoPaste": "Auto-pegar tras edición",
+    "editAutoEnter": "Auto-enter tras pegar en edición",
+    "microphone": "Dispositivo de micrófono",
+    "systemAudio": "Capturar audio del sistema (solo Windows)",
+    "persistentOverlay": "Mostrar overlay siempre",
+    "overlayOpacity": "Opacidad del overlay",
+    "overlayPosition": "Posición del overlay",
+    "alwaysOnTop": "Ventana siempre encima",
+    "transformModel": "Modelo AI de transformación",
+    "editModel": "Modelo AI de edición",
+    "save": "Guardar",
+    "saved": "¡Guardado!",
+    "sections": {
+      "api": "API y Modelos",
+      "hotkeys": "Hotkeys",
+      "behavior": "Comportamiento",
+      "audio": "Audio",
+      "overlay": "Overlay",
+      "interface": "Interfaz"
+    }
+  },
+  "presets": {
+    "title": "Presets",
+    "reload": "Recargar",
+    "inputPlaceholder": "Pega o escribe el texto a transformar...",
+    "customPrompt": "Instrucción personalizada",
+    "customPromptPlaceholder": "Ej: Convierte en lista de puntos",
+    "apply": "Aplicar",
+    "applyCustom": "Aplicar personalizado",
+    "result": "Resultado",
+    "copy": "Copiar",
+    "copied": "¡Copiado!",
+    "noPresets": "No se encontraron presets. Verifica tu API key.",
+    "loading": "Cargando presets...",
+    "empty": "Sin presets todavía. Créalos en la app web de Dicto."
+  },
+  "tabs": {
+    "transcription": "Transcripción",
+    "presets": "Presets",
+    "settings": "Ajustes"
+  },
+  "languages": {
+    "es": "Español",
+    "en": "Inglés",
+    "de": "Alemán",
+    "auto": "Auto-detectar"
+  }
+}

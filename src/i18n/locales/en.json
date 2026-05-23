@@ -1,0 +1,75 @@
+{
+  "app": {
+    "name": "Dicto Desktop",
+    "status": {
+      "idle": "Ready",
+      "recording": "Recording...",
+      "processing": "Processing...",
+      "editing": "Editing...",
+      "success": "Done!",
+      "error": "Error"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "sk-dicto-...",
+    "language": "Transcription Language",
+    "transcriptionModel": "Transcription model",
+    "transcriptionLanguage": "Transcription language",
+    "uiLanguage": "Interface Language",
+    "hotkey": "Record Hotkey",
+    "editHotkey": "Edit Hotkey",
+    "recordHotkey": "Record hotkey",
+    "editHotkeyLabel": "Edit hotkey",
+    "saveHotkeys": "Save hotkeys",
+    "autoPaste": "Auto-paste after transcription",
+    "autoEnter": "Auto-enter after paste",
+    "editAutoPaste": "Auto-paste after edit",
+    "editAutoEnter": "Auto-enter after edit paste",
+    "microphone": "Microphone device",
+    "systemAudio": "Capture system audio (Windows only)",
+    "persistentOverlay": "Always show overlay",
+    "overlayOpacity": "Overlay opacity",
+    "overlayPosition": "Overlay position",
+    "alwaysOnTop": "Keep window on top",
+    "transformModel": "Transform AI model",
+    "editModel": "Edit AI model",
+    "save": "Save",
+    "saved": "Saved!",
+    "sections": {
+      "api": "API & Models",
+      "hotkeys": "Hotkeys",
+      "behavior": "Behavior",
+      "audio": "Audio",
+      "overlay": "Overlay",
+      "interface": "Interface"
+    }
+  },
+  "presets": {
+    "title": "Presets",
+    "reload": "Reload",
+    "inputPlaceholder": "Paste or type text to transform...",
+    "customPrompt": "Custom instruction",
+    "customPromptPlaceholder": "e.g., Convert to bullet points",
+    "apply": "Apply",
+    "applyCustom": "Apply custom",
+    "result": "Result",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "noPresets": "No presets found. Check your API key.",
+    "loading": "Loading presets...",
+    "empty": "No presets yet. Create them in the Dicto web app."
+  },
+  "tabs": {
+    "transcription": "Transcription",
+    "presets": "Presets",
+    "settings": "Settings"
+  },
+  "languages": {
+    "es": "Spanish",
+    "en": "English",
+    "de": "German",
+    "auto": "Auto-detect"
+  }
+}
