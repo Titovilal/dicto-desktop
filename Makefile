@@ -31,11 +31,11 @@ dev-deps: ## Install dev dependencies (required before building)
 
 # ── Build (PyInstaller, Linux/macOS) ─────────────────────────
 build: dev-deps ## Build onedir bundle (recommended)
-	uv run pyinstaller --name "Dicto" --onedir --windowed --noconfirm \
+	uv run pyinstaller --name "Dicto" --onedir --windowed --noconfirm --copy-metadata dicto \
 		--add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" src/main.py
 
 build-onefile: dev-deps ## Build single-file executable
-	uv run pyinstaller --name "Dicto" --onefile --windowed --noconfirm \
+	uv run pyinstaller --name "Dicto" --onefile --windowed --noconfirm --copy-metadata dicto \
 		--add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" src/main.py
 
 # ── Linux .deb ───────────────────────────────────────────────
@@ -50,7 +50,7 @@ ifndef IS_WINDOWS
 	@exit 1
 endif
 	$(MAKE) dev-deps
-	uv run pyinstaller --name "Dicto" --onedir --windowed --noconfirm \
+	uv run pyinstaller --name "Dicto" --onedir --windowed --noconfirm --copy-metadata dicto \
 		--add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" \
 		--icon "assets/icons/icon.ico" src/main.py
 
@@ -60,7 +60,7 @@ ifndef IS_WINDOWS
 	@exit 1
 endif
 	$(MAKE) dev-deps
-	uv run pyinstaller --name "Dicto" --onefile --windowed --noconfirm \
+	uv run pyinstaller --name "Dicto" --onefile --windowed --noconfirm --copy-metadata dicto \
 		--add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" \
 		--icon "assets/icons/icon.ico" src/main.py
 

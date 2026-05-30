@@ -1,4 +1,4 @@
-"""
+﻿"""
 Main window for Dicto application.
 Redesigned to match the dicto web component aesthetic.
 """
@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QScrollArea,
 )
-from PySide6.QtCore import Signal, Slot, Qt, QSize, QUrl, QTimer, QEvent
+from PySide6.QtCore import Signal, Slot, Qt, QSize, QUrl, QTimer, QEvent, QThread
 from PySide6.QtGui import (
     QIcon,
     QPainter,
@@ -1002,8 +1002,51 @@ class MainWindow(QMainWindow):
         self.report_status_label.hide()
         layout.addWidget(self.report_status_label)
 
+        # Updates
+        self._create_updates_section(layout)
+
         layout.addStretch()
         self.content_stack.addWidget(page)
+
+    def _create_updates_section(self, layout):
+        """Build the "Updates" settings section: current version + update button."""
+        from src.version import get_version
+
+        self._add_section(layout, "updates")
+
+        self.current_version_label = QLabel(
+            t("current_version", version=get_version())
+        )
+        self.current_version_label.setStyleSheet(
+            f"color: {TEXT_DIM}; font-size: 12px;"
+        )
+        layout.addWidget(self.current_version_label)
+        layout.addSpacing(8)
+
+        self.check_updates_button = QPushButton(t("check_for_updates"))
+        self.check_updates_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.check_updates_button.setFixedHeight(32)
+        self.check_updates_button.setStyleSheet(FLAT_BUTTON)
+        self.check_updates_button.clicked.connect(self._on_check_updates)
+        layout.addWidget(self.check_updates_button)
+
+        # Action button shown after a check finds an update (install or open page).
+        self.update_action_button = QPushButton("")
+        self.update_action_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_action_button.setFixedHeight(32)
+        self.update_action_button.setStyleSheet(ACCENT_BUTTON)
+        self.update_action_button.clicked.connect(self._on_update_action)
+        self.update_action_button.hide()
+        layout.addSpacing(6)
+        layout.addWidget(self.update_action_button)
+
+        self.update_status_label = QLabel("")
+        self.update_status_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
+        self.update_status_label.hide()
+        layout.addWidget(self.update_status_label)
+
+        # Holds the latest UpdateInfo between check and install.
+        self._pending_update = None
 
     def _create_models_page(self):
         page, layout = self._create_scroll_page()
@@ -1279,6 +1322,99 @@ class MainWindow(QMainWindow):
 
         self.report_status_label.show()
         self.send_report_button.setEnabled(True)
+
+    # ----- Updates -----------------------------------------------------------
+
+    def _set_update_status(self, text: str, color: str = TEXT_DIM):
+        self.update_status_label.setText(text)
+        self.update_status_label.setStyleSheet(f"color: {color}; font-size: 11px;")
+        self.update_status_label.show()
+
+    @Slot()
+    def _on_check_updates(self):
+        """Check GitHub for a newer release in a background thread."""
+        self.check_updates_button.setEnabled(False)
+        self.update_action_button.hide()
+        self._pending_update = None
+        self._set_update_status(t("checking_updates"))
+
+        self._update_check_thread = _UpdateCheckThread(self)
+        self._update_check_thread.finished_ok.connect(self._on_update_check_done)
+        self._update_check_thread.failed.connect(self._on_update_check_failed)
+        self._update_check_thread.start()
+
+    @Slot(object)
+    def _on_update_check_done(self, info):
+        self.check_updates_button.setEnabled(True)
+        if not info.available:
+            self._set_update_status(t("up_to_date"), "#4ade80")
+            return
+
+        self._pending_update = info
+        self._set_update_status(
+            t("update_available", version=info.latest_version), "#4ade80"
+        )
+
+        from src.services.updater import can_self_install
+
+        if can_self_install() and info.deb_url:
+            self.update_action_button.setText(t("download_install_update"))
+        else:
+            self.update_action_button.setText(t("open_release_page"))
+        self.update_action_button.show()
+
+    @Slot(str)
+    def _on_update_check_failed(self, _msg: str):
+        self.check_updates_button.setEnabled(True)
+        self._set_update_status(t("update_check_failed"), RED)
+
+    @Slot()
+    def _on_update_action(self):
+        """Either install the .deb in place or open the release page."""
+        info = self._pending_update
+        if info is None:
+            return
+
+        from src.services.updater import can_self_install
+
+        if not (can_self_install() and info.deb_url):
+            QDesktopServices.openUrl(QUrl(info.release_url))
+            return
+
+        # In-place download + install via pkexec, on a background thread.
+        self.update_action_button.setEnabled(False)
+        self.check_updates_button.setEnabled(False)
+        self._set_update_status(t("downloading_update"))
+
+        self._update_install_thread = _UpdateInstallThread(info, self)
+        self._update_install_thread.progress.connect(self._set_update_status)
+        self._update_install_thread.installed.connect(self._on_update_installed)
+        self._update_install_thread.failed.connect(self._on_update_install_failed)
+        self._update_install_thread.start()
+
+    @Slot()
+    def _on_update_installed(self):
+        self._set_update_status(t("update_installed"), "#4ade80")
+        self.update_action_button.setText(t("restart_now"))
+        self.update_action_button.setEnabled(True)
+        # Repurpose the action button to restart.
+        try:
+            self.update_action_button.clicked.disconnect()
+        except (TypeError, RuntimeError):
+            pass
+        self.update_action_button.clicked.connect(self._on_restart_after_update)
+
+    @Slot()
+    def _on_restart_after_update(self):
+        from src.services.updater import restart_app
+
+        restart_app()
+
+    @Slot(str)
+    def _on_update_install_failed(self, _msg: str):
+        self.check_updates_button.setEnabled(True)
+        self.update_action_button.setEnabled(True)
+        self._set_update_status(t("update_failed"), RED)
 
     def _close_panel(self):
         self._settings_open = False
@@ -1601,6 +1737,14 @@ class MainWindow(QMainWindow):
         self.models_button.setToolTip(t("models"))
         self.send_report_button.setText(t("send_report"))
         self._report_desc_label.setText(t("report_error_description"))
+
+        # Updates section
+        from src.version import get_version
+
+        self.current_version_label.setText(
+            t("current_version", version=get_version())
+        )
+        self.check_updates_button.setText(t("check_for_updates"))
 
         # Section labels
         for key, label in self._section_labels.items():
@@ -1937,3 +2081,46 @@ class MainWindow(QMainWindow):
         event.ignore()
         self.hide()
         logger.info("Main window hidden to tray")
+
+
+class _UpdateCheckThread(QThread):
+    """Runs the GitHub release check off the UI thread."""
+
+    finished_ok = Signal(object)  # emits UpdateInfo
+    failed = Signal(str)
+
+    def run(self):
+        from src.services.updater import check_for_update, UpdateError
+
+        try:
+            info = check_for_update()
+            self.finished_ok.emit(info)
+        except UpdateError as exc:
+            self.failed.emit(str(exc))
+        except Exception as exc:  # noqa: BLE001
+            self.failed.emit(str(exc))
+
+
+class _UpdateInstallThread(QThread):
+    """Downloads the .deb and installs it via pkexec, off the UI thread."""
+
+    progress = Signal(str)  # status text key already resolved
+    installed = Signal()
+    failed = Signal(str)
+
+    def __init__(self, info, parent=None):
+        super().__init__(parent)
+        self._info = info
+
+    def run(self):
+        from src.services.updater import download_deb, install_deb, UpdateError
+
+        try:
+            deb_path = download_deb(self._info.deb_url, self._info.deb_name)
+            self.progress.emit(t("installing_update"))
+            install_deb(deb_path)
+            self.installed.emit()
+        except UpdateError as exc:
+            self.failed.emit(str(exc))
+        except Exception as exc:  # noqa: BLE001
+            self.failed.emit(str(exc))

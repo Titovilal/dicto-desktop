@@ -20,14 +20,22 @@ def get_language() -> str:
     return _current_language
 
 
-def t(key: str) -> str:
-    """Translate a key to the current language. Falls back to English, then returns the key."""
+def t(key: str, **kwargs) -> str:
+    """Translate a key to the current language. Falls back to English, then returns the key.
+
+    Any keyword arguments are substituted into ``{placeholder}`` tokens in the
+    translated string via ``str.format``.
+    """
     lang_dict = TRANSLATIONS.get(_current_language, {})
     result = lang_dict.get(key)
-    if result is not None:
-        return result
-    # Fallback to English
-    result = TRANSLATIONS.get("en", {}).get(key)
-    if result is not None:
-        return result
-    return key
+    if result is None:
+        # Fallback to English
+        result = TRANSLATIONS.get("en", {}).get(key)
+    if result is None:
+        return key
+    if kwargs:
+        try:
+            return result.format(**kwargs)
+        except (KeyError, IndexError, ValueError):
+            return result
+    return result

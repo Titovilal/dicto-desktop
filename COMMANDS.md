@@ -42,20 +42,20 @@ A `Makefile` wraps the commands below. Run `make help` to list them.
 
 ```powershell
 # onefile — single exe, slow startup, more antivirus issues
-uv run pyinstaller --name "Dicto" --onefile --windowed --noconfirm --add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" --icon "assets/icons/icon.ico" src/main.py
+uv run pyinstaller --name "Dicto" --onefile --windowed --noconfirm --copy-metadata dicto --add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" --icon "assets/icons/icon.ico" src/main.py
 
 # onedir — folder with all files, fast startup (recommended for dev)
-uv run pyinstaller --name "Dicto" --onedir --windowed --noconfirm --add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" --icon "assets/icons/icon.ico" src/main.py
+uv run pyinstaller --name "Dicto" --onedir --windowed --noconfirm --copy-metadata dicto --add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" --icon "assets/icons/icon.ico" src/main.py
 ```
 
 ### macOS / Linux
 
 ```bash
 # onefile — PyInstaller does not accept SVG icons on Linux/macOS, so no --icon here
-uv run pyinstaller --name "Dicto" --onefile --windowed --noconfirm --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" src/main.py
+uv run pyinstaller --name "Dicto" --onefile --windowed --noconfirm --copy-metadata dicto --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" src/main.py
 
 # onedir
-uv run pyinstaller --name "Dicto" --onedir --windowed --noconfirm --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" src/main.py
+uv run pyinstaller --name "Dicto" --onedir --windowed --noconfirm --copy-metadata dicto --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" src/main.py
 ```
 
 ## Build — Linux `.deb`

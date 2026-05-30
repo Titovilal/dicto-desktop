@@ -64,7 +64,7 @@ jobs:
 
       - name: Build with PyInstaller (onedir)
         run: |
-          pyinstaller --name "Dicto" --onedir --windowed --noconfirm --add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" --icon "assets/icons/icon.ico" src/main.py
+          pyinstaller --name "Dicto" --onedir --windowed --noconfirm --copy-metadata dicto --add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" --icon "assets/icons/icon.ico" src/main.py
 
       - name: Build installer with Inno Setup
         run: |
@@ -100,7 +100,7 @@ jobs:
 
       - name: Build with PyInstaller (onedir)
         run: |
-          pyinstaller --name "dicto" --onedir --windowed --noconfirm --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" src/main.py
+          pyinstaller --name "dicto" --onedir --windowed --noconfirm --copy-metadata dicto --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" src/main.py
           tar -czf dist/dicto-linux-amd64.tar.gz -C dist dicto
 
       - name: Package .deb

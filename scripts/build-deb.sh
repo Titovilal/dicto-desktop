@@ -33,6 +33,7 @@ echo ">> Dicto $VERSION ($ARCH)"
 if [[ "${SKIP_PYINSTALLER:-0}" != "1" ]]; then
   echo ">> PyInstaller build..."
   uv run pyinstaller --name "dicto" --onedir --windowed --noconfirm \
+    --copy-metadata dicto \
     --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" \
     src/main.py
 fi
