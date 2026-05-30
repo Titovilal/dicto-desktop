@@ -91,7 +91,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y portaudio19-dev libasound2-dev
+          sudo apt-get install -y portaudio19-dev libasound2-dev fakeroot
 
       - name: Install Python dependencies
         run: |
@@ -103,11 +103,19 @@ jobs:
           pyinstaller --name "dicto" --onedir --windowed --noconfirm --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" src/main.py
           tar -czf dist/dicto-linux-amd64.tar.gz -C dist dicto
 
+      - name: Package .deb
+        run: |
+          # Reuse the onedir bundle just built (PyInstaller is invoked via uv in
+          # the script, which CI doesn't use, so skip that step).
+          SKIP_PYINSTALLER=1 bash scripts/build-deb.sh
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: dicto-linux-amd64
-          path: dist/dicto-linux-amd64.tar.gz
+          path: |
+            dist/dicto-linux-amd64.tar.gz
+            dist/dicto_*.deb
 
   release:
     needs: [version, build-windows, build-linux]
@@ -139,6 +147,7 @@ jobs:
           files: |
             dist/Dicto-*-setup.exe
             dist/dicto-linux-amd64.tar.gz
+            dist/dicto_*.deb
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

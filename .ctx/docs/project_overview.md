@@ -25,6 +25,10 @@ Dicto is a minimalist desktop app (Windows, Linux, macOS) that transcribes speec
 2. User releases hotkey → recording stops → audio file sent to transcription API
 3. Transcribed text is copied to clipboard and pasted into the active application; overlay shows success
 
+## Building & packaging
+- **Windows:** GitHub Actions (`.github/workflows/build.yml`) builds with PyInstaller and wraps it in an Inno Setup installer (`installer.iss`, `Dicto.spec`).
+- **Linux:** `bash scripts/build-deb.sh` builds the PyInstaller onedir bundle and packages a `.deb` into `dist/` (install with `sudo apt install ./dist/dicto_<version>_amd64.deb`). CI also produces a portable `.tar.gz`. The Linux GUI runs on Wayland; the global hotkey works on the host but not inside a dev container.
+
 ## Documentation available in `.ctx/docs/`
 - **`core_architecture.md`** — Entry point, controller state machine, settings, and application lifecycle
 - **`services.md`** — Audio recording, transcription API, hotkey listeners, clipboard, and keyboard services

@@ -1369,12 +1369,23 @@ class MainWindow(QMainWindow):
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
+            # Prefer the compositor-driven move: required on Wayland (a client
+            # cannot move its own window via global coordinates there) and also
+            # the native path on X11/Windows. Fall back to manual move() if no
+            # window handle is available yet or startSystemMove() is unsupported.
+            handle = self.windowHandle()
+            if handle is not None and handle.startSystemMove():
+                self._drag_pos = None
+                event.accept()
+                return
             self._drag_pos = (
                 event.globalPosition().toPoint() - self.frameGeometry().topLeft()
             )
             event.accept()
 
     def mouseMoveEvent(self, event: QMouseEvent):
+        # Only used as a fallback; with startSystemMove() the compositor drives
+        # the drag and _drag_pos stays None.
         if self._drag_pos and event.buttons() & Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self._drag_pos)
             event.accept()

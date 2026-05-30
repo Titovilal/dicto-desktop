@@ -9,7 +9,14 @@ The services layer provides all the core capabilities that the controller orches
 - `src/services/hotkey.py` - Cross-platform global hotkey listener using `pynput`; supports "hold" mode (press-to-record, release-to-stop) and "press" mode; includes a factory function (`create_hotkey_listener`) that selects the Wayland backend when appropriate
 - `src/services/hotkey_wayland.py` - Wayland-specific hotkey listener that uses the XDG GlobalShortcuts portal over D-Bus (`dbus-next`); needed because Wayland compositors don't allow direct key grabbing
 - `src/services/clipboard.py` - Platform-aware clipboard read/write; uses `win32clipboard` on Windows and `pyperclip` elsewhere; includes a `wait_for_change` helper that polls for clipboard updates
-- `src/services/keyboard_actions.py` - Simulates keyboard shortcuts (Ctrl+V paste, Ctrl+C copy, Enter) via `pynput` to insert transcribed text into the active application
+- `src/services/keyboard_actions.py` - Simulates keyboard shortcuts (Ctrl+V paste, Ctrl+C copy, Enter) via `pynput` to insert transcribed text into the active application; `pynput` is imported lazily on first key simulation so the app can start in headless/containerized environments where it cannot acquire a display
+
+## Headless / dev-container behavior
+`pynput` requires a usable keyboard backend (X11 on Linux, native on Windows/macOS). In a Linux dev container running over the host's Wayland session, `pynput` cannot acquire an X connection, so:
+- `keyboard_actions.py` imports `pynput` lazily (only when a paste/copy/enter is actually simulated), keeping startup working.
+- `Controller._init_services` wraps `create_hotkey_listener` in a try/except: if no hotkey backend is available, both listeners are set to `None` and a warning is logged. The GUI still launches and is usable for development; global hotkeys simply stay disabled.
+- The Wayland portal backend (`hotkey_wayland.py`) is not selected in the container because `is_wayland()` checks `XDG_SESSION_TYPE` (unset inside the container) and `dbus-next` is not installed.
+- The Qt GUI renders via the Wayland platform plugin (`QT_QPA_PLATFORM=wayland`, set in `.devcontainer/devcontainer.json`); system libs for Qt/audio are installed by `.devcontainer/setup-gui.sh`.
 
 ## Flow
 1. `HotkeyListener` (or its Wayland variant) detects the configured hotkey and notifies the controller via press/release callbacks

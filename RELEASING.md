@@ -46,20 +46,21 @@ El workflow (`.github/workflows/build.yml`) ejecuta estos pasos:
 
 1. **version** — Lee la version de `pyproject.toml` y verifica si ya existe un tag `v{version}`
 2. **build** — Compila el ejecutable con PyInstaller en paralelo para:
-   - **Windows** (`dicto-windows-amd64.exe`)
-   - **Linux** (`dicto-linux-amd64`)
+   - **Windows** — instalador `.exe` (Inno Setup)
+   - **Linux** — bundle `.tar.gz` portable y paquete `.deb` instalable
 3. **release** — Si corresponde, crea un GitHub Release con tag `v{version}` y adjunta los binarios
 
 ## Artefactos generados
 
-| Plataforma | Archivo                    |
-|------------|----------------------------|
-| Windows    | `dicto-windows-amd64.exe`  |
-| Linux      | `dicto-linux-amd64`        |
+| Plataforma | Archivo                          | Uso                              |
+|------------|----------------------------------|----------------------------------|
+| Windows    | `Dicto-<version>-setup.exe`      | Instalador                       |
+| Linux      | `dicto-linux-amd64.tar.gz`       | Portable (descomprimir y ejecutar)|
+| Linux      | `dicto_<version>_amd64.deb`      | Instalable con `sudo apt install`|
 
 ## Build local
 
-Para generar el ejecutable localmente ver los comandos en `COMMANDS.md`. El binario queda en `dist/Dicto.exe`.
+Para generar el ejecutable localmente ver los comandos en `COMMANDS.md` (o usa el `Makefile`: `make exe` en Windows, `make deb` en Linux). En Windows el binario queda en `dist/Dicto.exe`; en Linux el paquete queda en `dist/dicto_<version>_amd64.deb`.
 
 ## Checklist pre-release
 

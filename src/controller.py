@@ -105,25 +105,37 @@ class Controller(QObject):
                     edition_model=self.settings.edition_model,
                 )
 
-            self.hotkey_listener = create_hotkey_listener(
-                modifiers=self.settings.hotkey_modifiers,
-                key=self.settings.hotkey_key,
-                on_press=self._on_hotkey_press,
-                on_release=self._on_hotkey_release,
-                shortcut_id="dicto-record",
-                description="Dicto: Record voice",
-            )
+            # Global hotkeys require a supported keyboard backend (X11 on Linux,
+            # native on Windows/macOS). On headless/Wayland dev containers pynput
+            # cannot acquire a display, so degrade gracefully: keep the GUI usable
+            # for development and leave the listeners disabled.
+            try:
+                self.hotkey_listener = create_hotkey_listener(
+                    modifiers=self.settings.hotkey_modifiers,
+                    key=self.settings.hotkey_key,
+                    on_press=self._on_hotkey_press,
+                    on_release=self._on_hotkey_release,
+                    shortcut_id="dicto-record",
+                    description="Dicto: Record voice",
+                )
 
-            self.edit_hotkey_listener = create_hotkey_listener(
-                modifiers=self.settings.edit_hotkey_modifiers,
-                key=self.settings.edit_hotkey_key,
-                on_press=self._on_edit_hotkey_press,
-                on_release=self._on_edit_hotkey_release,
-                mode="hold",
-                suppress_key=True,
-                shortcut_id="dicto-edit",
-                description="Dicto: Edit selection",
-            )
+                self.edit_hotkey_listener = create_hotkey_listener(
+                    modifiers=self.settings.edit_hotkey_modifiers,
+                    key=self.settings.edit_hotkey_key,
+                    on_press=self._on_edit_hotkey_press,
+                    on_release=self._on_edit_hotkey_release,
+                    mode="hold",
+                    suppress_key=True,
+                    shortcut_id="dicto-edit",
+                    description="Dicto: Edit selection",
+                )
+            except Exception as e:
+                self.hotkey_listener = None
+                self.edit_hotkey_listener = None
+                logger.warning(
+                    f"Global hotkeys unavailable on this platform: {e}. "
+                    "The GUI will run without hotkey support."
+                )
         except Exception as e:
             logger.error(f"Error initializing services: {e}")
             traceback.print_exc()

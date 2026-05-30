@@ -1,0 +1,39 @@
+{
+  "name": "${localWorkspaceFolderBasename}",
+  // Reutiliza la imagen central ya construida. NO reconstruye por repo.
+  "image": "salva-dev:latest",
+  // Monta SOLO este repo (montaje explícito para que la ruta sea determinista).
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "mounts": [
+    // Credenciales y config de Claude Code del host (sesion ya iniciada).
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json,type=bind,consistency=cached",
+    // Cachés persistentes y compartidas entre repos (pnpm / uv / pip).
+    "source=pnpm-store,target=/home/vscode/.pnpm-store,type=volume",
+    "source=uv-cache,target=/home/vscode/.cache/uv,type=volume",
+    "source=pip-cache,target=/home/vscode/.cache/pip,type=volume"
+  ],
+  // store-dir = el volumen de paquetes; PNPM_HOME (binarios globales) lo fija la imagen.
+  "containerEnv": {
+    "npm_config_store_dir": "/home/vscode/.pnpm-store",
+    "UV_CACHE_DIR": "/home/vscode/.cache/uv",
+    "PIP_CACHE_DIR": "/home/vscode/.cache/pip",
+    // App GUI (PySide6/Qt): el host es Wayland y VS Code reenvia su socket
+    // (WAYLAND_DISPLAY ya viene exportado). Forzamos el backend Qt a wayland.
+    "QT_QPA_PLATFORM": "wayland"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "remoteUser": "vscode",
+  // Claude Code ya viene horneado en salva-dev:latest; aqui solo checks + alias clw.
+  "postCreateCommand": "sudo chown vscode:vscode /home/vscode/.pnpm-store /home/vscode/.cache/uv /home/vscode/.cache/pip && node -v && python3 --version && uv --version && pnpm -v && (grep -q 'alias clw=' $HOME/.bashrc || echo \"alias clw='claude --dangerously-skip-permissions'\" >> $HOME/.bashrc) && bash .devcontainer/setup-gui.sh"
+}
