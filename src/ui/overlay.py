@@ -24,7 +24,6 @@ from src.ui.main_window_styles import (
     RED,
     AMBER,
     GREEN,
-    BLUE,
 )
 from src.ui.waveform import WaveformWidget
 from src.ui.icons import (
@@ -293,7 +292,7 @@ class OverlayWindow(QWidget):
         self.record_btn.clicked.connect(self._on_record_btn_clicked)
         status_row.addWidget(self.record_btn, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        # Action button: settings (idle) / stop (recording/editing)
+        # Action button: settings (idle) / stop (recording)
         self.action_btn = QPushButton()
         self.action_btn.setFixedSize(22, 22)
         self.action_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -319,17 +318,13 @@ class OverlayWindow(QWidget):
         self.waveform_success = WaveformWidget(
             bar_width=2, bar_gap=1, height=16, color=GREEN, mode="settle"
         )
-        self.waveform_editing = WaveformWidget(
-            bar_width=2, bar_gap=1, height=16, color=BLUE, mode="live"
-        )
         self.waveform_idle = WaveformWidget(
             bar_width=2, bar_gap=1, height=16, color=TEXT_DIM, mode="live"
         )
         self.icon_stack.addWidget(self.waveform_recording)  # index 0
         self.icon_stack.addWidget(self.waveform_processing)  # index 1
         self.icon_stack.addWidget(self.waveform_success)  # index 2
-        self.icon_stack.addWidget(self.waveform_editing)  # index 3
-        self.icon_stack.addWidget(self.waveform_idle)  # index 4
+        self.icon_stack.addWidget(self.waveform_idle)  # index 3
         self.icon_stack.setCurrentIndex(0)
         self.icon_stack.hide()
         card_layout.addWidget(self.icon_stack)
@@ -401,13 +396,7 @@ class OverlayWindow(QWidget):
     def _pulse_dot(self):
         self._dot_visible = not self._dot_visible
         if self._dot_visible:
-            color = (
-                RED
-                if self.current_state == "recording"
-                else BLUE
-                if self.current_state == "editing"
-                else AMBER
-            )
+            color = RED if self.current_state == "recording" else AMBER
             self.status_dot.setStyleSheet(
                 f"background-color: {color}; border-radius: 3px;"
             )
@@ -423,8 +412,6 @@ class OverlayWindow(QWidget):
             self.status_label.setText(f"{t('recording')}{dots}")
         elif self.current_state == "processing":
             self.status_label.setText(f"{t('processing')}{dots}")
-        elif self.current_state == "editing":
-            self.status_label.setText(f"{self._editing_label}{dots}")
 
     def _stop_animations(self):
         self._dot_pulse_timer.stop()
@@ -432,7 +419,6 @@ class OverlayWindow(QWidget):
         self.waveform_recording.stop()
         self.waveform_processing.stop()
         self.waveform_success.stop()
-        self.waveform_editing.stop()
         self.waveform_idle.stop()
 
     def _show_icon(self, index: int):
@@ -458,7 +444,7 @@ class OverlayWindow(QWidget):
         self._set_card_style()
         self.waveform_idle.bar_heights = [0.0] * self.waveform_idle.bar_count
         self.waveform_idle.update()
-        self._show_icon(4)
+        self._show_icon(3)
         self._set_action_mode("settings")
 
     def show_recording(self):
@@ -472,23 +458,6 @@ class OverlayWindow(QWidget):
         self._set_card_style()
         self._show_icon(0)
         self.waveform_recording.start()
-        self._dot_pulse_timer.start(500)
-        self._dots_timer.start(400)
-        self._set_action_mode("stop")
-        self.show()
-
-    def show_editing(self, recording: bool = True):
-        self.current_state = "editing"
-        self._editing_label = t("recording") if recording else t("editing")
-        self.status_label.setText(self._editing_label)
-        self.status_label.setStyleSheet(
-            f"color: {TEXT}; font-size: 12px; font-weight: 600; {LABEL_BASE}"
-        )
-        self.sub_label.hide()
-        self.status_dot.setStyleSheet(f"background-color: {BLUE}; border-radius: 3px;")
-        self._set_card_style()
-        self._show_icon(3)
-        self.waveform_editing.start()
         self._dot_pulse_timer.start(500)
         self._dots_timer.start(400)
         self._set_action_mode("stop")

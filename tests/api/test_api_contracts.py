@@ -16,7 +16,6 @@ def transcriber():
         language="es",
         model="v3-turbo",
         transformation_model="qwen/qwen3-32b",
-        edition_model="qwen/qwen3-32b",
     )
 
 
@@ -114,40 +113,6 @@ class TestTransformContract:
         assert "transcriptionId" not in payload
 
 
-class TestEditContract:
-    """Verify the request sent to POST /api/edit."""
-
-    def test_request_format(self, transcriber, sample_audio_file):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "edited"}}]
-        }
-
-        with patch.object(
-            transcriber.client, "post", return_value=mock_response
-        ) as mock_post:
-            transcriber.edit("selected text", sample_audio_file)
-
-        call_kwargs = mock_post.call_args
-
-        # URL
-        assert call_kwargs.args[0] == f"{BASE_URL}/api/edit"
-
-        # Auth
-        assert call_kwargs.kwargs["headers"]["Authorization"] == "Bearer sk-dicto-test"
-
-        # Data fields
-        data = call_kwargs.kwargs["data"]
-        assert data["text"] == "selected text"
-        assert data["source"] == "mic_app"
-        assert data["edition_model"] == "qwen/qwen3-32b"
-
-        # Audio file
-        files = call_kwargs.kwargs["files"]
-        assert "audio" in files
-
-
 class TestResponseParsing:
     """Verify response formats are parsed correctly."""
 
@@ -178,15 +143,3 @@ class TestResponseParsing:
             result = transcriber.transform("text", "format")
 
         assert result == "formatted"  # stripped
-
-    def test_edit_response(self, transcriber, sample_audio_file):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "  edited  "}}]
-        }
-
-        with patch.object(transcriber.client, "post", return_value=mock_response):
-            result = transcriber.edit("text", sample_audio_file)
-
-        assert result == "edited"

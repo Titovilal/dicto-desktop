@@ -1,7 +1,7 @@
 # Testing Strategy
 
 ## What It Does
-The test suite validates Dicto's core flows — recording, transcription, editing, cancellation — plus individual services and UI components. Tests are organized by scope (unit, integration, UI, API) and run with pytest and pytest-qt.
+The test suite validates Dicto's core flows — recording, transcription, cancellation — plus individual services and UI components. Tests are organized by scope (unit, integration, UI, API) and run with pytest and pytest-qt.
 
 ## Main Files
 - `tests/conftest.py` - Shared fixtures: temporary config, default settings, custom config factory, sample WAV file

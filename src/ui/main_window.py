@@ -49,7 +49,6 @@ from src.ui.main_window_styles import (
     DOT_RECORDING,
     DOT_PROCESSING,
     DOT_SUCCESS,
-    DOT_EDITING,
     HEADER_BUTTON,
     HEADER_BUTTON_CLOSE,
     HEADER_BUTTON_ACTIVE,
@@ -57,18 +56,16 @@ from src.ui.main_window_styles import (
     TAB_BUTTON_ACTIVE,
     TAB_BUTTON_DISABLED,
     CONTENT_TEXT,
+    LOG_VIEW,
     IDLE_TEXT,
     IDLE_TEXT_BOLD,
     RECORDING_LABEL,
     PROCESSING_LABEL,
-    EDITING_LABEL,
     TIMER_RECORDING,
     TIMER_PROCESSING,
-    TIMER_EDITING,
     RECORD_BUTTON_IDLE,
     RECORD_BUTTON_RECORDING,
     RECORD_BUTTON_PROCESSING,
-    RECORD_BUTTON_EDITING,
     FOOTER_TEXT_BUTTON,
     FOOTER_TEXT_BUTTON_SUCCESS,
     SECTION_LABEL,
@@ -80,7 +77,6 @@ from src.ui.main_window_styles import (
     TEXT,
     TEXT_DIM,
     RED,
-    BLUE,
 )
 from src.ui.icons import (
     SVG_SETTINGS,
@@ -305,7 +301,6 @@ class MainWindow(QMainWindow):
     transform_requested = Signal(str, str, str)  # (format_id, text, instructions)
     persistent_overlay_changed = Signal(bool)
     recording_hotkey_changed = Signal(list, str)  # (modifiers, key)
-    edit_hotkey_changed = Signal(list, str)  # (modifiers, key)
     input_device_changed = Signal(object)  # int or None
     include_system_audio_changed = Signal(bool)
     _test_audio_level = Signal(float)
@@ -744,12 +739,8 @@ class MainWindow(QMainWindow):
     def _animate_dots(self):
         self._dots_count = (self._dots_count + 1) % 4
         dots = "." * self._dots_count + "\u00a0" * (3 - self._dots_count)
-        if self.is_recording and getattr(self, "_is_editing", False):
+        if self.is_recording:
             self.recording_label.setText(f"{t('listening')}{dots}")
-        elif self.is_recording:
-            self.recording_label.setText(f"{t('listening')}{dots}")
-        elif self.is_processing and getattr(self, "_is_editing", False):
-            self.processing_label.setText(f"{t('editing')}{dots}")
         elif self.is_processing:
             self.processing_label.setText(f"{t('processing')}{dots}")
         elif self._transforming_format is not None:
@@ -907,35 +898,14 @@ class MainWindow(QMainWindow):
             rec_key,
             self._on_recording_hotkey_changed,
         )
-        layout.addSpacing(6)
-        edit_mods = (
-            self.settings.edit_hotkey_modifiers if self.settings else ["ctrl", "alt"]
-        )
-        edit_key = self.settings.edit_hotkey_key if self.settings else "space"
-        self.edit_hotkey_button = self._add_hotkey_row(
-            layout,
-            "hotkey_edit_selection",
-            edit_mods,
-            edit_key,
-            self._on_edit_hotkey_changed,
-        )
 
-        # Behavior (transcription + edit selection together)
+        # Behavior
         self._add_section(layout, "behavior")
         self.auto_paste_checkbox = self._add_checkbox(
             layout, "auto_paste_after_transcribe", self._on_auto_paste_changed
         )
         self.auto_enter_checkbox = self._add_checkbox(
             layout, "press_enter_after_paste", self._on_auto_enter_changed
-        )
-
-        # Edit selection
-        self._add_section(layout, "edit_selection")
-        self.edit_auto_paste_checkbox = self._add_checkbox(
-            layout, "auto_paste_after_edit", self._on_edit_auto_paste_changed
-        )
-        self.edit_auto_enter_checkbox = self._add_checkbox(
-            layout, "press_enter_after_paste", self._on_edit_auto_enter_changed
         )
 
         # Audio input
@@ -991,6 +961,18 @@ class MainWindow(QMainWindow):
         self._report_desc_label.setWordWrap(True)
         layout.addWidget(self._report_desc_label)
         layout.addSpacing(8)
+
+        # Live preview of the console logs that will be sent with the report
+        self.report_log_view = QTextEdit()
+        self.report_log_view.setReadOnly(True)
+        self.report_log_view.setStyleSheet(LOG_VIEW)
+        self.report_log_view.setFrameShape(QTextEdit.Shape.NoFrame)
+        self.report_log_view.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        self.report_log_view.setFixedHeight(160)
+        self.report_log_view.verticalScrollBar().setSingleStep(15)
+        layout.addWidget(self.report_log_view)
+        layout.addSpacing(8)
+
         self.send_report_button = QPushButton(t("send_report"))
         self.send_report_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.send_report_button.setFixedHeight(32)
@@ -1086,21 +1068,6 @@ class MainWindow(QMainWindow):
                 "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
             },
             self._on_transformation_model_changed,
-            with_provider_icons=True,
-        )
-
-        # Edition model
-        self._add_section(layout, "edition_model")
-        self.edition_model_combo = self._add_combo(
-            layout,
-            {
-                "qwen/qwen3-32b": f"Qwen 3 32B ({t('recommended')})",
-                "openai/gpt-oss-120b": "GPT OSS 120B",
-                "openai/gpt-oss-20b": "GPT OSS 20B",
-                "gemini-3-flash-preview": "Gemini 3 Flash",
-                "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
-            },
-            self._on_edition_model_changed,
             with_provider_icons=True,
         )
 
@@ -1276,6 +1243,7 @@ class MainWindow(QMainWindow):
         self._settings_open = True
         self._prev_page = self.content_stack.currentIndex()
         self.content_stack.setCurrentIndex(3)  # settings page
+        self._refresh_report_log_view()
         self.settings_button.setIcon(_make_icon(SVG_SETTINGS, 16, TEXT))
         self.settings_button.setStyleSheet(HEADER_BUTTON_ACTIVE)
         self.footer.hide()
@@ -1292,6 +1260,16 @@ class MainWindow(QMainWindow):
         self.footer_sep.hide()
         self.tabs_bar.hide()
 
+    def _refresh_report_log_view(self):
+        """Show the current console log buffer (what gets sent with the report)."""
+        from src.utils.logger import get_log_buffer
+
+        logs = "\n".join(get_log_buffer())
+        self.report_log_view.setPlainText(logs)
+        # Scroll to the latest log line
+        sb = self.report_log_view.verticalScrollBar()
+        sb.setValue(sb.maximum())
+
     def _send_report(self):
         import httpx
         from src.utils.logger import get_log_buffer
@@ -1299,6 +1277,7 @@ class MainWindow(QMainWindow):
         self.send_report_button.setEnabled(False)
         self.report_status_label.hide()
         logs = "\n".join(get_log_buffer())
+        self.report_log_view.setPlainText(logs)
 
         try:
             api_key = self.settings.transcription_api_key if self.settings else ""
@@ -1484,17 +1463,8 @@ class MainWindow(QMainWindow):
         if transform_index >= 0:
             self.transformation_model_combo.setCurrentIndex(transform_index)
 
-        current_edition_model = self.settings.edition_model
-        edition_index = self.edition_model_combo.findData(current_edition_model)
-        if edition_index >= 0:
-            self.edition_model_combo.setCurrentIndex(edition_index)
-
         if self.settings.transcription_api_key:
             self.api_key_input.setText(self.settings.transcription_api_key)
-
-        # Edit selection settings
-        self.edit_auto_paste_checkbox.setChecked(self.settings.edit_auto_paste)
-        self.edit_auto_enter_checkbox.setChecked(self.settings.edit_auto_enter)
 
         # UI Language
         ui_lang_index = self.ui_language_combo.findData(self.settings.ui_language)
@@ -1690,12 +1660,6 @@ class MainWindow(QMainWindow):
     def _on_test_audio_level(self, level: float):
         self._test_audio_level.emit(level)
 
-    def _on_edit_auto_paste_changed(self, state: int):
-        self._save_setting("edit_auto_paste", state == Qt.CheckState.Checked.value)
-
-    def _on_edit_auto_enter_changed(self, state: int):
-        self._save_setting("edit_auto_enter", state == Qt.CheckState.Checked.value)
-
     @Slot(int)
     def _on_ui_language_changed(self, index: int):
         lang_code = self.ui_language_combo.itemData(index)
@@ -1718,8 +1682,6 @@ class MainWindow(QMainWindow):
         self.auto_enter_checkbox.setText(t("press_enter_after_paste"))
         self.always_on_top_checkbox.setText(t("always_on_top"))
         self.persistent_overlay_checkbox.setText(t("persistent_overlay"))
-        self.edit_auto_paste_checkbox.setText(t("auto_paste_after_edit"))
-        self.edit_auto_enter_checkbox.setText(t("press_enter_after_paste"))
         self.save_api_key_button.setText(t("save_key"))
         if sys.platform == "darwin":
             self.include_system_audio_checkbox.setToolTip(
@@ -1766,12 +1728,6 @@ class MainWindow(QMainWindow):
         if self.controller and self.controller.transcriber:
             self.controller.transcriber.transformation_model = value
 
-    def _on_edition_model_changed(self, index: int):
-        value = self.edition_model_combo.itemData(index)
-        self._save_setting("edition_model", value)
-        if self.controller and self.controller.transcriber:
-            self.controller.transcriber.edition_model = value
-
     @Slot(list, str)
     def _on_recording_hotkey_changed(self, modifiers: list[str], key: str):
         if self.settings:
@@ -1779,14 +1735,6 @@ class MainWindow(QMainWindow):
             self.settings.hotkey_key = key
             self.settings.save()
         self.recording_hotkey_changed.emit(modifiers, key)
-
-    @Slot(list, str)
-    def _on_edit_hotkey_changed(self, modifiers: list[str], key: str):
-        if self.settings:
-            self.settings.edit_hotkey_modifiers = modifiers
-            self.settings.edit_hotkey_key = key
-            self.settings.save()
-        self.edit_hotkey_changed.emit(modifiers, key)
 
     @Slot()
     def _on_save_api_key(self):
@@ -1813,7 +1761,6 @@ class MainWindow(QMainWindow):
     def set_recording_state(self):
         self.is_recording = True
         self.is_processing = False
-        self._is_editing = False
         self.include_system_audio_checkbox.setEnabled(False)
 
         # If settings are open, don't switch the view — just remember the target page
@@ -1855,7 +1802,6 @@ class MainWindow(QMainWindow):
     def set_idle_state(self):
         self.is_recording = False
         self.is_processing = False
-        self._is_editing = False
         if sys.platform != "darwin":
             self.include_system_audio_checkbox.setEnabled(True)
 
@@ -1930,93 +1876,6 @@ class MainWindow(QMainWindow):
         # Dot
         self.status_dot.setStyleSheet(DOT_PROCESSING)
         self._dot_pulse_timer.start(500)
-
-    @Slot()
-    def set_editing_state(self):
-        """Show editing state (recording voice instructions for edit)."""
-        self.is_recording = True
-        self.is_processing = False
-        self._is_editing = True
-
-        if self._settings_open or self._models_open:
-            self._prev_page = 1
-        else:
-            self.content_stack.setCurrentIndex(1)  # recording page
-        self.recording_label.setText(t("listening"))
-        self.recording_label.setStyleSheet(EDITING_LABEL)
-        self.record_button.setText("")
-        self.record_button.setIcon(_make_icon(SVG_STOP, 16, "#18181b"))
-        self.record_button.setStyleSheet(RECORD_BUTTON_EDITING)
-        self.copy_button.hide()
-        self.cancel_button.show()
-        self.status_label.setText("")
-
-        # Status dot
-        self.status_dot.setStyleSheet(DOT_EDITING)
-        self._dot_pulse_timer.start(500)
-
-        # Timer
-        self._elapsed_seconds = 0
-        self.timer_label.setText("00:00")
-        self.timer_label.setStyleSheet(TIMER_EDITING)
-        self.timer_label.show()
-        self._elapsed_timer.start(1000)
-
-        # Waveform in blue
-        self.waveform.color = BLUE
-        self.waveform.start()
-
-        # Dots animation
-        self._dots_timer.start(400)
-
-        # Tabs
-        self._update_tabs_enabled(False)
-
-    @Slot()
-    def set_editing_processing_state(self):
-        """Show processing state during edit flow (blue instead of amber)."""
-        self.is_recording = False
-        self.is_processing = True
-        self._is_editing = True
-
-        if self._settings_open or self._models_open:
-            self._prev_page = 2
-        else:
-            self.content_stack.setCurrentIndex(2)
-        self.transcription_text.clear()
-        self.processing_label.show()
-        self.processing_label.setText(t("editing"))
-        self.processing_label.setStyleSheet(EDITING_LABEL)
-        self.record_button.setText("")
-        self.record_button.setIcon(_make_icon(SVG_LOADER, 16, "#18181b"))
-        self.record_button.setStyleSheet(RECORD_BUTTON_EDITING)
-        self.copy_button.hide()
-        self.cancel_button.show()
-
-        # Start loader spin animation
-        self._loader_angle = 0
-        self._loader_timer.start()
-
-        # Stop recording animations
-        self.waveform.stop()
-        self.waveform.color = RED  # Reset color for next recording
-
-        # Timer
-        self._elapsed_seconds = 0
-        self.timer_label.setText("00:00")
-        self.timer_label.setStyleSheet(TIMER_EDITING)
-        self.timer_label.show()
-        self._elapsed_timer.start(1000)
-
-        # Dot
-        self.status_dot.setStyleSheet(DOT_EDITING)
-        self._dot_pulse_timer.start(500)
-
-        # Dots animation
-        self._dots_timer.start(400)
-
-        # Tabs
-        self._update_tabs_enabled(False)
 
     @Slot(str)
     def update_transcription(self, text: str):

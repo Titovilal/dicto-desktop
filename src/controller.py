@@ -42,17 +42,9 @@ class Controller(QObject):
     cancel_completed = Signal()
     presets_loaded = Signal(list)  # list of preset dicts
 
-    # Edit selection signals
-    edit_started = Signal()
-    edit_completed = Signal(str)
-    edit_failed = Signal(str)
-
     # Internal signals to bounce results back to the main thread
     _transcription_done = Signal(str)
     _transcription_failed = Signal(str)
-    _edit_done = Signal(str)
-    _edit_failed_internal = Signal(str)
-    _edit_hotkey_released = Signal()  # bounce release to main thread
 
     def __init__(self, settings: Settings):
         super().__init__()
@@ -60,7 +52,6 @@ class Controller(QObject):
         self.current_state = AppState.IDLE
 
         self.hotkey_listener: HotkeyListener | None = None
-        self.edit_hotkey_listener: HotkeyListener | None = None
         self.recorder: AudioRecorder | None = None
         self.transcriber: Transcriber | None = None
         self.keyboard = KeyboardService()
@@ -73,9 +64,6 @@ class Controller(QObject):
         # Connect internal signals (thread-safe delivery to main thread)
         self._transcription_done.connect(self._on_transcribe_finished)
         self._transcription_failed.connect(self._on_transcribe_error)
-        self._edit_done.connect(self._on_edit_finished)
-        self._edit_failed_internal.connect(self._on_edit_error)
-        self._edit_hotkey_released.connect(self._stop_edit_recording_and_process)
 
         self._init_services()
         if self.recorder:
@@ -102,7 +90,6 @@ class Controller(QObject):
                     language=self.settings.transcription_language,
                     model=self.settings.transcription_model,
                     transformation_model=self.settings.transformation_model,
-                    edition_model=self.settings.edition_model,
                 )
 
             # Global hotkeys require a supported keyboard backend (X11 on Linux,
@@ -118,20 +105,8 @@ class Controller(QObject):
                     shortcut_id="dicto-record",
                     description="Dicto: Record voice",
                 )
-
-                self.edit_hotkey_listener = create_hotkey_listener(
-                    modifiers=self.settings.edit_hotkey_modifiers,
-                    key=self.settings.edit_hotkey_key,
-                    on_press=self._on_edit_hotkey_press,
-                    on_release=self._on_edit_hotkey_release,
-                    mode="hold",
-                    suppress_key=True,
-                    shortcut_id="dicto-edit",
-                    description="Dicto: Edit selection",
-                )
             except Exception as e:
                 self.hotkey_listener = None
-                self.edit_hotkey_listener = None
                 logger.warning(
                     f"Global hotkeys unavailable on this platform: {e}. "
                     "The GUI will run without hotkey support."
@@ -146,8 +121,6 @@ class Controller(QObject):
     def start(self):
         if self.hotkey_listener:
             self.hotkey_listener.start()
-        if self.edit_hotkey_listener:
-            self.edit_hotkey_listener.start()
         self._set_state(AppState.IDLE)
         self.fetch_presets()
         logger.info("Controller started successfully")
@@ -171,8 +144,6 @@ class Controller(QObject):
         logger.info("Stopping controller...")
         if self.hotkey_listener:
             self.hotkey_listener.stop()
-        if self.edit_hotkey_listener:
-            self.edit_hotkey_listener.stop()
         if self.recorder and self.recorder.is_recording:
             self.recorder.stop_recording()
         self._pool.shutdown(wait=True, cancel_futures=True)
@@ -307,133 +278,6 @@ class Controller(QObject):
         except Exception as e:
             logger.error(f"Error performing auto-enter: {e}")
 
-    # ── Edit selection flow ────────────────────────────────────
-
-    def _on_edit_hotkey_press(self):
-        if self.current_state not in (AppState.IDLE, AppState.SUCCESS):
-            return
-        self._start_edit_flow()
-
-    def _on_edit_hotkey_release(self):
-        if self.current_state == AppState.RECORDING:
-            self._edit_hotkey_released.emit()
-
-    def _start_edit_flow(self):
-        """Start recording voice instructions (text will be copied after release)."""
-        if not self.transcriber:
-            self._handle_error("Transcriber not initialized")
-            return
-        if not self.recorder:
-            self._handle_error("Audio recorder not initialized")
-            return
-
-        self.edit_started.emit()
-        self._cancelled = False
-        self._set_state(AppState.RECORDING)
-        self.recording_started.emit()
-        if not self.recorder.start_recording():
-            self._handle_error(
-                "Failed to start recording. Check microphone permissions."
-            )
-
-    def _stop_edit_recording_and_process(self):
-        """Stop recording, copy selected text, transcribe voice, then transform."""
-        if not self.recorder:
-            self._handle_error("Audio recorder not initialized")
-            return
-
-        try:
-            audio_file_path = self.recorder.stop_recording()
-            duration = self.recorder.get_recording_duration()
-            self.recording_stopped.emit(duration)
-
-            if not audio_file_path:
-                self._handle_error("No audio recorded")
-                return
-
-            self._set_state(AppState.PROCESSING)
-
-            # Save current clipboard so we can restore it later
-            self._saved_clipboard = ClipboardManager.paste()
-
-            # Copy selected text NOW (after hotkey released, so Ctrl+C works cleanly)
-            try:
-                self.keyboard.copy()
-            except Exception as e:
-                self._handle_error(f"Error simulating copy: {e}")
-                return
-
-            # Poll clipboard until it changes (instead of a fixed delay)
-            QTimer.singleShot(
-                20,
-                lambda: self._edit_poll_clipboard(audio_file_path, duration),
-            )
-        except Exception as e:
-            self._handle_error(f"Error stopping edit recording: {e}")
-
-    def _edit_poll_clipboard(self, audio_file_path: str, duration: float):
-        """Poll clipboard for the Ctrl+C result, then continue the edit flow."""
-        selected_text = ClipboardManager.wait_for_change(
-            self._saved_clipboard or "", timeout_ms=500, poll_ms=20
-        )
-        self._edit_process_with_audio(audio_file_path, duration, selected_text)
-
-    def _edit_process_with_audio(
-        self, audio_file_path: str, duration: float, selected_text: str | None = None
-    ):
-        """Submit edit job (text + audio in one API call)."""
-        if selected_text is None:
-            selected_text = ClipboardManager.paste()
-        if not selected_text.strip():
-            self._handle_error("No text selected (clipboard empty)")
-            if self.recorder:
-                self.recorder.cleanup_temp_file()
-            return
-
-        logger.info(
-            f"Edit selection: copied {len(selected_text)} chars, sending to /api/edit ({duration:.1f}s audio)"
-        )
-
-        def _do_edit_with_voice():
-            try:
-                assert self.transcriber is not None
-                assert self.recorder is not None
-                result = self.transcriber.edit(selected_text, audio_file_path)
-                self._edit_done.emit(result)
-            except Exception as e:
-                self._edit_failed_internal.emit(str(e))
-            finally:
-                assert self.recorder is not None
-                self.recorder.cleanup_temp_file()
-
-        self._pool.submit(_do_edit_with_voice)
-
-    @Slot(str)
-    def _on_edit_finished(self, text: str):
-        if self._cancelled:
-            self._cancelled = False
-            return
-        if ClipboardManager.copy(text):
-            self._set_state(AppState.SUCCESS)
-            self.edit_completed.emit(text)
-            logger.info(f"Edit selection successful: {text[:50]}")
-            self._perform_auto_actions(
-                self.settings.edit_auto_paste, self.settings.edit_auto_enter
-            )
-            # Restore the user's original clipboard after auto-paste has had time
-            saved = getattr(self, "_saved_clipboard", None)
-            if saved is not None:
-                delay = 300 if self.settings.edit_auto_paste else 0
-                QTimer.singleShot(delay, lambda: ClipboardManager.copy(saved))
-                self._saved_clipboard = None
-        else:
-            self._handle_error("Failed to copy edited text to clipboard")
-
-    @Slot(str)
-    def _on_edit_error(self, error_message: str):
-        self.edit_failed.emit(error_message)
-        self._handle_error(error_message)
-
     # ── Audio level callback ────────────────────────────────
 
     def _on_audio_level(self, level: float):
@@ -530,19 +374,6 @@ class Controller(QObject):
             self._on_hotkey_release,
             shortcut_id="dicto-record",
             description="Dicto: Record voice",
-        )
-
-    def update_edit_hotkey(self, modifiers: list[str], key: str):
-        self._update_hotkey_listener(
-            "edit_hotkey_listener",
-            modifiers,
-            key,
-            self._on_edit_hotkey_press,
-            self._on_edit_hotkey_release,
-            mode="hold",
-            suppress_key=True,
-            shortcut_id="dicto-edit",
-            description="Dicto: Edit selection",
         )
 
     # ── Transform ─────────────────────────────────────────────

@@ -108,7 +108,6 @@ class DictoApp:
         self.tray_manager = None
         self.overlay = None
         self.main_window = None
-        self._in_edit_flow = False
 
         self._init_components()
         self._connect_signals()
@@ -215,20 +214,11 @@ class DictoApp:
             self.overlay.waveform_recording.set_level,
             Qt.ConnectionType.QueuedConnection,
         )
-        self.controller.audio_level_changed.connect(
-            self.overlay.waveform_editing.set_level, Qt.ConnectionType.QueuedConnection
-        )
-
-        # Edit selection signals -> UI state updates
-        self.controller.edit_started.connect(self._on_edit_started)
-        self.controller.edit_completed.connect(self._on_edit_completed)
-        self.controller.edit_failed.connect(self._on_error)
 
         # Hotkey changes -> Controller
         self.main_window.recording_hotkey_changed.connect(
             self.controller.update_recording_hotkey
         )
-        self.main_window.edit_hotkey_changed.connect(self.controller.update_edit_hotkey)
 
         # Audio device / system audio -> Controller
         self.main_window.input_device_changed.connect(
@@ -263,12 +253,8 @@ class DictoApp:
         """Show recording state on overlay and main window."""
         assert self.overlay is not None
         assert self.main_window is not None
-        if self._in_edit_flow:
-            self.overlay.show_editing()
-            self.main_window.set_editing_state()
-        else:
-            self.overlay.show_recording()
-            self.main_window.set_recording_state()
+        self.overlay.show_recording()
+        self.main_window.set_recording_state()
 
     @Slot(AppState)
     def _on_state_changed(self, state: AppState):
@@ -325,7 +311,6 @@ class DictoApp:
         assert self.tray_manager is not None
         assert self.overlay is not None
 
-        self._in_edit_flow = False
         # Show error overlay
         short_message = (
             error_message[:30] + "..." if len(error_message) > 30 else error_message
@@ -337,26 +322,6 @@ class DictoApp:
 
         # Return to idle after overlay hides
         QTimer.singleShot(3000, self.controller.return_to_idle)
-
-    @Slot()
-    def _on_edit_started(self):
-        """Handle edit selection started."""
-        assert self.overlay is not None
-        assert self.main_window is not None
-        self._in_edit_flow = True
-        self.overlay.show_editing()
-
-    @Slot(str)
-    def _on_edit_completed(self, text: str):
-        """Handle edit selection completed."""
-        assert self.controller is not None
-        assert self.overlay is not None
-        assert self.tray_manager is not None
-
-        self._in_edit_flow = False
-        self.overlay.show_success()
-
-        QTimer.singleShot(1500, self.controller.return_to_idle)
 
     @Slot()
     def _on_hide_overlay_requested(self):
@@ -390,11 +355,7 @@ class DictoApp:
         logger.info(
             f"Hotkey: {'+'.join(self.settings.hotkey_modifiers).upper()} + {self.settings.hotkey_key.upper()}"
         )
-        logger.info(
-            f"Edit hotkey: {'+'.join(self.settings.edit_hotkey_modifiers).upper()} + {self.settings.edit_hotkey_key.upper()}"
-        )
         logger.info("Press the hotkey and speak, release to transcribe.")
-        logger.info("Select text and press edit hotkey to transform.")
         logger.info("Check system tray for status and options.")
         logger.info("=" * 60)
 

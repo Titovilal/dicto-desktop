@@ -4,7 +4,7 @@
 Provides the visual layer of Dicto: a settings/status window, a floating overlay for recording feedback, a system tray icon, a real-time waveform animation, and a startup splash screen. All built with PySide6 using a dark zinc-based theme.
 
 ## Main Files
-- `src/ui/main_window.py` - Main application window with settings panels, status display, and stacked pages (home, settings, models). Settings includes a "Report error" button that sends application logs to help diagnose issues, and an "Updates" section showing the current version with a "Check for updates" button that uses `src/services/updater.py` to find newer GitHub releases and (on the Linux `.deb` install) download + install them in place, then offer a restart. Update checks and installs run on background `QThread` workers so the UI stays responsive.
+- `src/ui/main_window.py` - Main application window with settings panels, status display, and stacked pages (home, settings, models). Settings includes a "Report error" section with a read-only log preview (a textarea showing the current console log buffer — exactly what will be uploaded; styled with a distinct darker `BG` background and border via the `LOG_VIEW` style so it stands apart from the surrounding settings content) and a "Send report" button that sends those application logs to help diagnose issues; the preview refreshes whenever the settings panel opens and just before sending, and an "Updates" section showing the current version with a "Check for updates" button that uses `src/services/updater.py` to find newer GitHub releases and (on the Linux `.deb` install) download + install them in place, then offer a restart. Update checks and installs run on background `QThread` workers so the UI stays responsive.
 - `src/ui/overlay.py` - Frameless floating overlay showing recording/processing/success state with a draggable card, settings popover, and record/stop button
 - `src/ui/tray.py` - System tray icon and context menu (show window, open config, quit)
 - `src/ui/waveform.py` - Animated waveform bar widget used by both the main window and the overlay
@@ -16,7 +16,7 @@ Provides the visual layer of Dicto: a settings/status window, a floating overlay
 
 ## Flow
 1. On startup, `SplashWindow` displays while the app initializes; once ready the main window and overlay are created
-2. The `MainWindow` lets users configure settings (API key, hotkeys, audio input device, overlay options, language) and includes a live microphone test button; a system-audio toggle sits in the footer next to the record button on the home page. The `TrayManager` provides quick access from the system tray. During processing/editing states the footer record button shows a spinning loader icon (animated via `_loader_timer` at 30 ms intervals, rotating the SVG pixmap 12° per tick)
+2. The `MainWindow` lets users configure settings (API key, hotkeys, audio input device, overlay options, language) and includes a live microphone test button; a system-audio toggle sits in the footer next to the record button on the home page. The `TrayManager` provides quick access from the system tray. During the processing state the footer record button shows a spinning loader icon (animated via `_loader_timer` at 30 ms intervals, rotating the SVG pixmap 12° per tick)
 3. During recording the overlay switches to its recording view with a live `WaveformWidget`, then shows processing and success/error states as the controller transitions
 
 ---

@@ -35,10 +35,8 @@ class TestInit:
         t = Transcriber(
             api_key="sk-dicto-test",
             transformation_model="gpt-4",
-            edition_model="claude-3",
         )
         assert t.transformation_model == "gpt-4"
-        assert t.edition_model == "claude-3"
 
 
 class TestTranscribeValidation:
@@ -174,24 +172,6 @@ class TestTransform:
 
         payload = mock_post.call_args.kwargs["json"]
         assert payload["transcriptionId"] == 99
-
-
-class TestEdit:
-    def test_success(self, transcriber, sample_audio_file):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "edited text"}}]
-        }
-
-        with patch.object(transcriber.client, "post", return_value=mock_response):
-            result = transcriber.edit("original text", sample_audio_file)
-
-        assert result == "edited text"
-
-    def test_file_not_found(self, transcriber):
-        with pytest.raises(TranscriptionError, match="not found"):
-            transcriber.edit("text", "/nonexistent.wav")
 
 
 class TestErrorParsing:

@@ -46,13 +46,3 @@ class TestHotkeyUpdate:
 
         initial_listener.stop.assert_called()
         assert ctrl.hotkey_listener is not initial_listener
-
-    def test_update_edit_hotkey_recreates_listener(self, controller, qtbot):
-        ctrl, MockHotkey = controller
-        ctrl.start()
-
-        initial_listener = ctrl.edit_hotkey_listener
-        ctrl.update_edit_hotkey(["ctrl", "shift"], "e")
-
-        initial_listener.stop.assert_called()
-        assert ctrl.edit_hotkey_listener is not initial_listener

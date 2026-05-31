@@ -13,11 +13,9 @@ from src.ui.main_window_styles import (
     DOT_RECORDING,
     DOT_PROCESSING,
     DOT_SUCCESS,
-    DOT_EDITING,
     RECORD_BUTTON_IDLE,
     RECORD_BUTTON_RECORDING,
     RECORD_BUTTON_PROCESSING,
-    RECORD_BUTTON_EDITING,
 )
 
 
@@ -51,11 +49,6 @@ class TestRecordButtonLabel:
         assert win.record_button.text() == t("processing_ellipsis")
         assert win.record_button.styleSheet() == RECORD_BUTTON_PROCESSING
 
-    def test_editing_shows_stop(self, win):
-        win.set_editing_state()
-        assert win.record_button.text() == t("stop")
-        assert win.record_button.styleSheet() == RECORD_BUTTON_EDITING
-
 
 class TestStatusDot:
     def test_idle_dot(self, win):
@@ -73,10 +66,6 @@ class TestStatusDot:
     def test_transcription_dot(self, win):
         win.update_transcription("hello")
         assert win.status_dot.styleSheet() == DOT_SUCCESS
-
-    def test_editing_dot(self, win):
-        win.set_editing_state()
-        assert win.status_dot.styleSheet() == DOT_EDITING
 
 
 class TestTabsEnableDisable:

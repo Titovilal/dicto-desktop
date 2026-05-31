@@ -139,7 +139,6 @@ DOT_IDLE = _dot(GREEN)
 DOT_RECORDING = _dot(RED)
 DOT_PROCESSING = _dot(AMBER)
 DOT_SUCCESS = _dot(GREEN)
-DOT_EDITING = _dot(BLUE)
 
 # ── Header Buttons ───────────────────────────────────────────
 
@@ -205,16 +204,23 @@ CONTENT_TEXT = f"""
     }}
 """
 
+# Log preview inside the settings page — distinct darker background so it
+# stands apart from the surrounding settings content.
+LOG_VIEW = f"""
+    QTextEdit {{
+        background-color: {BG}; border: 1px solid {BORDER}; border-radius: 6px;
+        color: {TEXT_DIM}; font-size: 12px; padding: 6px;
+    }}
+"""
+
 IDLE_TEXT = _label(TEXT_DIM, font_weight="normal")
 IDLE_TEXT_BOLD = _label(TEXT)
 
 RECORDING_LABEL = _label(RED)
 PROCESSING_LABEL = _label(AMBER)
-EDITING_LABEL = _label(BLUE)
 
 TIMER_RECORDING = _label("#f87171", font_weight="normal")
 TIMER_PROCESSING = _label(AMBER, font_weight="normal")
-TIMER_EDITING = _label(BLUE, font_weight="normal")
 
 # ── Footer Buttons ───────────────────────────────────────────
 
@@ -223,7 +229,6 @@ RECORD_BUTTON_IDLE = _btn(
 )
 RECORD_BUTTON_RECORDING = _btn(bg="#dc2626", color="white", hover_bg="#b91c1c")
 RECORD_BUTTON_PROCESSING = _btn(bg=AMBER, color=PRIMARY_FG)
-RECORD_BUTTON_EDITING = _btn(bg=BLUE, color=PRIMARY_FG)
 
 FOOTER_TEXT_BUTTON = _btn(
     color=TEXT_DIM, padding="6px 8px", hover_color=TEXT, font_weight="normal"

@@ -103,10 +103,7 @@ class Settings:
             "always_on_top": False,
             "persistent_overlay": False,
         },
-        "edit_hotkey": {"modifiers": ["ctrl", "alt"], "key": "space"},
-        "edit": {"auto_paste": True, "auto_enter": False},
         "transformation": {"model": "qwen/qwen3-32b"},
-        "edition": {"model": "qwen/qwen3-32b"},
         "ui_language": "es",
     }
 
@@ -206,27 +203,11 @@ class Settings:
     always_on_top: bool = _config_property("behavior", "always_on_top", False)
     persistent_overlay: bool = _config_property("behavior", "persistent_overlay", False)
 
-    # ── Edit hotkey settings ─────────────────────────────────
-
-    edit_hotkey_modifiers: List[str] = _config_property(
-        "edit_hotkey", "modifiers", ["ctrl", "alt"]
-    )
-    edit_hotkey_key: str = _config_property("edit_hotkey", "key", "space")
-
-    # ── Edit behavior settings ───────────────────────────────
-
-    edit_auto_paste: bool = _config_property("edit", "auto_paste", True)
-    edit_auto_enter: bool = _config_property("edit", "auto_enter", False)
-
     # ── Transformation model ──────────────────────────────────
 
     transformation_model: str = _config_property(
         "transformation", "model", "qwen/qwen3-32b"
     )
-
-    # ── Edition model ─────────────────────────────────────────
-
-    edition_model: str = _config_property("edition", "model", "qwen/qwen3-32b")
 
     # ── UI settings ──────────────────────────────────────────
 

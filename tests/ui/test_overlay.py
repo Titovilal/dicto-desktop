@@ -53,13 +53,6 @@ class TestOverlayStates:
         assert not overlay.icon_stack.isVisible()
         assert overlay._action_mode == "settings"
 
-    def test_show_editing(self, overlay):
-        overlay.show_editing()
-        assert overlay.current_state == "editing"
-        assert overlay.icon_stack.isVisible()
-        assert overlay.icon_stack.currentIndex() == 3
-        assert overlay._action_mode == "stop"
-
 
 class TestOverlayActionButton:
     def test_stop_button_emits_signal(self, overlay, qtbot):

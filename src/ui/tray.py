@@ -115,7 +115,6 @@ class TrayManager(QObject):
         status_icon_map = {
             "recording": "icon_red",
             "processing": "icon_amber",
-            "editing": "icon_amber",
             "success": "icon_green",
             "idle": "icon_green",
             "error": "icon_red",

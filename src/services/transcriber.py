@@ -4,7 +4,6 @@ Transcription and transformation service using the Dicto API.
 API Base: https://dicto.up.railway.app
 - POST /api/transcribe  — audio to text
 - POST /api/transform   — text transformation (format conversion)
-- POST /api/edit         — edit text using voice instructions (audio + text)
 """
 
 from __future__ import annotations
@@ -65,7 +64,6 @@ class Transcriber:
         language: str = "es",
         model: str = "v3-turbo",
         transformation_model: str = "qwen/qwen3-32b",
-        edition_model: str = "qwen/qwen3-32b",
     ):
         if not api_key:
             raise APIKeyError("Dicto API key is required")
@@ -74,7 +72,6 @@ class Transcriber:
         self.language = language if language != "auto" else "es"
         self.model = model
         self.transformation_model = transformation_model
-        self.edition_model = edition_model
         self.client = httpx.Client(timeout=30.0)
         self._last_transcription_id: int | None = None
 
@@ -232,71 +229,6 @@ class Transcriber:
             raise
         except Exception as e:
             raise TranscriptionError(f"Unexpected error during transform: {e}")
-
-    # ── Edit ─────────────────────────────────────────────────
-
-    def edit(self, text: str, audio_file_path: str) -> str:
-        """
-        Edit text using voice instructions via the /api/edit endpoint.
-
-        Args:
-            text: The selected text to edit
-            audio_file_path: Path to audio file with voice instructions
-
-        Returns:
-            Edited text
-        """
-        audio_path = Path(audio_file_path)
-        if not audio_path.exists():
-            raise TranscriptionError(f"Audio file not found: {audio_file_path}")
-
-        try:
-            headers = {"Authorization": f"Bearer {self.api_key}"}
-
-            suffix = audio_path.suffix.lower()
-            mime_types = {
-                ".wav": "audio/wav",
-                ".mp3": "audio/mpeg",
-                ".webm": "audio/webm",
-                ".m4a": "audio/m4a",
-                ".ogg": "audio/ogg",
-            }
-            mime = mime_types.get(suffix, "audio/wav")
-
-            data = {
-                "text": text,
-                "source": "mic_app",
-                "edition_model": self.edition_model,
-            }
-
-            with open(audio_path, "rb") as audio_file:
-                files = {"audio": (audio_path.name, audio_file, mime)}
-                response = self.client.post(
-                    f"{BASE_URL}/api/edit",
-                    headers=headers,
-                    files=files,
-                    data=data,
-                )
-
-            if response.status_code == 200:
-                result = response.json()
-                choices = result.get("choices", [])
-                if choices:
-                    content = choices[0].get("message", {}).get("content", "")
-                    if content:
-                        return content.strip()
-                raise TranscriptionError("Edit API returned empty result")
-
-            self._handle_error_response(response)
-
-        except httpx.TimeoutException:
-            raise TranscriptionError("Edit request timeout")
-        except httpx.RequestError as e:
-            raise TranscriptionError(f"Network error: {e}")
-        except TranscriptionError:
-            raise
-        except Exception as e:
-            raise TranscriptionError(f"Unexpected error during edit: {e}")
 
     # ── Presets ─────────────────────────────────────────────
 
