@@ -47,36 +47,36 @@ jobs:
             echo "should_release=false" >> $GITHUB_OUTPUT
           fi
 
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-
-      - name: Build with PyInstaller (onedir)
-        run: |
-          pyinstaller --name "Dicto" --onedir --windowed --noconfirm --copy-metadata dicto --add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" --icon "assets/icons/icon.ico" src/main.py
-
-      - name: Build installer with Inno Setup
-        run: |
-          $version = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matches.Groups[1].Value
-          (Get-Content installer.iss) -replace '#define MyAppVersion ".*"', "#define MyAppVersion `"$version`"" | Set-Content installer.iss
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
-
-      - name: Upload installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: dicto-windows-installer
-          path: dist/Dicto-*-setup.exe
+  # build-windows:
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: '3.11'
+  #
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -e ".[dev]"
+  #
+  #     - name: Build with PyInstaller (onedir)
+  #       run: |
+  #         pyinstaller --name "Dicto" --onedir --windowed --noconfirm --copy-metadata dicto --add-data "assets;assets" --add-data "src/ui/assets;src/ui/assets" --icon "assets/icons/icon.ico" src/main.py
+  #
+  #     - name: Build installer with Inno Setup
+  #       run: |
+  #         $version = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matches.Groups[1].Value
+  #         (Get-Content installer.iss) -replace '#define MyAppVersion ".*"', "#define MyAppVersion `"$version`"" | Set-Content installer.iss
+  #         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+  #
+  #     - name: Upload installer
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: dicto-windows-installer
+  #         path: dist/Dicto-*-setup.exe
 
   build-linux:
     runs-on: ubuntu-latest
@@ -118,7 +118,7 @@ jobs:
             dist/dicto_*.deb
 
   release:
-    needs: [version, build-windows, build-linux]
+    needs: [version, build-linux]
     runs-on: ubuntu-latest
     if: needs.version.outputs.should_release == 'true' || startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -126,12 +126,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download Windows installer
-        uses: actions/download-artifact@v4
-        with:
-          name: dicto-windows-installer
-          path: dist/
 
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
@@ -145,7 +139,6 @@ jobs:
           tag_name: v${{ needs.version.outputs.version }}
           name: v${{ needs.version.outputs.version }}
           files: |
-            dist/Dicto-*-setup.exe
             dist/dicto-linux-amd64.tar.gz
             dist/dicto_*.deb
           generate_release_notes: true
