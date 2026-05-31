@@ -82,7 +82,9 @@ class MainWindow(BuildMixin, StateMixin, SettingsMixin, UpdatesMixin, QMainWindo
         self._copied = False
         self._settings_open = False
         self._models_open = False
-        self._format_cache: dict[str, str] = {}  # format_id -> transformed text (LRU, max 30)
+        self._format_cache: dict[
+            str, str
+        ] = {}  # format_id -> transformed text (LRU, max 30)
         self._transforming_format: str | None = None
         self._user_presets: list[dict] = []  # [{id, name, instructions}]
         self.controller = None  # set externally after init

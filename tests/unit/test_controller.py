@@ -192,9 +192,7 @@ class TestTransform:
         with qtbot.waitSignal(controller.transform_completed, timeout=1000) as blocker:
             controller.request_transform("formal", "hello", "make formal")
         assert blocker.args == ["formal", "Hello, good day."]
-        controller.transcriber.transform.assert_called_once_with(
-            "hello", "make formal"
-        )
+        controller.transcriber.transform.assert_called_once_with("hello", "make formal")
 
     def test_transform_error(self, controller, qtbot):
         controller.transcriber.transform.side_effect = Exception("API error")

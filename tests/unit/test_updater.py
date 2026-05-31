@@ -58,7 +58,9 @@ def _release_response(tag, with_deb=True):
 
 class TestCheckForUpdate:
     def test_newer_release_is_available(self):
-        with patch.object(updater.httpx, "get", return_value=_release_response("v99.0.0")):
+        with patch.object(
+            updater.httpx, "get", return_value=_release_response("v99.0.0")
+        ):
             info = updater.check_for_update()
         assert info.available is True
         assert info.latest_version == "99.0.0"

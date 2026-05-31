@@ -172,8 +172,12 @@ class TestGetModels:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "transcription": [{"id": "v3-turbo", "name": "Whisper V3 Turbo", "default": True}],
-            "transformation": [{"id": "qwen/qwen3-32b", "name": "Qwen3 32B", "default": True}],
+            "transcription": [
+                {"id": "v3-turbo", "name": "Whisper V3 Turbo", "default": True}
+            ],
+            "transformation": [
+                {"id": "qwen/qwen3-32b", "name": "Qwen3 32B", "default": True}
+            ],
         }
 
         with patch.object(transcriber.client, "get", return_value=mock_response):

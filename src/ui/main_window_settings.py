@@ -261,7 +261,8 @@ class SettingsMixin:
             self.include_system_audio_checkbox.setStyleSheet(HEADER_BUTTON)
         else:
             self.include_system_audio_checkbox.setStyleSheet(
-                HEADER_BUTTON + f"QPushButton {{ color: {TEXT_DIM}; text-decoration: line-through; }}"
+                HEADER_BUTTON
+                + f"QPushButton {{ color: {TEXT_DIM}; text-decoration: line-through; }}"
             )
 
     def _update_always_on_top_icon(self, checked: bool):
@@ -388,9 +389,7 @@ class SettingsMixin:
         self.persistent_overlay_checkbox.setText(t("persistent_overlay"))
         self.save_api_key_button.setText(t("save_key"))
         if sys.platform == "darwin":
-            self.include_system_audio_checkbox.setToolTip(
-                t("system_audio_unsupported")
-            )
+            self.include_system_audio_checkbox.setToolTip(t("system_audio_unsupported"))
         else:
             self.include_system_audio_checkbox.setToolTip(t("include_system_audio"))
         if self._audio_monitor and self._audio_monitor.is_running:
@@ -405,9 +404,7 @@ class SettingsMixin:
         self._report_desc_label.setText(t("report_error_description"))
 
         # Updates section
-        self.current_version_label.setText(
-            t("current_version", version=get_version())
-        )
+        self.current_version_label.setText(t("current_version", version=get_version()))
         self.check_updates_button.setText(t("check_for_updates"))
 
         # Section labels

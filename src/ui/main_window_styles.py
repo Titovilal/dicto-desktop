@@ -182,8 +182,8 @@ TAB_BUTTON_ACTIVE = f"""
     }}
 """
 
-TAB_BUTTON_DISABLED = f"""
-    QPushButton {{
+TAB_BUTTON_DISABLED = """
+    QPushButton {
         background-color: transparent;
         border: none;
         border-bottom: 2px solid transparent;
@@ -192,7 +192,7 @@ TAB_BUTTON_DISABLED = f"""
         font-size: 13px;
         font-weight: 500;
         padding: 6px 12px 4px 12px;
-    }}
+    }
 """
 
 # ── Content ──────────────────────────────────────────────────
