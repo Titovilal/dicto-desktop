@@ -6,7 +6,10 @@ from unittest.mock import patch
 
 from src.services.hotkey import HotkeyListener
 
+from tests.conftest import requires_pynput
 
+
+@requires_pynput
 class TestHotkeyPlatformFilter:
     """win32_event_filter should only be passed on Windows."""
 

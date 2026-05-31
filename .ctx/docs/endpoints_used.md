@@ -43,7 +43,7 @@ All Dicto endpoints share the same auth and the same error mapping (see
 - **Body (JSON):**
   - `messages`: chat array (optional `system` instructions + `user` text)
   - `model`: the transformation model (default `qwen/qwen3-32b`)
-  - `transcription_id`: optional, links the transform to a prior transcription
+  - `transcriptionId`: optional, links the transform to a prior transcription
 - **Success (200):** JSON `{ choices: [{ message: { content } }] }`. Missing/empty
   content → `TranscriptionError("Transform API returned empty result")`.
 - **Retries:** none (single attempt).

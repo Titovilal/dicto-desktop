@@ -50,14 +50,13 @@ class TestWaveformModes:
 
 class TestSetLevel:
     def test_set_level_scrolls_bars(self, waveform):
-        waveform.start()
-        waveform.bar_heights = [0.0] * waveform.bar_count
+        waveform.start()  # resets bar_heights to a deque(maxlen=bar_count) of zeros
         waveform.set_level(0.8)
         assert waveform.bar_heights[-1] == 0.8
         assert len(waveform.bar_heights) == waveform.bar_count
 
     def test_multiple_levels(self, waveform):
-        waveform.bar_heights = [0.0] * waveform.bar_count
+        waveform.start()
         waveform.set_level(0.5)
         waveform.set_level(0.9)
         assert waveform.bar_heights[-1] == 0.9

@@ -40,13 +40,17 @@ class TestRecordButtonLabel:
         assert win.record_button.styleSheet() == RECORD_BUTTON_IDLE
 
     def test_recording_shows_stop(self, win):
+        # While recording the button shows a stop icon (no text).
         win.set_recording_state()
-        assert win.record_button.text() == t("stop")
+        assert win.record_button.text() == ""
+        assert not win.record_button.icon().isNull()
         assert win.record_button.styleSheet() == RECORD_BUTTON_RECORDING
 
     def test_processing_shows_processing(self, win):
+        # While processing the button shows a loader icon (no text).
         win.set_processing_state()
-        assert win.record_button.text() == t("processing_ellipsis")
+        assert win.record_button.text() == ""
+        assert not win.record_button.icon().isNull()
         assert win.record_button.styleSheet() == RECORD_BUTTON_PROCESSING
 
 

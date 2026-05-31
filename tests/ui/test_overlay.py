@@ -56,9 +56,10 @@ class TestOverlayStates:
 
 class TestOverlayActionButton:
     def test_stop_button_emits_signal(self, overlay, qtbot):
+        # While recording, the record button acts as a stop button.
         overlay.show_recording()
         with qtbot.waitSignal(overlay.stop_requested, timeout=1000):
-            overlay.action_btn.click()
+            overlay.record_btn.click()
 
     def test_settings_button_shows_popover(self, overlay):
         overlay.show_idle()
@@ -66,10 +67,11 @@ class TestOverlayActionButton:
         overlay.action_btn.click()
         assert overlay._popover.isVisible()
 
-    def test_popover_record_emits_signal(self, overlay, qtbot):
-        overlay.show()
+    def test_record_button_emits_signal(self, overlay, qtbot):
+        # In idle (settings) mode, the record button starts recording.
+        overlay.show_idle()
         with qtbot.waitSignal(overlay.record_requested, timeout=1000):
-            overlay._popover.record_btn.click()
+            overlay.record_btn.click()
 
 
 class TestOverlayPersistent:

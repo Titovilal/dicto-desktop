@@ -4,7 +4,18 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from src.services.hotkey import HotkeyListener
+
+from tests.conftest import PYNPUT_AVAILABLE
+
+# The whole module exercises the pynput-based listener, which needs a real
+# input backend (X/Win/macOS). Skip on headless/Wayland environments.
+pytestmark = pytest.mark.skipif(
+    not PYNPUT_AVAILABLE,
+    reason="pynput keyboard backend unavailable (headless/Wayland environment)",
+)
 
 
 class TestKeyParsing:
