@@ -34,6 +34,24 @@ class TestReportWidgets:
     def test_send_button_label(self, win):
         assert win.send_report_button.text() == t("send_report")
 
+    def test_copy_logs_button_exists(self, win):
+        assert hasattr(win, "copy_logs_button")
+        assert win.copy_logs_button.text() == t("copy_logs")
+
+
+class TestCopyLogs:
+    def test_copy_logs_puts_buffer_on_clipboard(self, win):
+        import logging
+        from src.utils.logger import setup_logging
+        from PySide6.QtWidgets import QApplication
+
+        setup_logging()
+        logging.getLogger("test.copy").info("copy me to clipboard")
+        win._copy_logs()
+        assert "copy me to clipboard" in QApplication.clipboard().text()
+        assert win.report_status_label.text() == t("logs_copied")
+        assert not win.report_status_label.isHidden()
+
     def test_report_lives_in_settings_page(self, win):
         # Opening settings shows the page that contains the report section
         win._toggle_settings()
@@ -83,7 +101,9 @@ class TestSendReport:
     def test_send_report_network_error(self, win, monkeypatch):
         import httpx
 
-        monkeypatch.setattr(httpx, "post", MagicMock(side_effect=Exception("network error")))
+        monkeypatch.setattr(
+            httpx, "post", MagicMock(side_effect=Exception("network error"))
+        )
 
         win._toggle_settings()
         win._send_report()

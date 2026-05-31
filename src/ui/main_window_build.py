@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QStackedWidget,
     QCheckBox,
     QComboBox,
+    QListView,
     QTextEdit,
     QLineEdit,
     QScrollArea,
@@ -34,7 +35,10 @@ from src.i18n import t
 from src.i18n.translations import UI_LANGUAGES
 from src.ui.waveform import WaveformWidget
 from src.ui.widgets.hotkey_button import HotkeyButton
-from src.ui.widgets.icon_utils import make_icon as _make_icon, get_provider_svg_for_model as _get_provider_svg_for_model
+from src.ui.widgets.icon_utils import (
+    make_icon as _make_icon,
+    get_provider_svg_for_model as _get_provider_svg_for_model,
+)
 from src.ui.main_window_styles import (
     GLOBAL_STYLE,
     DOT_IDLE,
@@ -378,21 +382,51 @@ class BuildMixin:
         layout.addWidget(cb)
         return cb
 
-    def _add_combo(self, layout, items: dict, callback, with_provider_icons: bool = False) -> QComboBox:
+    def _make_combo(self) -> QComboBox:
+        """Create a QComboBox whose drop-down is a styleable QListView.
+
+        Forcing an explicit QListView view makes the popup a Qt widget that
+        inherits the dark stylesheet (`QComboBox QListView`), instead of the
+        platform-native popup which renders unstyled (white background, on
+        Wayland in particular).
+        """
+        combo = QComboBox()
+        view = QListView()
+        # Style the view (and its popup container) directly. Relying only on the
+        # descendant selector `QComboBox QListView` leaves the popup frame's
+        # viewport unstyled — a white band above/below the items, visible on
+        # Wayland. Styling the view itself covers its viewport too.
+        view.setStyleSheet(
+            f"QListView {{ background-color: {MUTED}; border: 1px solid {BORDER}; "
+            f"outline: none; }}"
+        )
+        combo.setView(view)
+        # The popup lives in a QFrame container parented to the view; give it the
+        # same dark background so no white frame shows around the list.
+        container = view.parentWidget()
+        if container is not None:
+            container.setStyleSheet(f"background-color: {MUTED};")
+        combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        setattr(combo, "wheelEvent", lambda e: e.ignore())
+        return combo
+
+    def _add_combo(
+        self, layout, items: dict, callback, with_provider_icons: bool = False
+    ) -> QComboBox:
         """Create a combo box with items, connect its signal, add to layout, and return it.
 
         If ``with_provider_icons`` is True, a small provider logo is shown next to
         each item using the model key to detect the provider automatically.
         """
-        combo = QComboBox()
-        combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        setattr(combo, "wheelEvent", lambda e: e.ignore())
+        combo = self._make_combo()
         for value, label in items.items():
             if with_provider_icons:
                 provider_svg = _get_provider_svg_for_model(value)
                 if provider_svg:
                     # Simple Icons SVGs don't use currentColor — inject fill directly
-                    colored_svg = provider_svg.replace("<svg ", f'<svg fill="{TEXT}" ', 1)
+                    colored_svg = provider_svg.replace(
+                        "<svg ", f'<svg fill="{TEXT}" ', 1
+                    )
                     icon = _make_icon(colored_svg, 14, TEXT)
                     combo.addItem(icon, label, value)
                     continue
@@ -540,14 +574,12 @@ class BuildMixin:
 
         # Audio input
         self._add_section(layout, "audio_input")
-        self.input_device_combo = QComboBox()
-        self.input_device_combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.input_device_combo = self._make_combo()
         # Prevent long device names from expanding the combo (and the whole page) beyond the window width.
         self.input_device_combo.setSizeAdjustPolicy(
             QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
         )
         self.input_device_combo.setMinimumContentsLength(10)
-        setattr(self.input_device_combo, "wheelEvent", lambda e: e.ignore())
         self.input_device_combo.currentIndexChanged.connect(
             self._on_input_device_changed
         )
@@ -603,12 +635,24 @@ class BuildMixin:
         layout.addWidget(self.report_log_view)
         layout.addSpacing(8)
 
+        report_buttons_row = QHBoxLayout()
+        report_buttons_row.setSpacing(8)
+
+        self.copy_logs_button = QPushButton(t("copy_logs"))
+        self.copy_logs_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.copy_logs_button.setFixedHeight(32)
+        self.copy_logs_button.setStyleSheet(FLAT_BUTTON)
+        self.copy_logs_button.clicked.connect(self._copy_logs)
+        report_buttons_row.addWidget(self.copy_logs_button)
+
         self.send_report_button = QPushButton(t("send_report"))
         self.send_report_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.send_report_button.setFixedHeight(32)
         self.send_report_button.setStyleSheet(FLAT_BUTTON)
         self.send_report_button.clicked.connect(self._send_report)
-        layout.addWidget(self.send_report_button)
+        report_buttons_row.addWidget(self.send_report_button)
+
+        layout.addLayout(report_buttons_row)
         self.report_status_label = QLabel("")
         self.report_status_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
         self.report_status_label.hide()
@@ -626,12 +670,8 @@ class BuildMixin:
 
         self._add_section(layout, "updates")
 
-        self.current_version_label = QLabel(
-            t("current_version", version=get_version())
-        )
-        self.current_version_label.setStyleSheet(
-            f"color: {TEXT_DIM}; font-size: 12px;"
-        )
+        self.current_version_label = QLabel(t("current_version", version=get_version()))
+        self.current_version_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 12px;")
         layout.addWidget(self.current_version_label)
         layout.addSpacing(8)
 
@@ -770,9 +810,7 @@ class BuildMixin:
         )
         if sys.platform == "darwin":
             self.include_system_audio_checkbox.setEnabled(False)
-            self.include_system_audio_checkbox.setToolTip(
-                t("system_audio_unsupported")
-            )
+            self.include_system_audio_checkbox.setToolTip(t("system_audio_unsupported"))
         self._update_include_system_audio_icon(False)
         layout.addWidget(self.include_system_audio_checkbox)
 

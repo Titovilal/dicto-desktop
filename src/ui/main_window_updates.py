@@ -30,6 +30,18 @@ class UpdatesMixin:
         sb = self.report_log_view.verticalScrollBar()
         sb.setValue(sb.maximum())
 
+    def _copy_logs(self):
+        """Copy the current console log buffer to the clipboard."""
+        from PySide6.QtWidgets import QApplication
+        from src.utils.logger import get_log_buffer
+
+        logs = "\n".join(get_log_buffer())
+        self.report_log_view.setPlainText(logs)
+        QApplication.clipboard().setText(logs)
+        self.report_status_label.setText(t("logs_copied"))
+        self.report_status_label.setStyleSheet("color: #4ade80; font-size: 11px;")
+        self.report_status_label.show()
+
     def _send_report(self):
         import httpx
         from src.utils.logger import get_log_buffer
@@ -41,7 +53,10 @@ class UpdatesMixin:
 
         try:
             api_key = self.settings.transcription_api_key if self.settings else ""
-            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
             response = httpx.post(
                 routes.report(),
                 headers=headers,
@@ -50,10 +65,14 @@ class UpdatesMixin:
             )
             if response.status_code in (200, 201):
                 self.report_status_label.setText(t("report_sent"))
-                self.report_status_label.setStyleSheet("color: #4ade80; font-size: 11px;")
+                self.report_status_label.setStyleSheet(
+                    "color: #4ade80; font-size: 11px;"
+                )
             else:
                 self.report_status_label.setText(t("report_send_failed"))
-                self.report_status_label.setStyleSheet(f"color: {RED}; font-size: 11px;")
+                self.report_status_label.setStyleSheet(
+                    f"color: {RED}; font-size: 11px;"
+                )
         except Exception:
             self.report_status_label.setText(t("report_send_failed"))
             self.report_status_label.setStyleSheet(f"color: {RED}; font-size: 11px;")
