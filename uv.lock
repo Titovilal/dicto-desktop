@@ -386,7 +386,7 @@ toml = [
 
 [[package]]
 name = "dicto"
-version = "2.6.0"
+version = "2.6.2"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

@@ -7,7 +7,7 @@ Defines the application entry point, central state machine, and configuration sy
 - `src/main.py` - Entry point; creates the Qt app, initializes all components, and wires signals between controller, UI, and tray (`DictoApp` class)
 - `src/controller.py` - Central orchestrator (`Controller`); owns the state machine (idle → recording → processing → success/error), manages hotkey callbacks, and delegates work to services via a background thread pool
 - `src/config/settings.py` - Loads and merges configuration from `config.yaml` and environment variables into a `Settings` object with typed properties
-- `config.yaml` - User-editable configuration file (API key, hotkeys, overlay, audio, behavior, language)
+- `config.yaml` - User-editable configuration file (API key, hotkeys, overlay, audio, behavior, language). When running from source it lives in the project root; when running as an installed (frozen) app the executable directory is read-only, so it is stored per-user in `~/.config/dicto/` (Linux/macOS) or `%APPDATA%\dicto\` (Windows). On first run a `config.yaml` left next to the executable by older builds is migrated to the per-user location.
 - `src/utils/logger.py` - Logging setup used across the application
 - `src/utils/icons.py` - Resolves the application icon path for taskbar and windows
 - `src/i18n/translations.py` - Multi-language UI string translations

@@ -26,6 +26,31 @@ def get_app_dir() -> Path:
         return Path(__file__).parent.parent.parent
 
 
+def get_config_dir() -> Path:
+    """Directory where the writable config.yaml lives.
+
+    When running as an installed (frozen) app, the executable directory is
+    typically read-only (e.g. /opt/dicto on Linux, Program Files on Windows),
+    so we use a per-user config directory instead:
+      - Windows:        %APPDATA%\\dicto
+      - Linux/macOS:    $XDG_CONFIG_HOME/dicto  (default ~/.config/dicto)
+    When running from source (dev), keep the config next to the project root
+    so local development is unaffected.
+    """
+    if not getattr(sys, "frozen", False):
+        return get_app_dir()
+
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+        config_dir = Path(base) / "dicto"
+    else:
+        base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+        config_dir = Path(base) / "dicto"
+
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir
+
+
 def _config_property(section: str, key: str, default=None):
     """Create a property that reads/writes from a nested config dict.
 
@@ -90,11 +115,32 @@ class Settings:
 
     def __init__(self, config_path: str | None = None):
         if config_path is None:
-            self.config_path = get_app_dir() / "config.yaml"
+            self.config_path = get_config_dir() / "config.yaml"
+            self._migrate_legacy_config()
         else:
             self.config_path = Path(config_path)
         self.config = self._load_config()
         self._apply_env_overrides()
+
+    def _migrate_legacy_config(self) -> None:
+        """Migrate a config.yaml that older builds wrote next to the executable.
+
+        Frozen builds used to store config.yaml in the (often read-only)
+        executable directory. If one exists there and the new per-user config
+        doesn't, copy it over so users keep their API key after upgrading.
+        """
+        if self.config_path.exists():
+            return
+        legacy_path = get_app_dir() / "config.yaml"
+        if legacy_path == self.config_path or not legacy_path.exists():
+            return
+        try:
+            self.config_path.write_text(
+                legacy_path.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            logger.info(f"Migrated config from {legacy_path} to {self.config_path}")
+        except Exception as e:
+            logger.warning(f"Failed to migrate legacy config: {e}")
 
     def _load_config(self) -> Dict[str, Any]:
         if self.config_path.exists():
@@ -188,13 +234,16 @@ class Settings:
 
     # ── Persistence ──────────────────────────────────────────
 
-    def save(self) -> None:
+    def save(self) -> bool:
         try:
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.config_path, "w", encoding="utf-8") as f:
                 yaml.dump(self.config, f, default_flow_style=False)
             logger.info(f"Configuration saved to {self.config_path}")
+            return True
         except Exception as e:
-            logger.error(f"Error saving configuration: {e}")
+            logger.error(f"Error saving configuration to {self.config_path}: {e}")
+            return False
 
     def create_default_config(self) -> None:
         if not self.config_path.exists():
