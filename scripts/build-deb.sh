@@ -35,6 +35,7 @@ if [[ "${SKIP_PYINSTALLER:-0}" != "1" ]]; then
   uv run pyinstaller --name "dicto" --onedir --windowed --noconfirm \
     --copy-metadata dicto \
     --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" \
+    --hidden-import dbus_next \
     src/main.py
 fi
 
