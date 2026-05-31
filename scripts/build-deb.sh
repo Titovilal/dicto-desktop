@@ -36,6 +36,8 @@ if [[ "${SKIP_PYINSTALLER:-0}" != "1" ]]; then
     --copy-metadata dicto \
     --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" \
     --hidden-import dbus_next \
+    --hidden-import pynput.keyboard --hidden-import pynput.mouse \
+    --hidden-import pynput.keyboard._xorg --hidden-import pynput.mouse._xorg \
     src/main.py
 fi
 
@@ -81,7 +83,7 @@ Priority: optional
 Architecture: $ARCH
 Maintainer: $MAINTAINER
 Installed-Size: $INSTALLED_KB
-Depends: libgl1, libegl1, libxkbcommon0, libfontconfig1, libportaudio2, libasound2, libpulse0
+Depends: libgl1, libegl1, libxkbcommon0, libxkbcommon-x11-0, libfontconfig1, libportaudio2, libasound2, libpulse0, libxcb-cursor0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-render-util0, libxcb-shape0, libxcb-util1, libxcb-xkb1
 Description: $DESC
  Dicto records voice via a global hotkey, transcribes it through the Dicto
  API and pastes the result into the focused application.
