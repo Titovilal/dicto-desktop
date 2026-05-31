@@ -1,9 +1,8 @@
 """
 Transcription and transformation service using the Dicto API.
 
-API Base: https://dicto.up.railway.app
-- POST /api/transcribe  — audio to text
-- POST /api/transform   — text transformation (format conversion)
+All endpoint URLs come from `src.services.routes` (see that module for the
+base URL and paths). This service wraps transcribe, transform and presets.
 """
 
 from __future__ import annotations
@@ -13,13 +12,11 @@ from typing import NoReturn
 import time
 from pathlib import Path
 
-import os
-
 import httpx
 
-logger = logging.getLogger(__name__)
+from src.services import routes
 
-BASE_URL = os.environ.get("DICTO_API_URL", "https://dicto.up.railway.app")
+logger = logging.getLogger(__name__)
 
 
 class TranscriptionError(Exception):
@@ -69,15 +66,10 @@ class Transcriber:
             raise APIKeyError("Dicto API key is required")
 
         self.api_key = api_key
-        self.language = language if language != "auto" else "es"
+        self.language = language
         self.model = model
         self.transformation_model = transformation_model
         self.client = httpx.Client(timeout=30.0)
-        self._last_transcription_id: int | None = None
-
-    @property
-    def last_transcription_id(self) -> int | None:
-        return self._last_transcription_id
 
     # ── Transcribe ──────────────────────────────────────────
 
@@ -142,7 +134,7 @@ class Transcriber:
             with open(audio_path, "rb") as audio_file:
                 files = {"file": (audio_path.name, audio_file, mime)}
                 response = self.client.post(
-                    f"{BASE_URL}/api/transcribe",
+                    routes.transcribe(),
                     headers=headers,
                     files=files,
                     data=data,
@@ -153,10 +145,7 @@ class Transcriber:
                 text = result.get("text", "")
                 if not text:
                     raise TranscriptionError("API returned empty transcription")
-                self._last_transcription_id = result.get("id")
-                logger.info(
-                    f"Transcription OK (id={self._last_transcription_id}, lang={result.get('language')}, duration={result.get('duration')}s)"
-                )
+                logger.info("Transcription OK")
                 return text.strip()
 
             self._handle_error_response(response)
@@ -172,16 +161,13 @@ class Transcriber:
 
     # ── Transform ───────────────────────────────────────────
 
-    def transform(
-        self, text: str, instructions: str, transcription_id: int | None = None
-    ) -> str:
+    def transform(self, text: str, instructions: str) -> str:
         """
-        Transform text using the Dicto /api/transform endpoint (Dicto format).
+        Transform text using the Dicto /api/v1/transform endpoint (Dicto format).
 
         Args:
             text: The text to transform
             instructions: System prompt / instructions for transformation
-            transcription_id: Optional transcription ID to link the result
 
         Returns:
             Transformed text
@@ -192,31 +178,23 @@ class Transcriber:
                 "Content-Type": "application/json",
             }
 
-            messages = []
-            if instructions:
-                messages.append({"role": "system", "content": instructions})
-            messages.append({"role": "user", "content": text})
-
             payload: dict = {
-                "messages": messages,
+                "text": text,
+                "instructions": instructions,
                 "model": self.transformation_model,
             }
-            if transcription_id is not None:
-                payload["transcriptionId"] = transcription_id
 
             response = self.client.post(
-                f"{BASE_URL}/api/transform",
+                routes.transform(),
                 headers=headers,
                 json=payload,
             )
 
             if response.status_code == 200:
                 result = response.json()
-                choices = result.get("choices", [])
-                if choices:
-                    content = choices[0].get("message", {}).get("content", "")
-                    if content:
-                        return content.strip()
+                content = result.get("text", "")
+                if content:
+                    return content.strip()
                 raise TranscriptionError("Transform API returned empty result")
 
             self._handle_error_response(response)
@@ -236,12 +214,12 @@ class Transcriber:
         """Fetch the user's favorite presets from the API.
 
         Returns:
-            List of dicts with keys: id, name, instructions
+            List of dicts with keys: name, instructions
         """
         try:
             headers = {"Authorization": f"Bearer {self.api_key}"}
             response = self.client.get(
-                f"{BASE_URL}/api/presets",
+                routes.presets(),
                 headers=headers,
             )
             if response.status_code == 200:
@@ -269,15 +247,14 @@ class Transcriber:
     @staticmethod
     def _parse_error_message(response: httpx.Response) -> str:
         try:
-            error_data = response.json()
-            if "error" in error_data:
-                err = error_data["error"]
-                if isinstance(err, dict):
-                    return err.get("message", str(err))
-                return str(err)
-            return response.text[:200]
+            # Normalized error shape: { "error": { "message": "…" } }
+            message = response.json().get("error", {}).get("message")
+            if message:
+                return message
         except Exception:
-            return response.text[:200]
+            pass
+        # Fallback for non-JSON / unexpected bodies (e.g. proxy/gateway errors)
+        return response.text[:200]
 
     def close(self):
         if getattr(self, "client", None):

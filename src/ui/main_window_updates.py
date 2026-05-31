@@ -7,12 +7,11 @@ here too. Mixed into `MainWindow`.
 
 from __future__ import annotations
 
-import os
-
 from PySide6.QtCore import Signal, Slot, QUrl, QThread
 from PySide6.QtGui import QDesktopServices
 
 from src.i18n import t
+from src.services import routes
 from src.ui.main_window_styles import TEXT_DIM, RED
 
 
@@ -43,9 +42,8 @@ class UpdatesMixin:
         try:
             api_key = self.settings.transcription_api_key if self.settings else ""
             headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-            base_url = os.environ.get("DICTO_API_URL", "https://dicto.up.railway.app")
             response = httpx.post(
-                f"{base_url}/api/report",
+                routes.report(),
                 headers=headers,
                 json={"logs": logs, "source": "desktop_app"},
                 timeout=15.0,

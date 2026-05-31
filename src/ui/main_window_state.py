@@ -141,7 +141,7 @@ class StateMixin:
         # Build format list: Original + user presets
         formats: list[tuple[str, str]] = [("raw", t("tab_original"))]
         for p in self._user_presets:
-            formats.append((f"preset_{p['id']}", p["name"]))
+            formats.append((f"preset_{p['name']}", p["name"]))
 
         has_text = bool(self.last_transcription)
         for idx, (fid, label) in enumerate(formats):

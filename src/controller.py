@@ -385,14 +385,10 @@ class Controller(QObject):
             self.transform_failed.emit(format_id, "Transcriber not initialized")
             return
 
-        transcription_id = self.transcriber.last_transcription_id
-
         def _do_transform():
             try:
                 assert self.transcriber is not None
-                result = self.transcriber.transform(
-                    text, instructions, transcription_id
-                )
+                result = self.transcriber.transform(text, instructions)
                 self.transform_completed.emit(format_id, result)
             except Exception as e:
                 self.transform_failed.emit(format_id, str(e))

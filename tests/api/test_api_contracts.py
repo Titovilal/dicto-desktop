@@ -6,7 +6,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from src.services.transcriber import Transcriber, BASE_URL
+from src.services import routes
+from src.services.transcriber import Transcriber
 
 
 @pytest.fixture
@@ -20,12 +21,12 @@ def transcriber():
 
 
 class TestTranscribeContract:
-    """Verify the request sent to POST /api/transcribe."""
+    """Verify the request sent to POST /api/v1/transcribe."""
 
     def test_request_format(self, transcriber, sample_audio_file):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"text": "hello", "id": 1}
+        mock_response.json.return_value = {"text": "hello"}
 
         with patch.object(
             transcriber.client, "post", return_value=mock_response
@@ -36,7 +37,7 @@ class TestTranscribeContract:
         call_kwargs = mock_post.call_args
 
         # URL
-        assert call_kwargs.args[0] == f"{BASE_URL}/api/transcribe"
+        assert call_kwargs.args[0] == routes.transcribe()
 
         # Auth header
         assert call_kwargs.kwargs["headers"]["Authorization"] == "Bearer sk-dicto-test"
@@ -57,7 +58,7 @@ class TestTranscribeContract:
     def test_wav_mime_type(self, transcriber, sample_audio_file):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"text": "hello", "id": 1}
+        mock_response.json.return_value = {"text": "hello"}
 
         with patch.object(
             transcriber.client, "post", return_value=mock_response
@@ -69,22 +70,22 @@ class TestTranscribeContract:
 
 
 class TestTransformContract:
-    """Verify the request sent to POST /api/transform."""
+    """Verify the request sent to POST /api/v1/transform."""
 
     def test_request_format(self, transcriber):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
+        mock_response.json.return_value = {"text": "ok"}
 
         with patch.object(
             transcriber.client, "post", return_value=mock_response
         ) as mock_post:
-            transcriber.transform("some text", "format as email", transcription_id=42)
+            transcriber.transform("some text", "format as email")
 
         call_kwargs = mock_post.call_args
 
         # URL
-        assert call_kwargs.args[0] == f"{BASE_URL}/api/transform"
+        assert call_kwargs.args[0] == routes.transform()
 
         # Headers
         assert call_kwargs.kwargs["headers"]["Authorization"] == "Bearer sk-dicto-test"
@@ -93,24 +94,8 @@ class TestTransformContract:
         # JSON body
         payload = call_kwargs.kwargs["json"]
         assert payload["model"] == "qwen/qwen3-32b"
-        assert payload["transcriptionId"] == 42
-        # Text and instructions are sent as messages
-        messages = payload["messages"]
-        assert any(m["role"] == "system" and m["content"] == "format as email" for m in messages)
-        assert any(m["role"] == "user" and m["content"] == "some text" for m in messages)
-
-    def test_no_transcription_id(self, transcriber):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
-
-        with patch.object(
-            transcriber.client, "post", return_value=mock_response
-        ) as mock_post:
-            transcriber.transform("text", "instructions")
-
-        payload = mock_post.call_args.kwargs["json"]
-        assert "transcriptionId" not in payload
+        assert payload["text"] == "some text"
+        assert payload["instructions"] == "format as email"
 
 
 class TestResponseParsing:
@@ -119,25 +104,17 @@ class TestResponseParsing:
     def test_transcribe_response(self, transcriber, sample_audio_file):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "text": "  hello world  ",
-            "id": 123,
-            "language": "es",
-            "duration": 2.5,
-        }
+        mock_response.json.return_value = {"text": "  hello world  "}
 
         with patch.object(transcriber.client, "post", return_value=mock_response):
             result = transcriber.transcribe(sample_audio_file)
 
         assert result == "hello world"  # stripped
-        assert transcriber.last_transcription_id == 123
 
     def test_transform_response(self, transcriber):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "  formatted  "}}]
-        }
+        mock_response.json.return_value = {"text": "  formatted  "}
 
         with patch.object(transcriber.client, "post", return_value=mock_response):
             result = transcriber.transform("text", "format")

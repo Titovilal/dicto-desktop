@@ -54,7 +54,7 @@ class MainWindow(BuildMixin, StateMixin, SettingsMixin, UpdatesMixin, QMainWindo
     def _get_format_instructions(self):
         instructions = {}
         for p in self._user_presets:
-            instructions[f"preset_{p['id']}"] = p["instructions"]
+            instructions[f"preset_{p['name']}"] = p["instructions"]
         return instructions
 
     # Signals

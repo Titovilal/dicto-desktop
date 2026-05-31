@@ -27,9 +27,9 @@ class TestInit:
         with pytest.raises(APIKeyError):
             Transcriber(api_key="")
 
-    def test_auto_language_defaults_to_es(self):
+    def test_auto_language_kept_as_is(self):
         t = Transcriber(api_key="sk-dicto-test", language="auto")
-        assert t.language == "es"
+        assert t.language == "auto"
 
     def test_stores_models(self):
         t = Transcriber(
@@ -61,18 +61,12 @@ class TestTranscribeRequest:
     def test_success_returns_text(self, transcriber, sample_audio_file):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "text": "  hello world  ",
-            "id": 42,
-            "language": "es",
-            "duration": 1.5,
-        }
+        mock_response.json.return_value = {"text": "  hello world  "}
 
         with patch.object(transcriber.client, "post", return_value=mock_response):
             result = transcriber.transcribe(sample_audio_file)
 
         assert result == "hello world"
-        assert transcriber.last_transcription_id == 42
 
     def test_empty_text_raises(self, transcriber, sample_audio_file):
         mock_response = MagicMock()
@@ -105,7 +99,7 @@ class TestTranscribeRequest:
     def test_500_retries_then_raises(self, transcriber, sample_audio_file):
         mock_response = MagicMock()
         mock_response.status_code = 500
-        mock_response.json.return_value = {"error": "internal"}
+        mock_response.json.return_value = {"error": {"message": "internal"}}
         mock_response.text = "internal server error"
 
         with (
@@ -142,36 +136,35 @@ class TestTransform:
     def test_success(self, transcriber):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "  formatted text  "}}]
-        }
+        mock_response.json.return_value = {"text": "  formatted text  "}
 
         with patch.object(transcriber.client, "post", return_value=mock_response):
             result = transcriber.transform("raw text", "format as email")
 
         assert result == "formatted text"
 
-    def test_empty_choices_raises(self, transcriber):
+    def test_empty_text_raises(self, transcriber):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"choices": []}
+        mock_response.json.return_value = {"text": ""}
 
         with patch.object(transcriber.client, "post", return_value=mock_response):
             with pytest.raises(TranscriptionError, match="empty"):
                 transcriber.transform("raw text", "format")
 
-    def test_includes_transcription_id(self, transcriber):
+    def test_sends_text_and_instructions(self, transcriber):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
+        mock_response.json.return_value = {"text": "ok"}
 
         with patch.object(
             transcriber.client, "post", return_value=mock_response
         ) as mock_post:
-            transcriber.transform("text", "instructions", transcription_id=99)
+            transcriber.transform("text", "instructions")
 
         payload = mock_post.call_args.kwargs["json"]
-        assert payload["transcriptionId"] == 99
+        assert payload["text"] == "text"
+        assert payload["instructions"] == "instructions"
 
 
 class TestErrorParsing:
@@ -188,11 +181,12 @@ class TestErrorParsing:
             with pytest.raises(TranscriptionError, match="bad request"):
                 transcriber.transcribe(sample_audio_file)
 
-    def test_parse_error_string(self, transcriber, sample_audio_file):
+    def test_parse_error_falls_back_to_body(self, transcriber, sample_audio_file):
+        # Non-JSON / unexpected body (e.g. proxy or gateway error)
         mock_response = MagicMock()
         mock_response.status_code = 400
-        mock_response.json.return_value = {"error": "something went wrong"}
-        mock_response.text = ""
+        mock_response.json.side_effect = ValueError("not json")
+        mock_response.text = "something went wrong"
 
         with (
             patch.object(transcriber.client, "post", return_value=mock_response),
