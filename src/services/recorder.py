@@ -127,9 +127,7 @@ class _SoundcardLoopbackStream:
         # get_microphone(..., include_loopback=True) returns a loopback mic for
         # the given speaker on Windows; on Linux soundcard auto-selects the
         # monitor source.
-        self._mic = sc.get_microphone(
-            id=str(speaker.name), include_loopback=True
-        )
+        self._mic = sc.get_microphone(id=str(speaker.name), include_loopback=True)
 
     def start(self):
         if self._running:
@@ -176,9 +174,7 @@ class _SoundcardLoopbackStream:
         self.close()
 
 
-def _open_loopback_input_stream(
-    callback, blocksize: int, dtype: str = "int16"
-):
+def _open_loopback_input_stream(callback, blocksize: int, dtype: str = "int16"):
     """Open a loopback input stream for system audio. Returns (stream, native_samplerate) or None.
 
     Primary path (Windows + Linux): `soundcard` capture of the default speaker's
@@ -346,7 +342,9 @@ class AudioRecorder:
             with self._loopback_lock:
                 loopback_frames = self._loopback_frames
                 self._loopback_frames = []  # release immediately under lock
-            loopback = np.concatenate(loopback_frames, axis=0) if loopback_frames else None
+            loopback = (
+                np.concatenate(loopback_frames, axis=0) if loopback_frames else None
+            )
             del loopback_frames  # free list of chunks
 
             if loopback is None:
@@ -363,12 +361,20 @@ class AudioRecorder:
             # loopback at 48 kHz vs mic at 16 kHz).
             if self._loopback_samplerate != self.sample_rate:
                 n_out = int(
-                    round(len(loopback_mono) * self.sample_rate / self._loopback_samplerate)
+                    round(
+                        len(loopback_mono)
+                        * self.sample_rate
+                        / self._loopback_samplerate
+                    )
                 )
                 if n_out > 0:
-                    x_old = np.linspace(0, 1, len(loopback_mono), endpoint=False, dtype=np.float32)
+                    x_old = np.linspace(
+                        0, 1, len(loopback_mono), endpoint=False, dtype=np.float32
+                    )
                     x_new = np.linspace(0, 1, n_out, endpoint=False, dtype=np.float32)
-                    loopback_mono = np.interp(x_new, x_old, loopback_mono.astype(np.float32, copy=False)).astype(np.int16)
+                    loopback_mono = np.interp(
+                        x_new, x_old, loopback_mono.astype(np.float32, copy=False)
+                    ).astype(np.int16)
                     del x_old, x_new
 
             length = min(len(mic_int16.reshape(-1)), len(loopback_mono))

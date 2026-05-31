@@ -61,7 +61,6 @@ class HotkeyListener:
             suppress_key: If True, suppress the hotkey so it doesn't reach other apps
         """
         self._ensure_pynput()
-        kb = self._keyboard
 
         self.modifiers = self._parse_modifiers(modifiers)
         self.key = self._parse_key(key)

@@ -162,9 +162,7 @@ class WaylandHotkeyListener:
 
         # The request path is returned by the portal call
         introspection = await bus.introspect(PORTAL_BUS, request_path)
-        request_proxy = bus.get_proxy_object(
-            PORTAL_BUS, request_path, introspection
-        )
+        request_proxy = bus.get_proxy_object(PORTAL_BUS, request_path, introspection)
         request = request_proxy.get_interface(REQUEST_IFACE)
 
         def on_response(response_code, results):
@@ -173,7 +171,9 @@ class WaylandHotkeyListener:
                     # Success — extract session_handle if present
                     handle = results.get("session_handle")
                     if handle:
-                        future.set_result(handle.value if isinstance(handle, Variant) else handle)
+                        future.set_result(
+                            handle.value if isinstance(handle, Variant) else handle
+                        )
                     else:
                         future.set_result("ok")
                 else:
