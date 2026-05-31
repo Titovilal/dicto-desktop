@@ -4,6 +4,7 @@ Configuration management for Dicto application.
 
 from __future__ import annotations
 
+import copy
 import os
 import sys
 import logging
@@ -144,16 +145,16 @@ class Settings:
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     loaded_config = yaml.safe_load(f) or {}
-                config = self.DEFAULT_CONFIG.copy()
+                config = copy.deepcopy(self.DEFAULT_CONFIG)
                 self._deep_merge(config, loaded_config)
                 return config
             except Exception as e:
                 logger.warning(f"Failed to load config from {self.config_path}: {e}")
                 logger.warning("Using default configuration.")
-                return self.DEFAULT_CONFIG.copy()
+                return copy.deepcopy(self.DEFAULT_CONFIG)
         else:
             logger.info(f"Config file not found at {self.config_path}. Using defaults.")
-            return self.DEFAULT_CONFIG.copy()
+            return copy.deepcopy(self.DEFAULT_CONFIG)
 
     def _deep_merge(self, base: Dict, override: Dict) -> None:
         for key, value in override.items():
@@ -228,7 +229,7 @@ class Settings:
 
     def create_default_config(self) -> None:
         if not self.config_path.exists():
-            self.config = self.DEFAULT_CONFIG.copy()
+            self.config = copy.deepcopy(self.DEFAULT_CONFIG)
             self.save()
             logger.info(f"Created default configuration at {self.config_path}")
 

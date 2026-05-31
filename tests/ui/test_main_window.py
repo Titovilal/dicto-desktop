@@ -212,3 +212,53 @@ class TestTimerLabel:
     def test_timer_shown_during_processing(self, win):
         win.set_processing_state()
         assert not win.timer_label.isHidden()
+
+
+class TestSetModels:
+    def test_repopulates_combos_from_api(self, win):
+        win.set_models(
+            {
+                "transcription": [
+                    {"id": "v3-turbo", "name": "Whisper V3 Turbo", "default": True},
+                    {"id": "new-asr", "name": "New ASR"},
+                ],
+                "transformation": [
+                    {"id": "qwen/qwen3-32b", "name": "Qwen3 32B", "default": True},
+                ],
+            }
+        )
+        values = [win.model_combo.itemData(i) for i in range(win.model_combo.count())]
+        assert values == ["v3-turbo", "new-asr"]
+        assert win.transformation_model_combo.itemText(0) == "Qwen3 32B"
+
+    def test_empty_lists_keep_defaults(self, win):
+        before = [win.model_combo.itemData(i) for i in range(win.model_combo.count())]
+        win.set_models({"transcription": [], "transformation": []})
+        after = [win.model_combo.itemData(i) for i in range(win.model_combo.count())]
+        assert before == after
+
+    def test_saved_selection_preserved(self, win):
+        win.settings.transcription_model = "new-asr"
+        win.set_models(
+            {
+                "transcription": [
+                    {"id": "v3-turbo", "name": "Whisper V3 Turbo", "default": True},
+                    {"id": "new-asr", "name": "New ASR"},
+                ],
+                "transformation": [],
+            }
+        )
+        assert win.model_combo.currentData() == "new-asr"
+
+    def test_falls_back_to_default_when_saved_missing(self, win):
+        win.settings.transcription_model = "gone-model"
+        win.set_models(
+            {
+                "transcription": [
+                    {"id": "v3-turbo", "name": "Whisper V3 Turbo"},
+                    {"id": "best", "name": "Best", "default": True},
+                ],
+                "transformation": [],
+            }
+        )
+        assert win.model_combo.currentData() == "best"

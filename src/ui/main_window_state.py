@@ -127,6 +127,66 @@ class StateMixin:
             self._presets_loading_label = None
         self._rebuild_format_tabs()
 
+    def set_models(self, models: dict):
+        """Replace the model combos with the lists from GET /api/v1/models.
+
+        ``models`` has the API shape
+        ``{"transcription": [{"id", "name", "default"}], "transformation": [...]}``.
+        Each list is converted to the ``{id: name}`` mapping the combos expect.
+        Empty lists are ignored so the built-in defaults stay in place. After
+        repopulating, the user's saved selection is re-applied (and if the saved
+        model is gone, the server-flagged ``default`` is selected instead).
+        """
+
+        def to_items(entries: list[dict]) -> dict:
+            return {
+                e["id"]: e.get("name", e["id"])
+                for e in entries
+                if isinstance(e, dict) and e.get("id")
+            }
+
+        def default_id(entries: list[dict]) -> str | None:
+            for e in entries:
+                if isinstance(e, dict) and e.get("default"):
+                    return e.get("id")
+            return None
+
+        transcription = models.get("transcription") or []
+        transformation = models.get("transformation") or []
+
+        if transcription:
+            items = to_items(transcription)
+            self._repopulate_combo(self.model_combo, items, with_provider_icons=True)
+            self._select_model(
+                self.model_combo,
+                self.settings.transcription_model if self.settings else None,
+                default_id(transcription),
+            )
+
+        if transformation:
+            items = to_items(transformation)
+            self._repopulate_combo(
+                self.transformation_model_combo, items, with_provider_icons=True
+            )
+            self._select_model(
+                self.transformation_model_combo,
+                self.settings.transformation_model if self.settings else None,
+                default_id(transformation),
+            )
+
+    def _select_model(self, combo, saved, fallback):
+        """Select ``saved`` in ``combo`` if present, else ``fallback``, without
+        firing the change handler."""
+        target = saved
+        idx = combo.findData(target) if target is not None else -1
+        if idx < 0 and fallback is not None:
+            target = fallback
+            idx = combo.findData(target)
+        if idx >= 0:
+            combo.blockSignals(True)
+            combo.setCurrentIndex(idx)
+            combo.blockSignals(False)
+
     def _rebuild_format_tabs(self):
         """Rebuild format tabs: Original + default formats + user presets."""
         layout = self.tabs_bar.layout()

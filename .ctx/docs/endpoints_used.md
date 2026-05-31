@@ -55,12 +55,11 @@ the same error responses (see [Common errors](#common-errors)).
   }
   ```
 
-### GET `/api/v1/models` - list available models per feature *(propuesta)*
-- **Status:** proposed - not yet implemented.
-- **Purpose:** let the app discover at runtime which models exist per feature
-  instead of hardcoding `v3-turbo` / `qwen/qwen3-32b`, so new models appear without
-  a client release.
-- **Proposed response (200):**
+### GET `/api/v1/models` - list available models per feature
+- **Purpose:** let the app discover at runtime which models exist per feature so
+  new models appear in the Models page without a client release.
+- **Request:** `GET` with `Authorization: Bearer <api_key>`; no body.
+- **Response (200):**
   ```json
   {
     "transcription": [

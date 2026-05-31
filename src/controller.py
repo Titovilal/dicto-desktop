@@ -41,6 +41,7 @@ class Controller(QObject):
 
     cancel_completed = Signal()
     presets_loaded = Signal(list)  # list of preset dicts
+    models_loaded = Signal(dict)  # {"transcription": [...], "transformation": [...]}
 
     # Internal signals to bounce results back to the main thread
     _transcription_done = Signal(str)
@@ -123,7 +124,24 @@ class Controller(QObject):
             self.hotkey_listener.start()
         self._set_state(AppState.IDLE)
         self.fetch_presets()
+        self.fetch_models()
         logger.info("Controller started successfully")
+
+    def fetch_models(self):
+        """Fetch the available models per feature from the API in the background."""
+        if not self.transcriber:
+            return
+
+        def _do_fetch():
+            try:
+                assert self.transcriber is not None
+                models = self.transcriber.get_models()
+                if models:
+                    self.models_loaded.emit(models)
+            except Exception as e:
+                logger.warning(f"Failed to fetch models: {e}")
+
+        self._pool.submit(_do_fetch)
 
     def fetch_presets(self):
         """Fetch favorite presets from the API in the background."""

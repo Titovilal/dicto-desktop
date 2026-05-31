@@ -206,6 +206,9 @@ class DictoApp:
         # Presets loaded -> Main window
         self.controller.presets_loaded.connect(self.main_window.set_presets)
 
+        # Models loaded -> Main window
+        self.controller.models_loaded.connect(self.main_window.set_models)
+
         # Audio level -> waveform widgets
         self.controller.audio_level_changed.connect(
             self.main_window.waveform.set_level, Qt.ConnectionType.QueuedConnection

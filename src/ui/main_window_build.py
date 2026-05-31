@@ -401,6 +401,36 @@ class BuildMixin:
         layout.addWidget(combo)
         return combo
 
+    def _repopulate_combo(
+        self, combo: QComboBox, items: dict, with_provider_icons: bool = False
+    ) -> None:
+        """Replace the items of an existing combo, preserving the current selection.
+
+        The combo's ``currentIndexChanged`` signal is blocked during the rebuild
+        so repopulating from the API doesn't fire the change handler (which would
+        spuriously persist a setting). If the previously-selected value still
+        exists it is reselected.
+        """
+        previous = combo.currentData()
+        combo.blockSignals(True)
+        combo.clear()
+        for value, label in items.items():
+            if with_provider_icons:
+                provider_svg = _get_provider_svg_for_model(value)
+                if provider_svg:
+                    colored_svg = provider_svg.replace(
+                        "<svg ", f'<svg fill="{TEXT}" ', 1
+                    )
+                    icon = _make_icon(colored_svg, 14, TEXT)
+                    combo.addItem(icon, label, value)
+                    continue
+            combo.addItem(label, value)
+        if previous is not None:
+            idx = combo.findData(previous)
+            if idx >= 0:
+                combo.setCurrentIndex(idx)
+        combo.blockSignals(False)
+
     def _add_section(self, layout, title_key: str):
         """Add a section separator + label to layout."""
         layout.addSpacing(12)
@@ -638,14 +668,24 @@ class BuildMixin:
         self._section_labels["transcription_model"] = transcription_model_label
         layout.addWidget(transcription_model_label)
         layout.addSpacing(6)
+        # Built-in fallback lists, used until/unless the API's GET /api/v1/models
+        # response replaces them via set_models().
+        self._default_transcription_models = {
+            "v3-turbo": "Whisper V3 Turbo",
+            "v3": f"Whisper V3 ({t('recommended')})",
+            "gemini-3-flash-preview": "Gemini 3 Flash",
+            "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
+        }
+        self._default_transformation_models = {
+            "qwen/qwen3-32b": "Qwen 3 32B",
+            "openai/gpt-oss-120b": f"GPT OSS 120B ({t('recommended')})",
+            "openai/gpt-oss-20b": "GPT OSS 20B",
+            "gemini-3-flash-preview": "Gemini 3 Flash",
+            "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
+        }
         self.model_combo = self._add_combo(
             layout,
-            {
-                "v3-turbo": "Whisper V3 Turbo",
-                "v3": f"Whisper V3 ({t('recommended')})",
-                "gemini-3-flash-preview": "Gemini 3 Flash",
-                "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
-            },
+            self._default_transcription_models,
             self._on_model_changed,
             with_provider_icons=True,
         )
@@ -660,13 +700,7 @@ class BuildMixin:
         self._add_section(layout, "transformation_model")
         self.transformation_model_combo = self._add_combo(
             layout,
-            {
-                "qwen/qwen3-32b": "Qwen 3 32B",
-                "openai/gpt-oss-120b": f"GPT OSS 120B ({t('recommended')})",
-                "openai/gpt-oss-20b": "GPT OSS 20B",
-                "gemini-3-flash-preview": "Gemini 3 Flash",
-                "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
-            },
+            self._default_transformation_models,
             self._on_transformation_model_changed,
             with_provider_icons=True,
         )
