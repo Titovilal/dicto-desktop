@@ -268,12 +268,19 @@ def create_hotkey_listener(
     key,
     on_press=None,
     on_release=None,
+    on_toggle=None,
     mode="hold",
     suppress_key=False,
     shortcut_id="dicto-shortcut",
     description="Dicto shortcut",
 ):
-    """Factory: returns a WaylandHotkeyListener on Wayland, HotkeyListener otherwise."""
+    """Factory: returns a WaylandHotkeyListener on Wayland, HotkeyListener otherwise.
+
+    on_toggle, when provided, is used on Wayland where the portal only exposes a
+    single neutral activation per tap; the listener fires it once per tap and the
+    caller decides start vs stop. It is ignored on platforms with real hold
+    support (pynput backend), which use on_press/on_release instead.
+    """
     from src.services.hotkey_wayland import is_wayland
 
     if is_wayland():
@@ -286,8 +293,7 @@ def create_hotkey_listener(
             shortcut_id=shortcut_id,
             description=description,
             preferred_trigger=format_portal_trigger(modifiers, key),
-            on_press=on_press,
-            on_release=on_release,
+            on_toggle=on_toggle if on_toggle is not None else on_press,
             mode=mode,
         )
     return HotkeyListener(

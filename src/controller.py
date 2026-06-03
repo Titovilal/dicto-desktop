@@ -103,6 +103,7 @@ class Controller(QObject):
                     key=self.settings.hotkey_key,
                     on_press=self._on_hotkey_press,
                     on_release=self._on_hotkey_release,
+                    on_toggle=self._on_hotkey_toggle,
                     shortcut_id="dicto-record",
                     description="Dicto: Record voice",
                 )
@@ -188,6 +189,21 @@ class Controller(QObject):
     def _on_hotkey_release(self):
         if self.current_state == AppState.RECORDING:
             self._stop_recording_and_process()
+
+    def _on_hotkey_toggle(self):
+        """Single entry point for toggle-style hotkeys (Wayland portal).
+
+        The Wayland GlobalShortcuts portal fires one neutral activation per tap
+        (Deactivated is unreliable across compositors), so the listener can't
+        track press/release itself. We decide start vs stop here, from the
+        controller's own state — the single source of truth — which avoids the
+        listener and controller drifting out of sync.
+        """
+        if self.current_state in (AppState.IDLE, AppState.SUCCESS):
+            self._start_recording()
+        elif self.current_state == AppState.RECORDING:
+            self._stop_recording_and_process()
+        # PROCESSING: ignore taps while a transcription is in flight.
 
     # ── Recording ────────────────────────────────────────────
 
@@ -360,6 +376,7 @@ class Controller(QObject):
         key: str,
         on_press,
         on_release,
+        on_toggle=None,
         mode: str = "hold",
         suppress_key: bool = False,
         shortcut_id: str = "dicto-shortcut",
@@ -374,6 +391,7 @@ class Controller(QObject):
             key=key,
             on_press=on_press,
             on_release=on_release,
+            on_toggle=on_toggle,
             mode=mode,
             suppress_key=suppress_key,
             shortcut_id=shortcut_id,
@@ -390,6 +408,7 @@ class Controller(QObject):
             key,
             self._on_hotkey_press,
             self._on_hotkey_release,
+            on_toggle=self._on_hotkey_toggle,
             shortcut_id="dicto-record",
             description="Dicto: Record voice",
         )

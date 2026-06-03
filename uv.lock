@@ -425,6 +425,7 @@ dev = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pyinstaller" },
     { name = "pytest", version = "8.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "pytest", version = "9.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "pytest-qt" },
@@ -455,6 +456,7 @@ provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pyinstaller", specifier = ">=6.18.0" },
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-qt", specifier = ">=4.5.0" },
 ]

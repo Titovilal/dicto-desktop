@@ -248,6 +248,9 @@ class AudioRecorder:
         self._loopback_frames: list[np.ndarray] = []
         self._loopback_lock = threading.Lock()
         self._loopback_samplerate = sample_rate
+        # Actual sample rate the mic stream opened at; may differ from
+        # self.sample_rate if the device doesn't support 16 kHz natively.
+        self._mic_samplerate = sample_rate
         self._mic_level = 0.0
         self._loopback_level = 0.0
 
@@ -310,6 +313,9 @@ class AudioRecorder:
             audio_data = np.concatenate(self.frames, axis=0)
             # Free frame buffers immediately after concatenation
             self.frames = []
+            # Resample to self.sample_rate if the device recorded at a
+            # different native rate.
+            audio_data = self._resample_mic(audio_data)
             duration = len(audio_data) / self.sample_rate
 
             try:
@@ -391,6 +397,48 @@ class AudioRecorder:
             logger.warning(f"Failed to mix loopback audio: {e}")
             return mic_int16
 
+    def _negotiate_mic_samplerate(self) -> int:
+        """Return a sample rate the input device accepts.
+
+        Prefer self.sample_rate (16 kHz). If the device rejects it (some Linux
+        devices only expose 44.1/48 kHz), fall back to the device's default
+        rate. Captured audio is resampled to self.sample_rate before saving.
+        """
+        try:
+            sd.check_input_settings(
+                device=self.input_device,
+                channels=self.channels,
+                dtype="int16",
+                samplerate=self.sample_rate,
+            )
+            return self.sample_rate
+        except Exception:
+            try:
+                dev = sd.query_devices(
+                    self.input_device if self.input_device is not None else sd.default.device[0]
+                )
+                native = int(dev.get("default_samplerate", 48000))
+            except Exception:
+                native = 48000
+            logger.info(
+                f"Mic does not support {self.sample_rate} Hz; "
+                f"recording at {native} Hz and resampling"
+            )
+            return native
+
+    def _resample_mic(self, audio_int16: np.ndarray) -> np.ndarray:
+        """Resample mic audio from self._mic_samplerate to self.sample_rate."""
+        if self._mic_samplerate == self.sample_rate:
+            return audio_int16
+        flat = audio_int16.reshape(-1).astype(np.float32, copy=False)
+        n_out = int(round(len(flat) * self.sample_rate / self._mic_samplerate))
+        if n_out <= 0:
+            return audio_int16
+        x_old = np.linspace(0, 1, len(flat), endpoint=False, dtype=np.float32)
+        x_new = np.linspace(0, 1, n_out, endpoint=False, dtype=np.float32)
+        resampled = np.interp(x_new, x_old, flat).astype(np.int16)
+        return resampled.reshape(-1, 1) if self.channels == 1 else resampled
+
     def _record_audio(self):
         """Records audio in a loop until stopped or max duration reached."""
         start_time = time.time()
@@ -420,8 +468,10 @@ class AudioRecorder:
 
         loopback_stream = None
         try:
+            mic_rate = self._negotiate_mic_samplerate()
+            self._mic_samplerate = mic_rate
             mic_stream = sd.InputStream(
-                samplerate=self.sample_rate,
+                samplerate=mic_rate,
                 channels=self.channels,
                 dtype="int16",
                 blocksize=self.chunk_size,
@@ -484,7 +534,7 @@ class AudioRecorder:
         if not self.frames:
             return 0.0
         total_frames = sum(len(f) for f in self.frames)
-        return total_frames / self.sample_rate
+        return total_frames / self._mic_samplerate
 
     def close(self):
         if self.is_recording:
@@ -526,8 +576,26 @@ class AudioMonitor:
         if self._running:
             return True
         try:
+            mic_rate = self.sample_rate
+            try:
+                sd.check_input_settings(
+                    device=self.input_device,
+                    channels=1,
+                    dtype="int16",
+                    samplerate=self.sample_rate,
+                )
+            except Exception:
+                try:
+                    dev = sd.query_devices(
+                        self.input_device
+                        if self.input_device is not None
+                        else sd.default.device[0]
+                    )
+                    mic_rate = int(dev.get("default_samplerate", 48000))
+                except Exception:
+                    mic_rate = 48000
             self._mic_stream = sd.InputStream(
-                samplerate=self.sample_rate,
+                samplerate=mic_rate,
                 channels=1,
                 dtype="int16",
                 blocksize=1024,

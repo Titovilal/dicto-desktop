@@ -55,7 +55,18 @@ def _btn(
             hover_parts.append(f"background-color: {hover_bg};")
         if hover_color:
             hover_parts.append(f"color: {hover_color};")
-        base += f" QPushButton:hover {{ {' '.join(hover_parts)} }}"
+        # Only apply hover when the button is actually enabled, so a disabled
+        # button never looks clickable.
+        base += f" QPushButton:enabled:hover {{ {' '.join(hover_parts)} }}"
+    # Disabled buttons: dim them and switch to the normal cursor so it's clear
+    # they can't be pressed (e.g. while an update is downloading/installing).
+    base += (
+        f" QPushButton:disabled {{"
+        f" background-color: {MUTED};"
+        f" border: 1px solid {BORDER};"
+        f" color: {TEXT_DIM};"
+        f" }}"
+    )
     return base
 
 

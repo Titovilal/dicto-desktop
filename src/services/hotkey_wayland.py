@@ -18,6 +18,60 @@ PORTAL_PATH = "/org/freedesktop/portal/desktop"
 SHORTCUTS_IFACE = "org.freedesktop.portal.GlobalShortcuts"
 REQUEST_IFACE = "org.freedesktop.portal.Request"
 
+# Minimal hand-written introspection XML for the portal interfaces we use.
+#
+# We deliberately do NOT call bus.introspect() on the portal object: the live
+# portal advertises every interface it implements, and some compositors expose
+# properties whose names contain a hyphen (e.g. PowerProfileMonitor's
+# "power-saver-enabled"). Hyphens are illegal in D-Bus member names, so
+# dbus-next raises "invalid member name: power-saver-enabled" while parsing the
+# full document and the whole listener dies before the shortcut is ever bound.
+# Feeding it only the interfaces we care about sidesteps that entirely.
+_SHORTCUTS_XML = """<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.freedesktop.portal.GlobalShortcuts">
+    <method name="CreateSession">
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="o" name="request_handle" direction="out"/>
+    </method>
+    <method name="BindShortcuts">
+      <arg type="o" name="session_handle" direction="in"/>
+      <arg type="a(sa{sv})" name="shortcuts" direction="in"/>
+      <arg type="s" name="parent_window" direction="in"/>
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="o" name="request_handle" direction="out"/>
+    </method>
+    <method name="ListShortcuts">
+      <arg type="o" name="session_handle" direction="in"/>
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="o" name="request_handle" direction="out"/>
+    </method>
+    <signal name="Activated">
+      <arg type="o" name="session_handle"/>
+      <arg type="s" name="shortcut_id"/>
+      <arg type="t" name="timestamp"/>
+      <arg type="a{sv}" name="options"/>
+    </signal>
+    <signal name="Deactivated">
+      <arg type="o" name="session_handle"/>
+      <arg type="s" name="shortcut_id"/>
+      <arg type="t" name="timestamp"/>
+      <arg type="a{sv}" name="options"/>
+    </signal>
+  </interface>
+</node>"""
+
+_REQUEST_XML = """<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.freedesktop.portal.Request">
+    <method name="Close"/>
+    <signal name="Response">
+      <arg type="u" name="response"/>
+      <arg type="a{sv}" name="results"/>
+    </signal>
+  </interface>
+</node>"""
+
 
 class WaylandHotkeyListener:
     """Listens for global hotkey events on Wayland via the XDG GlobalShortcuts portal."""
@@ -27,8 +81,7 @@ class WaylandHotkeyListener:
         shortcut_id: str,
         description: str,
         preferred_trigger: str,
-        on_press: Callable | None = None,
-        on_release: Callable | None = None,
+        on_toggle: Callable | None = None,
         mode: str = "hold",
     ):
         """
@@ -37,15 +90,14 @@ class WaylandHotkeyListener:
             description: Human-readable description shown in the compositor dialog.
             preferred_trigger: Suggested trigger (e.g. 'CTRL+SHIFT+space'). The
                 compositor may change it.
-            on_press: Callback fired when the shortcut is activated.
-            on_release: Callback fired when the shortcut is deactivated (hold mode).
-            mode: 'hold' for press+release, 'press' for single activation.
+            on_toggle: Callback fired once per portal activation (tap). The
+                caller decides whether that means start or stop.
+            mode: kept for API compatibility; the portal only supports toggle.
         """
         self.shortcut_id = shortcut_id
         self.description = description
         self.preferred_trigger = preferred_trigger
-        self.on_press_callback = on_press
-        self.on_release_callback = on_release
+        self.on_toggle_callback = on_toggle
         self.mode = mode
 
         self._thread: threading.Thread | None = None
@@ -64,7 +116,9 @@ class WaylandHotkeyListener:
         self._thread.start()
         logger.info(
             f"Wayland hotkey listener started: {self.shortcut_id} "
-            f"(preferred: {self.preferred_trigger})"
+            f"(preferred: {self.preferred_trigger}) — toggle mode "
+            "(press to start, press again to stop; hold-to-record is not "
+            "supported by the Wayland portal)"
         )
 
     def stop(self):
@@ -101,8 +155,10 @@ class WaylandHotkeyListener:
 
         bus = await MessageBus().connect()
 
-        introspection = await bus.introspect(PORTAL_BUS, PORTAL_PATH)
-        proxy = bus.get_proxy_object(PORTAL_BUS, PORTAL_PATH, introspection)
+        # Use our trimmed introspection XML instead of bus.introspect() — see
+        # the comment on _SHORTCUTS_XML for why introspecting the live portal
+        # object blows up on some compositors.
+        proxy = bus.get_proxy_object(PORTAL_BUS, PORTAL_PATH, _SHORTCUTS_XML)
         shortcuts = proxy.get_interface(SHORTCUTS_IFACE)
 
         # 1. Create a session
@@ -121,15 +177,17 @@ class WaylandHotkeyListener:
             return
         self._session_handle = session_handle
 
-        # 2. Bind shortcuts
+        # 2. Bind shortcuts. The signature is a(sa{sv}); dbus-next represents a
+        # D-Bus STRUCT as a Python list (NOT a tuple), so each shortcut entry
+        # must be [id, {options}], not (id, {options}).
         shortcut_spec = [
-            (
+            [
                 self.shortcut_id,
                 {
                     "description": Variant("s", self.description),
                     "preferred-trigger": Variant("s", self.preferred_trigger),
                 },
-            )
+            ]
         ]
         bind_result = await shortcuts.call_bind_shortcuts(
             session_handle,
@@ -160,9 +218,9 @@ class WaylandHotkeyListener:
 
         future: asyncio.Future = self._loop.create_future()
 
-        # The request path is returned by the portal call
-        introspection = await bus.introspect(PORTAL_BUS, request_path)
-        request_proxy = bus.get_proxy_object(PORTAL_BUS, request_path, introspection)
+        # The request path is returned by the portal call. Use our trimmed XML
+        # rather than introspecting it live (same reason as _SHORTCUTS_XML).
+        request_proxy = bus.get_proxy_object(PORTAL_BUS, request_path, _REQUEST_XML)
         request = request_proxy.get_interface(REQUEST_IFACE)
 
         def on_response(response_code, results):
@@ -188,20 +246,41 @@ class WaylandHotkeyListener:
             return None
 
     # ── Signal handlers ──────────────────────────────────────
+    #
+    # Wayland note: the XDG GlobalShortcuts portal fires Activated on key press
+    # but Mutter (GNOME) does NOT reliably fire Deactivated on key release, so
+    # true press-and-hold ("push to talk") is impossible here — see
+    # https://docs.murmure.app/configure-shortcuts-on-linux/ for the same
+    # limitation in another dictation app. We therefore expose a TOGGLE: each
+    # Activated flips between start and stop.
+    #
+    # Crucially, we do NOT keep a local toggle flag here. GNOME emits BOTH
+    # Activated and Deactivated for a single tap, while KDE behaves differently,
+    # so any flag kept in the listener inevitably desyncs from the controller's
+    # actual recording state (symptom: "Recording already in progress" after a
+    # couple of taps). Instead we fire ONE neutral callback per Activated and
+    # let the controller — the single source of truth — decide start vs stop
+    # from its own state. Deactivated is ignored for the toggle: it's
+    # unreliable across compositors and would double-fire on GNOME.
+    #
+    # X11 / Windows / macOS keep real hold behaviour via the pynput
+    # HotkeyListener.
 
     def _on_activated(self, session_handle, shortcut_id, timestamp, options):
         if shortcut_id != self.shortcut_id:
             return
-        logger.debug(f"Shortcut activated: {shortcut_id}")
-        if self.on_press_callback:
-            self.on_press_callback()
+        logger.debug(f"Shortcut activated (toggle): {shortcut_id}")
+        # on_toggle is the controller's toggle entry point, which starts or
+        # stops recording based on the controller's current state.
+        if self.on_toggle_callback:
+            self.on_toggle_callback()
 
     def _on_deactivated(self, session_handle, shortcut_id, timestamp, options):
+        # Deliberately a no-op: see the note above. Some compositors fire this
+        # on every tap; acting on it would double-toggle and desync state.
         if shortcut_id != self.shortcut_id:
             return
-        logger.debug(f"Shortcut deactivated: {shortcut_id}")
-        if self.mode == "hold" and self.on_release_callback:
-            self.on_release_callback()
+        logger.debug(f"Shortcut deactivated (ignored): {shortcut_id}")
 
 
 def format_portal_trigger(modifiers: List[str], key: str) -> str:

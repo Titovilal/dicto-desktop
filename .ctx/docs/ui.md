@@ -8,7 +8,7 @@ Provides the visual layer of Dicto: a settings/status window, a floating overlay
 - `src/ui/main_window_build.py` - `BuildMixin`: constructs the window's widgets (header, format tabs, stacked pages, footer, and small layout helpers)
 - `src/ui/main_window_state.py` - `StateMixin`: the visual state machine (idle → recording → processing → done), animation timers, format-tab/preset handling, and copy/cancel actions
 - `src/ui/main_window_settings.py` - `SettingsMixin`: settings load/save and change handlers, the audio-test monitor, UI-language retranslation, settings/models panel navigation, frameless-window dragging, and close-to-tray
-- `src/ui/main_window_updates.py` - `UpdatesMixin`: the self-update flow, the "Copy logs" and "Send report" actions, plus the background `QThread` workers they use
+- `src/ui/main_window_updates.py` - `UpdatesMixin`: the self-update flow, the "Copy logs" and "Send report" actions, plus the background `QThread` workers they use. While a check or install is in progress the relevant buttons go "busy" (disabled, dimmed via the shared `:disabled` button style, hand-cursor dropped, and the check button shows "Checking…") so they can't be clicked again or double-triggered; after a successful in-place install the action button becomes "Restart now" and the re-check button stays disabled because the running build is now stale
 - `src/ui/widgets/icon_utils.py` - `make_icon` (cached SVG→QIcon) and `get_provider_svg_for_model` helpers shared by the window mixins
 - `src/ui/widgets/hotkey_button.py` - `HotkeyButton`, a push button that captures a key combination when clicked
 - `src/ui/overlay.py` - Frameless floating overlay showing recording/processing/success state with a draggable card, settings popover, and record/stop button

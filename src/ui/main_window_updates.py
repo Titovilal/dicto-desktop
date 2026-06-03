@@ -7,7 +7,7 @@ here too. Mixed into `MainWindow`.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Signal, Slot, QUrl, QThread
+from PySide6.QtCore import Qt, Signal, Slot, QUrl, QThread
 from PySide6.QtGui import QDesktopServices
 
 from src.i18n import t
@@ -87,10 +87,20 @@ class UpdatesMixin:
         self.update_status_label.setStyleSheet(f"color: {color}; font-size: 11px;")
         self.update_status_label.show()
 
+    @staticmethod
+    def _set_button_busy(button, busy: bool):
+        """Toggle a button's busy state: disable it and drop the hand cursor so
+        it visibly stops inviting clicks while work is in progress."""
+        button.setEnabled(not busy)
+        button.setCursor(
+            Qt.CursorShape.ArrowCursor if busy else Qt.CursorShape.PointingHandCursor
+        )
+
     @Slot()
     def _on_check_updates(self):
         """Check GitHub for a newer release in a background thread."""
-        self.check_updates_button.setEnabled(False)
+        self._set_button_busy(self.check_updates_button, True)
+        self.check_updates_button.setText(t("checking_updates"))
         self.update_action_button.hide()
         self._pending_update = None
         self._set_update_status(t("checking_updates"))
@@ -102,7 +112,8 @@ class UpdatesMixin:
 
     @Slot(object)
     def _on_update_check_done(self, info):
-        self.check_updates_button.setEnabled(True)
+        self._set_button_busy(self.check_updates_button, False)
+        self.check_updates_button.setText(t("check_for_updates"))
         if not info.available:
             self._set_update_status(t("up_to_date"), "#4ade80")
             return
@@ -122,7 +133,8 @@ class UpdatesMixin:
 
     @Slot(str)
     def _on_update_check_failed(self, _msg: str):
-        self.check_updates_button.setEnabled(True)
+        self._set_button_busy(self.check_updates_button, False)
+        self.check_updates_button.setText(t("check_for_updates"))
         self._set_update_status(t("update_check_failed"), RED)
 
     @Slot()
@@ -139,8 +151,10 @@ class UpdatesMixin:
             return
 
         # In-place download + install via pkexec, on a background thread.
-        self.update_action_button.setEnabled(False)
-        self.check_updates_button.setEnabled(False)
+        # Both buttons go busy so the install can't be triggered twice or
+        # interrupted by a concurrent re-check.
+        self._set_button_busy(self.update_action_button, True)
+        self._set_button_busy(self.check_updates_button, True)
         self._set_update_status(t("downloading_update"))
 
         self._update_install_thread = _UpdateInstallThread(info, self)
@@ -153,7 +167,9 @@ class UpdatesMixin:
     def _on_update_installed(self):
         self._set_update_status(t("update_installed"), "#4ade80")
         self.update_action_button.setText(t("restart_now"))
-        self.update_action_button.setEnabled(True)
+        self._set_button_busy(self.update_action_button, False)
+        # The re-check button stays disabled: the running build is now stale,
+        # so checking again would be misleading until the user restarts.
         # Repurpose the action button to restart.
         try:
             self.update_action_button.clicked.disconnect()
@@ -169,8 +185,8 @@ class UpdatesMixin:
 
     @Slot(str)
     def _on_update_install_failed(self, _msg: str):
-        self.check_updates_button.setEnabled(True)
-        self.update_action_button.setEnabled(True)
+        self._set_button_busy(self.check_updates_button, False)
+        self._set_button_busy(self.update_action_button, False)
         self._set_update_status(t("update_failed"), RED)
 
 
