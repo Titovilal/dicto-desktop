@@ -63,6 +63,9 @@ from src.ui.main_window_styles import (
     TEXT,
     TEXT_DIM,
     RED,
+    PRIMARY,
+    PRIMARY_FG,
+    SECONDARY,
 )
 from src.ui.icons import (
     SVG_SETTINGS,
@@ -115,7 +118,6 @@ class BuildMixin:
         main_layout.setSpacing(0)
 
         self._create_header(main_layout)
-        self._create_tabs_bar(main_layout)
 
         # Content stack
         self.content_stack = QStackedWidget()
@@ -127,6 +129,7 @@ class BuildMixin:
         self._create_settings_page()
         self._create_models_page()
 
+        self._create_tabs_bar(main_layout)
         self._create_footer(main_layout)
 
         # Start on idle
@@ -253,37 +256,89 @@ class BuildMixin:
     # ── Format Tabs ─────────────────────────────────────────
 
     def _create_tabs_bar(self, parent_layout):
+        # Separator line before action bar
+        self._tabs_sep = QWidget()
+        self._tabs_sep.setFixedHeight(1)
+        self._tabs_sep.setStyleSheet(f"background-color: {BORDER};")
+        parent_layout.addWidget(self._tabs_sep)
+
+        # ── Action bar: [Select ▼] [custom prompt input ————] [Apply] ──
         self.tabs_bar = QWidget()
         self.tabs_bar.setFixedHeight(42)
         self.tabs_bar.setStyleSheet("QWidget { border: none; }")
 
         layout = QHBoxLayout(self.tabs_bar)
-        layout.setContentsMargins(12, 0, 12, 0)
-        layout.setSpacing(2)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(6)
 
-        self.format_tabs = []
-        # Only "Original" tab by default; user presets are added via set_presets()
-        raw_btn = QPushButton(t("tab_original"))
-        raw_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        raw_btn.setStyleSheet(TAB_BUTTON_ACTIVE)
-        raw_btn.setEnabled(True)
-        raw_btn.setProperty("format_id", "raw")
-        raw_btn.clicked.connect(lambda checked, b=raw_btn: self._on_format_clicked(b))
-        self.format_tabs.append(raw_btn)
-        layout.addWidget(raw_btn)
+        # Format select (QComboBox replaces tab buttons)
+        self.format_combo = QComboBox()
+        self.format_combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        setattr(self.format_combo, "wheelEvent", lambda e: e.ignore())
+        self.format_combo.setFixedHeight(30)
+        self.format_combo.setMinimumWidth(110)
+        self.format_combo.setMaximumWidth(160)
+        self.format_combo.setStyleSheet(f"""
+            QComboBox {{
+                background-color: {SECONDARY};
+                border: 1px solid {BORDER};
+                border-radius: 4px;
+                color: {TEXT};
+                font-size: 12px;
+                padding: 0 8px;
+            }}
+            QComboBox:disabled {{ color: {TEXT_DIM}; }}
+            QComboBox::drop-down {{ border: none; width: 20px; }}
+            QComboBox::down-arrow {{ image: none; width: 0; }}
+            QComboBox QAbstractItemView {{
+                background-color: {SECONDARY};
+                border: 1px solid {BORDER};
+                color: {TEXT};
+                selection-background-color: {BORDER};
+                font-size: 12px;
+            }}
+        """)
+        # Populate initial "Original" item
+        self.format_combo.addItem(t("tab_original"), "raw")
+        # Loading indicator as a disabled item (removed by set_presets)
+        self.format_combo.addItem(t("presets_loading"), "__loading__")
+        self.format_combo.model().item(1).setEnabled(False)
+        self._presets_loading_label = None
+        self.format_combo.currentIndexChanged.connect(self._on_format_combo_changed)
+        layout.addWidget(self.format_combo)
 
-        # Loading indicator for presets (removed automatically by _rebuild_format_tabs)
-        loading_label = QLabel(t("presets_loading"))
-        loading_label.setStyleSheet(
-            f"color: {TEXT_DIM}; font-size: 12px; padding-left: 4px;"
-        )
-        self._presets_loading_label = loading_label
-        layout.addWidget(loading_label)
+        # Custom prompt input — always visible to the right
+        self._custom_prompt_input = QLineEdit()
+        self._custom_prompt_input.setPlaceholderText(t("custom_prompt_placeholder"))
+        self._custom_prompt_input.setFixedHeight(30)
+        self._custom_prompt_input.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {SECONDARY};
+                border: 1px solid {BORDER};
+                border-radius: 4px;
+                color: {TEXT};
+                font-size: 12px;
+                padding: 0 8px;
+                letter-spacing: 0;
+            }}
+            QLineEdit:focus {{ border-color: {TEXT_DIM}; }}
+        """)
+        self._custom_prompt_input.returnPressed.connect(self._on_custom_transform_apply)
+        layout.addWidget(self._custom_prompt_input, 1)
 
-        layout.addStretch()
+        self._custom_apply_btn = QPushButton(t("apply"))
+        self._custom_apply_btn.setFixedHeight(30)
+        self._custom_apply_btn.setMinimumWidth(58)
+        self._custom_apply_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._custom_apply_btn.setStyleSheet(FLAT_BUTTON)
+        self._custom_apply_btn.clicked.connect(self._on_custom_transform_apply)
+        layout.addWidget(self._custom_apply_btn)
+
         parent_layout.addWidget(self.tabs_bar)
 
         self._active_format = "raw"
+        self._custom_prompt_open = False
+        self.format_tabs = []
 
     # ── Idle Page ───────────────────────────────────────────
 

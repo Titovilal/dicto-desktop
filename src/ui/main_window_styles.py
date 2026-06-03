@@ -150,6 +150,7 @@ DOT_IDLE = _dot(GREEN)
 DOT_RECORDING = _dot(RED)
 DOT_PROCESSING = _dot(AMBER)
 DOT_SUCCESS = _dot(GREEN)
+DOT_EDITING = _dot(BLUE)
 
 # ── Header Buttons ───────────────────────────────────────────
 
@@ -172,7 +173,7 @@ TAB_BUTTON = f"""
         color: {TEXT_DIM};
         font-size: 13px;
         font-weight: 500;
-        padding: 6px 12px 4px 12px;
+        padding: 6px 6px 4px 6px;
     }}
     QPushButton:hover {{
         color: {TEXT};
@@ -189,7 +190,7 @@ TAB_BUTTON_ACTIVE = f"""
         color: {TEXT};
         font-size: 13px;
         font-weight: 600;
-        padding: 6px 12px 4px 12px;
+        padding: 6px 6px 4px 6px;
     }}
 """
 
@@ -202,8 +203,8 @@ TAB_BUTTON_DISABLED = """
         color: rgba(113, 113, 122, 0.4);
         font-size: 13px;
         font-weight: 500;
-        padding: 6px 12px 4px 12px;
-    }
+        padding: 6px 6px 4px 6px;
+    }}
 """
 
 # ── Content ──────────────────────────────────────────────────
@@ -213,6 +214,16 @@ CONTENT_TEXT = f"""
         background-color: transparent; border: none;
         color: {TEXT}; font-size: 14px; padding: 0;
     }}
+    QTextEdit QScrollBar:vertical {{
+        background: transparent; width: 6px; border: none;
+    }}
+    QTextEdit QScrollBar::handle:vertical {{
+        background: rgba(113, 113, 122, 0.5); border-radius: 3px; min-height: 20px;
+    }}
+    QTextEdit QScrollBar::handle:vertical:hover {{
+        background: rgba(161, 161, 170, 0.8);
+    }}
+    QTextEdit QScrollBar::add-line:vertical, QTextEdit QScrollBar::sub-line:vertical {{ height: 0; }}
 """
 
 # Log preview inside the settings page — distinct darker background so it
@@ -229,9 +240,11 @@ IDLE_TEXT_BOLD = _label(TEXT)
 
 RECORDING_LABEL = _label(RED)
 PROCESSING_LABEL = _label(AMBER)
+EDITING_LABEL = _label(BLUE)
 
 TIMER_RECORDING = _label("#f87171", font_weight="normal")
 TIMER_PROCESSING = _label(AMBER, font_weight="normal")
+TIMER_EDITING = _label(BLUE, font_weight="normal")
 
 # ── Footer Buttons ───────────────────────────────────────────
 
@@ -240,6 +253,7 @@ RECORD_BUTTON_IDLE = _btn(
 )
 RECORD_BUTTON_RECORDING = _btn(bg="#dc2626", color="white", hover_bg="#b91c1c")
 RECORD_BUTTON_PROCESSING = _btn(bg=AMBER, color=PRIMARY_FG)
+RECORD_BUTTON_EDITING = _btn(bg=BLUE, color=PRIMARY_FG)
 
 FOOTER_TEXT_BUTTON = _btn(
     color=TEXT_DIM, padding="6px 8px", hover_color=TEXT, font_weight="normal"

@@ -108,6 +108,10 @@ TRANSLATIONS = {
         "test_audio": "Test microphone",
         "test_audio_stop": "Stop test",
         "test_audio_failed": "Could not start audio test",
+        "custom_transform": "Custom",
+        "custom_prompt_placeholder": "Custom instruction...",
+        "apply": "Apply",
+        "presets_select": "Presets ▾",
     },
     "es": {
         "loading": "Cargando Dicto...",
@@ -204,6 +208,10 @@ TRANSLATIONS = {
         "test_audio": "Probar micrófono",
         "test_audio_stop": "Detener prueba",
         "test_audio_failed": "No se pudo iniciar la prueba de audio",
+        "custom_transform": "Personalizado",
+        "custom_prompt_placeholder": "Instrucción personalizada...",
+        "apply": "Aplicar",
+        "presets_select": "Presets ▾",
     },
     "de": {
         "loading": "Dicto wird geladen...",

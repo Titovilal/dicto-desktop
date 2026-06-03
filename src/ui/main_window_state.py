@@ -11,7 +11,7 @@ import logging
 
 from PySide6.QtCore import Slot, Qt, QSize, QTimer
 from PySide6.QtGui import QIcon, QPainter, QColor, QPixmap
-from PySide6.QtWidgets import QApplication, QPushButton
+from PySide6.QtWidgets import QApplication
 
 from src.i18n import t
 from src.ui.widgets.icon_utils import make_icon as _make_icon
@@ -20,9 +20,6 @@ from src.ui.main_window_styles import (
     DOT_RECORDING,
     DOT_PROCESSING,
     DOT_SUCCESS,
-    TAB_BUTTON,
-    TAB_BUTTON_ACTIVE,
-    TAB_BUTTON_DISABLED,
     RECORDING_LABEL,
     PROCESSING_LABEL,
     TIMER_RECORDING,
@@ -47,26 +44,15 @@ class StateMixin:
     # ── Format Tabs ─────────────────────────────────────────
 
     def _update_tabs_enabled(self, enabled: bool):
-        for btn in self.format_tabs:
-            fid = btn.property("format_id")
-            is_original = fid == "raw"
-            if fid == self._active_format:
-                btn.setStyleSheet(TAB_BUTTON_ACTIVE)
-                btn.setEnabled(True)
-            elif enabled:
-                btn.setStyleSheet(TAB_BUTTON)
-                btn.setEnabled(True)
-            else:
-                btn.setStyleSheet(TAB_BUTTON_DISABLED)
-                # Original tab is always clickable
-                btn.setEnabled(is_original)
+        self.format_combo.setEnabled(enabled or True)  # combo is always enabled
+        self._custom_prompt_input.setEnabled(enabled)
+        self._custom_apply_btn.setEnabled(enabled)
 
-    def _on_format_clicked(self, btn):
-        fid = btn.property("format_id")
-        if fid == self._active_format:
+    def _on_format_combo_changed(self, index: int):
+        fid = self.format_combo.itemData(index)
+        if not fid or fid == "__loading__" or fid == self._active_format:
             return
         self._active_format = fid
-        self._update_tabs_enabled(True)
 
         if not self.last_transcription:
             return
@@ -76,13 +62,11 @@ class StateMixin:
             self.copy_button.show()
             return
 
-        # Check cache
         if fid in self._format_cache:
             self.transcription_text.setText(self._format_cache[fid])
             self.copy_button.show()
             return
 
-        # Request transform
         self._transforming_format = fid
         self.transcription_text.setText("")
         self.processing_label.setText(t("transforming"))
@@ -93,6 +77,30 @@ class StateMixin:
 
         instructions = self._get_format_instructions().get(fid, "")
         self.transform_requested.emit(fid, self.last_transcription, instructions)
+
+    def _on_custom_transform_apply(self):
+        prompt = self._custom_prompt_input.text().strip()
+        if not prompt or not self.last_transcription:
+            return
+        import time
+        fid = f"custom_{int(time.time() * 1000)}"
+        self._active_format = fid
+        self._transforming_format = fid
+        self.transcription_text.setText("")
+        self.processing_label.setText(t("transforming"))
+        self.processing_label.show()
+        self.copy_button.hide()
+        self.cancel_button.show()
+        self._dots_timer.start(400)
+        self.transform_requested.emit(fid, self.last_transcription, prompt)
+
+    def _on_format_clicked(self, btn):
+        # kept for compat; not called with combo-based bar
+        fid = btn.property("format_id")
+        if fid == self._active_format:
+            return
+        self._active_format = fid
+        self._update_tabs_enabled(True)
 
     @Slot(str, str)
     def on_transform_completed(self, format_id: str, text: str):
@@ -120,11 +128,8 @@ class StateMixin:
 
     @Slot(list)
     def set_presets(self, presets: list[dict]):
-        """Update format tabs with user's favorite presets from the API."""
+        """Update format combo with user's favorite presets from the API."""
         self._user_presets = presets
-        if self._presets_loading_label is not None:
-            self._presets_loading_label.deleteLater()
-            self._presets_loading_label = None
         self._rebuild_format_tabs()
 
     def set_models(self, models: dict):
@@ -188,40 +193,18 @@ class StateMixin:
             combo.blockSignals(False)
 
     def _rebuild_format_tabs(self):
-        """Rebuild format tabs: Original + default formats + user presets."""
-        layout = self.tabs_bar.layout()
-
-        # Remove old buttons
-        for btn in self.format_tabs:
-            layout.removeWidget(btn)
-            btn.deleteLater()
-        self.format_tabs.clear()
+        """Rebuild format combo: Original + user presets."""
         self._format_cache.clear()
-
-        # Build format list: Original + user presets
-        formats: list[tuple[str, str]] = [("raw", t("tab_original"))]
+        combo = self.format_combo
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem(t("tab_original"), "raw")
         for p in self._user_presets:
-            formats.append((f"preset_{p['name']}", p["name"]))
-
-        has_text = bool(self.last_transcription)
-        for idx, (fid, label) in enumerate(formats):
-            btn = QPushButton(label)
-            btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            is_raw = fid == "raw"
-            is_active = fid == self._active_format
-            if is_active:
-                btn.setStyleSheet(TAB_BUTTON_ACTIVE)
-                btn.setEnabled(True)
-            elif has_text or is_raw:
-                btn.setStyleSheet(TAB_BUTTON if has_text else TAB_BUTTON_DISABLED)
-                btn.setEnabled(has_text or is_raw)
-            else:
-                btn.setStyleSheet(TAB_BUTTON_DISABLED)
-                btn.setEnabled(is_raw)
-            btn.setProperty("format_id", fid)
-            btn.clicked.connect(lambda checked, b=btn: self._on_format_clicked(b))
-            self.format_tabs.append(btn)
-            layout.insertWidget(idx, btn)
+            combo.addItem(p["name"], f"preset_{p['name']}")
+        # Restore active selection
+        idx = combo.findData(self._active_format)
+        combo.setCurrentIndex(idx if idx >= 0 else 0)
+        combo.blockSignals(False)
 
     # ── Animations ──────────────────────────────────────────
 
