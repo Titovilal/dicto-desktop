@@ -175,6 +175,11 @@ class Settings:
     )
     hotkey_key: str = _config_property("hotkey", "key", "space")
 
+    edit_hotkey_modifiers: List[str] = _config_property(
+        "hotkey", "edit_modifiers", ["ctrl", "alt"]
+    )
+    edit_hotkey_key: str = _config_property("hotkey", "edit_key", "space")
+
     # ── Overlay settings ─────────────────────────────────────
 
     overlay_position: str = _config_property("overlay", "position", "top-right")
@@ -203,12 +208,18 @@ class Settings:
     auto_enter: bool = _config_property("behavior", "auto_enter", False)
     always_on_top: bool = _config_property("behavior", "always_on_top", False)
     persistent_overlay: bool = _config_property("behavior", "persistent_overlay", False)
+    edit_auto_paste: bool = _config_property("behavior", "edit_auto_paste", False)
+    edit_auto_enter: bool = _config_property("behavior", "edit_auto_enter", False)
 
     # ── Transformation model ──────────────────────────────────
 
     transformation_model: str = _config_property(
         "transformation", "model", "qwen/qwen3-32b"
     )
+
+    # ── Edition model ─────────────────────────────────────────
+
+    edition_model: str = _config_property("edition", "model", "qwen/qwen3-32b")
 
     # ── UI settings ──────────────────────────────────────────
 
