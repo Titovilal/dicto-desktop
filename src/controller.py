@@ -214,7 +214,8 @@ class Controller(QObject):
             self.recording_stopped.emit(duration)
 
             if not audio_file_path:
-                self._handle_error("No audio recorded")
+                rec_error = self.recorder.get_last_error()
+                self._handle_error(rec_error or "No audio recorded")
                 return
 
             self._set_state(AppState.PROCESSING)

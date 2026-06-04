@@ -50,6 +50,15 @@ class TestRecordingState:
             r.frames = [np.zeros(1600), np.zeros(3200)]
             assert r.get_recording_duration() == pytest.approx(0.3)
 
+    def test_get_duration_after_frames_cleared(self):
+        # stop_recording() clears self.frames; the duration must still be
+        # reported from the saved value rather than collapsing to 0.0.
+        with patch("src.services.recorder.sd"):
+            r = AudioRecorder(sample_rate=16000)
+            r._last_duration = 2.5
+            r.frames = []
+            assert r.get_recording_duration() == pytest.approx(2.5)
+
 
 class TestCleanup:
     def test_cleanup_temp_file(self, tmp_path):

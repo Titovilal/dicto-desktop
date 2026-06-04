@@ -253,8 +253,18 @@ class AudioRecorder:
         self._mic_samplerate = sample_rate
         self._mic_level = 0.0
         self._loopback_level = 0.0
+        # Duration (seconds) of the last completed recording. Captured at
+        # stop time because stop_recording() clears self.frames afterwards.
+        self._last_duration = 0.0
+        # Set by the recording thread when it aborts (e.g. no input device);
+        # surfaced by stop_recording so the UI can show the real cause.
+        self._record_error: str | None = None
 
     # ── Configuration updates ─────────────────────────────────
+
+    def get_last_error(self) -> str | None:
+        """Return the error message from the most recent aborted recording, if any."""
+        return self._record_error
 
     def set_input_device(self, device_id: int | None):
         self.input_device = device_id
@@ -275,6 +285,8 @@ class AudioRecorder:
         try:
             self.frames = []
             self._loopback_frames = []
+            self._record_error = None
+            self._last_duration = 0.0
             self.is_recording = True
             self.recording_thread = threading.Thread(
                 target=self._record_audio, daemon=True
@@ -317,6 +329,7 @@ class AudioRecorder:
             # different native rate.
             audio_data = self._resample_mic(audio_data)
             duration = len(audio_data) / self.sample_rate
+            self._last_duration = duration
 
             try:
                 if self.include_system_audio and self._loopback_frames:
@@ -414,10 +427,16 @@ class AudioRecorder:
             return self.sample_rate
         except Exception:
             try:
-                dev = sd.query_devices(
-                    self.input_device if self.input_device is not None else sd.default.device[0]
-                )
-                native = int(dev.get("default_samplerate", 48000))
+                target = self.input_device
+                if target is None:
+                    target = sd.default.device[0]
+                # sd.default.device[0] is -1 when there is no default input
+                # device; query_devices(-1) raises "Error querying device -1".
+                if target is None or target < 0:
+                    native = 48000
+                else:
+                    dev = sd.query_devices(target)
+                    native = int(dev.get("default_samplerate", 48000))
             except Exception:
                 native = 48000
             logger.info(
@@ -468,6 +487,11 @@ class AudioRecorder:
 
         loopback_stream = None
         try:
+            if self.input_device is None and sd.default.device[0] < 0:
+                raise RuntimeError(
+                    "No input audio device available (check microphone permissions "
+                    "and that an audio server is running)"
+                )
             mic_rate = self._negotiate_mic_samplerate()
             self._mic_samplerate = mic_rate
             mic_stream = sd.InputStream(
@@ -495,6 +519,7 @@ class AudioRecorder:
                     time.sleep(0.1)
         except Exception as e:
             logger.error(f"Error in recording thread: {e}")
+            self._record_error = str(e)
         finally:
             if loopback_stream is not None:
                 try:
@@ -531,10 +556,12 @@ class AudioRecorder:
                 logger.error(f"Error deleting temporary file: {e}")
 
     def get_recording_duration(self) -> float:
-        if not self.frames:
-            return 0.0
-        total_frames = sum(len(f) for f in self.frames)
-        return total_frames / self._mic_samplerate
+        # While recording, derive it live from the buffered frames; after
+        # stop_recording() has consumed them, fall back to the saved duration.
+        if self.frames:
+            total_frames = sum(len(f) for f in self.frames)
+            return total_frames / self._mic_samplerate
+        return self._last_duration
 
     def close(self):
         if self.is_recording:

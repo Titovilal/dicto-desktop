@@ -63,6 +63,11 @@ class DictoApp:
         """Initialize application."""
         # Create Qt application
         self.app = QApplication(sys.argv)
+        # Force the Fusion style: native platform styles (esp. GTK on Linux)
+        # ignore stylesheet backgrounds for QComboBox popups, leaving the
+        # dropdown items on a light/white system palette where the light text
+        # is unreadable. Fusion honors our dark stylesheet everywhere.
+        self.app.setStyle("Fusion")
         self.app.setApplicationName("Dicto")
         self.app.setQuitOnLastWindowClosed(False)  # Keep running in tray
 

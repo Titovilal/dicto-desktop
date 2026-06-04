@@ -22,8 +22,9 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QScrollArea,
 )
+from PySide6.QtWidgets import QListView, QFrame, QStyledItemDelegate
 from PySide6.QtCore import Qt, QSize, QUrl, QTimer
-from PySide6.QtGui import QIcon, QColor, QDesktopServices
+from PySide6.QtGui import QIcon, QColor, QDesktopServices, QPalette
 from PySide6.QtWidgets import QGraphicsDropShadowEffect
 
 from src.utils.icons import get_icon_path
@@ -50,6 +51,7 @@ from src.ui.main_window_styles import (
     FOOTER_TEXT_BUTTON,
     SECTION_LABEL,
     FLAT_BUTTON,
+    LOG_VIEW,
     ACCENT_BUTTON,
     SEPARATOR,
     MUTED,
@@ -67,6 +69,60 @@ from src.ui.icons import (
     SVG_MODELS,
     SVG_PIN,
 )
+
+
+class _RowHeightDelegate(QStyledItemDelegate):
+    """Force a fixed, comfortable row height so popup items never clip."""
+
+    def __init__(self, height: int, parent=None):
+        super().__init__(parent)
+        self._height = height
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        size.setHeight(self._height)
+        return size
+
+
+def _style_combo_popup(combo: QComboBox, bg: str = MUTED) -> None:
+    """Force a dark popup for a QComboBox.
+
+    Stylesheets alone don't reliably color the dropdown's viewport on every
+    platform style — the popup item delegate paints the background from the
+    view's palette, which otherwise defaults to a white system base, leaving
+    the light text unreadable. Installing an explicit QListView with a dark
+    palette fixes it everywhere.
+    """
+    view = QListView()
+    pal = view.palette()
+    base = QColor(bg)
+    pal.setColor(QPalette.ColorRole.Base, base)
+    pal.setColor(QPalette.ColorRole.Window, base)
+    pal.setColor(QPalette.ColorRole.Text, QColor(TEXT))
+    pal.setColor(QPalette.ColorRole.WindowText, QColor(TEXT))
+    pal.setColor(QPalette.ColorRole.Highlight, QColor(SECONDARY))
+    pal.setColor(QPalette.ColorRole.HighlightedText, QColor(TEXT))
+    view.setPalette(pal)
+    view.setFrameShape(QFrame.Shape.NoFrame)
+    # Fix a uniform, comfortable row height so neither the provider icons nor
+    # the text get clipped. The stylesheet min-height alone isn't honored as the
+    # actual row height by every style, so set it on the view directly.
+    view.setUniformItemSizes(True)
+    view.setItemDelegate(_RowHeightDelegate(32, view))
+    # The popup container (the QFrame wrapping the view) plus the view itself
+    # must both be painted dark, or a white system frame shows around the list.
+    view.setStyleSheet(
+        f"QListView {{ background-color: {bg}; border: 1px solid {BORDER}; outline: none; }}"
+        f" QListView::item {{ background-color: {bg}; color: {TEXT}; padding: 0 8px; }}"
+        f" QListView::item:selected {{ background-color: {SECONDARY}; color: {TEXT}; }}"
+    )
+    combo.setView(view)
+    # Paint the popup container window (the QFrame that wraps the view) dark too,
+    # otherwise its default white base shows as a border around the list.
+    container = combo.view().parentWidget()
+    if container is not None:
+        container.setPalette(pal)
+        container.setStyleSheet(f"background-color: {bg}; border: 1px solid {BORDER};")
 
 
 class BuildMixin:
@@ -297,9 +353,22 @@ class BuildMixin:
                 border: 1px solid {BORDER};
                 color: {TEXT};
                 selection-background-color: {BORDER};
+                selection-color: {TEXT};
+                outline: none;
                 font-size: 12px;
             }}
+            QComboBox QAbstractItemView::item {{
+                background-color: {SECONDARY};
+                color: {TEXT};
+                padding: 4px 8px;
+                min-height: 22px;
+            }}
+            QComboBox QAbstractItemView::item:selected {{
+                background-color: {BORDER};
+                color: {TEXT};
+            }}
         """)
+        _style_combo_popup(self.format_combo, SECONDARY)
         # Populate initial "Original" item
         self.format_combo.addItem(t("tab_original"), "raw")
         # Loading indicator as a disabled item (removed by set_presets)
@@ -448,6 +517,7 @@ class BuildMixin:
         """
         combo = QComboBox()
         combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        _style_combo_popup(combo)
         setattr(combo, "wheelEvent", lambda e: e.ignore())
         for value, label in items.items():
             if with_provider_icons:
@@ -595,6 +665,7 @@ class BuildMixin:
         self._add_section(layout, "audio_input")
         self.input_device_combo = QComboBox()
         self.input_device_combo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        _style_combo_popup(self.input_device_combo)
         # Prevent long device names from expanding the combo (and the whole page) beyond the window width.
         self.input_device_combo.setSizeAdjustPolicy(
             QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
@@ -644,12 +715,36 @@ class BuildMixin:
         self._report_desc_label.setWordWrap(True)
         layout.addWidget(self._report_desc_label)
         layout.addSpacing(8)
+
+        # Live preview of the console logs that will be sent with the report
+        self.report_log_view = QTextEdit()
+        self.report_log_view.setReadOnly(True)
+        self.report_log_view.setStyleSheet(LOG_VIEW)
+        self.report_log_view.setFrameShape(QTextEdit.Shape.NoFrame)
+        self.report_log_view.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        self.report_log_view.setFixedHeight(160)
+        self.report_log_view.verticalScrollBar().setSingleStep(15)
+        layout.addWidget(self.report_log_view)
+        layout.addSpacing(8)
+
+        report_buttons_row = QHBoxLayout()
+        report_buttons_row.setSpacing(8)
+
+        self.copy_logs_button = QPushButton(t("copy_logs"))
+        self.copy_logs_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.copy_logs_button.setFixedHeight(32)
+        self.copy_logs_button.setStyleSheet(FLAT_BUTTON)
+        self.copy_logs_button.clicked.connect(self._copy_logs)
+        report_buttons_row.addWidget(self.copy_logs_button)
+
         self.send_report_button = QPushButton(t("send_report"))
         self.send_report_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.send_report_button.setFixedHeight(32)
         self.send_report_button.setStyleSheet(FLAT_BUTTON)
         self.send_report_button.clicked.connect(self._send_report)
-        layout.addWidget(self.send_report_button)
+        report_buttons_row.addWidget(self.send_report_button)
+
+        layout.addLayout(report_buttons_row)
         self.report_status_label = QLabel("")
         self.report_status_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
         self.report_status_label.hide()

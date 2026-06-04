@@ -67,6 +67,7 @@ class SettingsMixin:
         self._settings_open = True
         self._prev_page = self.content_stack.currentIndex()
         self.content_stack.setCurrentIndex(3)  # settings page
+        self._refresh_report_log_view()
         self.settings_button.setIcon(_make_icon(SVG_SETTINGS, 16, TEXT))
         self.settings_button.setStyleSheet(HEADER_BUTTON_ACTIVE)
         self.footer.hide()
@@ -85,6 +86,28 @@ class SettingsMixin:
         self._tabs_sep.hide()
         self.tabs_bar.hide()
 
+    def _refresh_report_log_view(self):
+        """Show the current console log buffer (what gets sent with the report)."""
+        from src.utils.logger import get_log_buffer
+
+        logs = "\n".join(get_log_buffer())
+        self.report_log_view.setPlainText(logs)
+        # Scroll to the latest log line
+        sb = self.report_log_view.verticalScrollBar()
+        sb.setValue(sb.maximum())
+
+    def _copy_logs(self):
+        """Copy the current console log buffer to the clipboard."""
+        from PySide6.QtWidgets import QApplication
+        from src.utils.logger import get_log_buffer
+
+        logs = "\n".join(get_log_buffer())
+        self.report_log_view.setPlainText(logs)
+        QApplication.clipboard().setText(logs)
+        self.report_status_label.setText(t("logs_copied"))
+        self.report_status_label.setStyleSheet("color: #4ade80; font-size: 11px;")
+        self.report_status_label.show()
+
     def _send_report(self):
         import httpx
         from src.utils.logger import get_log_buffer
@@ -92,6 +115,7 @@ class SettingsMixin:
         self.send_report_button.setEnabled(False)
         self.report_status_label.hide()
         logs = "\n".join(get_log_buffer())
+        self.report_log_view.setPlainText(logs)
 
         try:
             api_key = self.settings.transcription_api_key if self.settings else ""

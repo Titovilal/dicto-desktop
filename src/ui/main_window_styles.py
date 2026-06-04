@@ -114,7 +114,14 @@ GLOBAL_STYLE = f"""
     QComboBox QAbstractItemView {{
         background-color: {MUTED}; border: 1px solid {BORDER};
         color: {TEXT}; selection-background-color: {SECONDARY};
-        outline: none;
+        selection-color: {TEXT}; outline: none;
+    }}
+    QComboBox QAbstractItemView::item {{
+        background-color: {MUTED}; color: {TEXT};
+        padding: 4px 8px; min-height: 24px;
+    }}
+    QComboBox QAbstractItemView::item:selected {{
+        background-color: {SECONDARY}; color: {TEXT};
     }}
     QComboBox QFrame {{
         background-color: {MUTED}; border: 1px solid {BORDER}; border-radius: 4px;
@@ -130,7 +137,7 @@ GLOBAL_STYLE = f"""
         padding: 4px 8px; min-height: 24px;
     }}
     QComboBox QListView::item:selected {{
-        background-color: {SECONDARY};
+        background-color: {SECONDARY}; color: {TEXT};
     }}
     QLineEdit {{
         background-color: {BG}; border: 1px solid {BORDER}; border-radius: 4px;

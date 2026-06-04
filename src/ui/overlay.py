@@ -165,7 +165,7 @@ class OverlayWindow(QWidget):
         self, position: str = "top-right", size: int = 100, opacity: float = 0.85
     ):
         super().__init__()
-        self.position_name = "top-right"
+        self.position_name = position or "top-right"
         self.window_opacity = opacity
         self._persistent = False
 
@@ -388,6 +388,8 @@ class OverlayWindow(QWidget):
         if enabled:
             self.show_idle()
             self.show()
+            # Wayland ignores move() on hidden windows, so reapply once mapped.
+            self._position_window()
         elif self.current_state == "idle":
             super().hide()
 
@@ -462,6 +464,8 @@ class OverlayWindow(QWidget):
         self._dots_timer.start(400)
         self._set_action_mode("stop")
         self.show()
+        # Wayland ignores move() on hidden windows, so reapply once mapped.
+        self._position_window()
 
     def show_processing(self):
         self.current_state = "processing"
