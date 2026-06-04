@@ -15,7 +15,6 @@ TRANSCRIBE = f"{API_V1}/transcribe"
 TRANSFORM = f"{API_V1}/transform"
 PRESETS = f"{API_V1}/presets"
 REPORT = f"{API_V1}/report"
-MODELS = f"{API_V1}/models"
 
 
 def url(path: str) -> str:
@@ -43,6 +42,3 @@ def report() -> str:
     return url(REPORT)
 
 
-def models() -> str:
-    """Full URL for GET /api/v1/models."""
-    return url(MODELS)

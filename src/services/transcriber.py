@@ -232,41 +232,6 @@ class Transcriber:
             logger.warning(f"Error fetching presets: {e}")
             return []
 
-    # ── Models ──────────────────────────────────────────────
-
-    def get_models(self) -> dict[str, list[dict]]:
-        """Fetch the available models per feature from the API.
-
-        Returns a dict with two lists, e.g.::
-
-            {
-                "transcription":  [{"id": "v3-turbo", "name": "...", "default": True}],
-                "transformation": [{"id": "qwen/qwen3-32b", "name": "...", "default": True}],
-            }
-
-        On any non-200 status or error this logs a warning and returns an empty
-        dict, so the UI can fall back to its built-in defaults (same
-        graceful-degradation contract as ``get_favorite_presets``).
-        """
-        try:
-            headers = {"Authorization": f"Bearer {self.api_key}"}
-            response = self.client.get(
-                routes.models(),
-                headers=headers,
-            )
-            if response.status_code == 200:
-                data = response.json()
-                return {
-                    "transcription": data.get("transcription", []),
-                    "transformation": data.get("transformation", []),
-                }
-
-            logger.warning(f"Failed to fetch models: {response.status_code}")
-            return {}
-        except Exception as e:
-            logger.warning(f"Error fetching models: {e}")
-            return {}
-
     # ── Error handling ──────────────────────────────────────
 
     def _handle_error_response(self, response: httpx.Response) -> NoReturn:

@@ -55,22 +55,6 @@ the same error responses (see [Common errors](#common-errors)).
   }
   ```
 
-### GET `/api/v1/models` - list available models per feature
-- **Purpose:** let the app discover at runtime which models exist per feature so
-  new models appear in the Models page without a client release.
-- **Request:** `GET` with `Authorization: Bearer <api_key>`; no body.
-- **Response (200):**
-  ```json
-  {
-    "transcription": [
-      { "id": "v3-turbo", "name": "Whisper v3 Turbo", "default": true }
-    ],
-    "transformation": [
-      { "id": "qwen/qwen3-32b", "name": "Qwen3 32B", "default": true }
-    ]
-  }
-  ```
-
 ### POST `/api/v1/report` - send logs / bug report
 - **Request (JSON):**
   ```json
