@@ -28,7 +28,7 @@ Dicto is a minimalist desktop app (Windows, Linux, macOS) that transcribes speec
 ## Building & packaging
 - **Windows:** GitHub Actions (`.github/workflows/build.yml`) builds with PyInstaller and wraps it in an Inno Setup installer (`installer.iss`, `Dicto.spec`).
 - **Linux:** `bash scripts/build-deb.sh` builds the PyInstaller onedir bundle and packages a `.deb` into `dist/` (install with `sudo apt install ./dist/dicto_<version>_amd64.deb`). CI also produces a portable `.tar.gz`. The Linux GUI runs on Wayland; the global hotkey works on the host but not inside a dev container.
-- **Self-update:** from Settings → Updates the app checks GitHub Releases for a newer version; when installed via the Linux `.deb` it downloads the new `.deb` and installs it through `pkexec` (PolicyKit auth prompt), otherwise it opens the release download page. PyInstaller builds pass `--copy-metadata dicto` so the bundled app knows its own version (`src/version.py`).
+- **Self-update:** from Settings → Updates the app checks GitHub Releases for a newer version and installs it in place on frozen builds. On the Linux `.deb` it downloads the new `.deb` and installs it through `pkexec` (PolicyKit auth prompt); on Windows it downloads the Inno Setup `Dicto-<ver>-setup.exe`, runs it silently and exits so the installer can replace the locked files and relaunch the app. When in-place install isn't possible (e.g. the portable `.tar.gz`) it opens the release download page instead. PyInstaller builds pass `--copy-metadata dicto` so the bundled app knows its own version (`src/version.py`).
 
 ## Documentation available in `.ctx/docs/`
 - **`core_architecture.md`** — Entry point, controller state machine, settings, and application lifecycle

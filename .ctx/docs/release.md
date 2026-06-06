@@ -75,6 +75,19 @@ La app instalada (`/opt/dicto`) detecta la nueva `latest`, descarga el `.deb` y
 lo instala con `pkexec apt-get install`. Ver flujo en
 [`services.md`](services.md) y `src/ui/main_window_updates.py`.
 
+## Windows: el instalador sale del CI
+
+`scripts/release.sh` solo construye y sube el artefacto **Linux** (`.deb` +
+`.tar.gz`). El instalador de Windows (`Dicto-<ver>-setup.exe`, Inno Setup) lo
+produce **GitHub Actions** (job `build-windows` en `.github/workflows/build.yml`),
+que se dispara al hacer `push` de un tag `v*`.
+
+Implicación para el updater de Windows: una release creada solo con
+`scripts/release.sh` (tag por API, sin CI) **no** llevará el `setup.exe`, así que
+la app Windows caerá al fallback de "abrir página de release". Para que la
+auto-actualización en Windows funcione, publica con un tag pusheado (que dispara
+el CI) o adjunta el `setup.exe` a la release manualmente.
+
 ## Re-publicar la misma versión
 
 `gh release create` falla si el tag ya existe. Para rehacerla:

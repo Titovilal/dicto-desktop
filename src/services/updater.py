@@ -1,11 +1,10 @@
 """Self-update support for the desktop app.
 
-Checks the project's GitHub Releases for a newer version and, on Linux, can
-download the published ``.deb`` and install it via ``pkexec apt-get install``
-(which prompts the user for authentication through PolicyKit).
+Checks the project's GitHub Releases for a newer version and, on frozen builds,
+installs it in place: the ``.deb`` via ``pkexec apt-get install`` on Linux, the
+``*-setup.exe`` (Inno Setup) launched silently on Windows.
 
-The whole flow is best-effort and never raises to the caller: callers receive
-structured results / exceptions wrapped in :class:`UpdateError`.
+Best-effort: failures surface as :class:`UpdateError`, never raised to the UI.
 """
 
 from __future__ import annotations
@@ -42,7 +41,11 @@ class UpdateInfo:
     current_version: str
     latest_version: str
     release_url: str
-    deb_url: str | None  # download URL for the .deb asset, if any
+    # Installer for the running platform (.deb on Linux, *-setup.exe on Windows).
+    asset_url: str | None
+    asset_name: str | None
+    # Linux alias of the above, kept for backwards compatibility.
+    deb_url: str | None
     deb_name: str | None
 
 
@@ -72,33 +75,49 @@ def check_for_update(timeout: float = 15.0) -> UpdateInfo:
 
     deb_url: str | None = None
     deb_name: str | None = None
+    exe_url: str | None = None
+    exe_name: str | None = None
     for asset in data.get("assets", []):
         name = asset.get("name", "")
-        if name.endswith(".deb"):
+        if name.endswith(".deb") and deb_url is None:
             deb_url = asset.get("browser_download_url")
             deb_name = name
-            break
+        # Windows installer published by Inno Setup, e.g. "Dicto-2.7.3-setup.exe".
+        elif name.endswith(".exe") and "setup" in name.lower() and exe_url is None:
+            exe_url = asset.get("browser_download_url")
+            exe_name = name
+
+    # Pick the artifact installable on the running platform.
+    if sys.platform == "win32":
+        asset_url, asset_name = exe_url, exe_name
+    else:
+        asset_url, asset_name = deb_url, deb_name
 
     return UpdateInfo(
         available=is_newer(latest, current),
         current_version=current,
         latest_version=latest.lstrip("vV"),
         release_url=release_url,
+        asset_url=asset_url,
+        asset_name=asset_name,
         deb_url=deb_url,
         deb_name=deb_name,
     )
 
 
 def can_self_install() -> bool:
-    """True if this build can install a .deb update in place.
+    """True if this build can install an update in place.
 
-    Requires: running on Linux, as a frozen bundle installed under a system
-    path (the .deb installs to /opt/dicto), and a PolicyKit agent (``pkexec``)
-    available to elevate the install.
+    Windows: any frozen bundle (the Inno Setup installer handles files + UAC).
+    Linux: a frozen bundle under /opt/dicto with ``pkexec`` available.
     """
-    if sys.platform != "linux":
-        return False
     if not getattr(sys, "frozen", False):
+        return False
+
+    if sys.platform == "win32":
+        return True
+
+    if sys.platform != "linux":
         return False
     if shutil.which("pkexec") is None:
         return False
@@ -107,14 +126,14 @@ def can_self_install() -> bool:
     return str(exe).startswith("/opt/dicto")
 
 
-def download_deb(deb_url: str, deb_name: str, timeout: float = 120.0) -> Path:
-    """Download the .deb asset to a temp file and return its path."""
+def download_asset(asset_url: str, asset_name: str, timeout: float = 120.0) -> Path:
+    """Download a release asset to a temp file and return its path."""
     tmp_dir = Path(tempfile.gettempdir()) / "dicto-update"
     tmp_dir.mkdir(parents=True, exist_ok=True)
-    dest = tmp_dir / deb_name
+    dest = tmp_dir / asset_name
 
     try:
-        with httpx.stream("GET", deb_url, timeout=timeout, follow_redirects=True) as r:
+        with httpx.stream("GET", asset_url, timeout=timeout, follow_redirects=True) as r:
             r.raise_for_status()
             with open(dest, "wb") as fh:
                 for chunk in r.iter_bytes(chunk_size=64 * 1024):
@@ -124,6 +143,10 @@ def download_deb(deb_url: str, deb_name: str, timeout: float = 120.0) -> Path:
 
     logger.info("Downloaded update package to %s", dest)
     return dest
+
+
+# Backwards-compatible alias (the .deb is just a release asset).
+download_deb = download_asset
 
 
 def install_deb(deb_path: Path) -> None:
@@ -163,6 +186,36 @@ def install_deb(deb_path: Path) -> None:
         raise UpdateError(f"Installer failed (code {proc.returncode}): {detail}")
 
     logger.info("Update installed successfully")
+
+
+def install_windows_setup(exe_path: Path) -> None:
+    """Launch the Inno Setup installer silently and exit so it can replace files.
+
+    The running exe locks its own files, so we hand off to the installer and exit;
+    Inno upgrades in place and relaunches the app via its [Run] section. Does not
+    return — it terminates the process.
+    """
+    if not exe_path.is_file():
+        raise UpdateError(f"Update installer not found: {exe_path}")
+
+    # /SILENT: progress window, no wizard. /CLOSEAPPLICATIONS: shut us down
+    # cleanly. /NORESTART: don't reboot Windows. [Run] relaunches Dicto after.
+    cmd = [
+        str(exe_path),
+        "/SILENT",
+        "/CLOSEAPPLICATIONS",
+        "/RESTARTAPPLICATIONS=no",
+        "/NORESTART",
+    ]
+    logger.info("Launching Windows installer: %s", " ".join(cmd))
+    try:
+        subprocess.Popen(cmd, close_fds=True)
+    except Exception as exc:  # noqa: BLE001
+        raise UpdateError(f"Failed to launch installer: {exc}") from exc
+
+    # Give the installer a moment to start, then release our file locks by exiting.
+    logger.info("Exiting so the installer can replace application files")
+    os._exit(0)
 
 
 def restart_app() -> None:

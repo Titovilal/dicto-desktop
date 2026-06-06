@@ -37,16 +37,23 @@ class TestVersionParsing:
         assert get_version() and get_version() != "0.0.0"
 
 
-def _release_response(tag, with_deb=True):
+def _release_response(tag, with_deb=True, with_exe=True):
     resp = MagicMock()
     assets = []
     if with_deb:
-        assets = [
+        assets.append(
             {
                 "name": "dicto_x_amd64.deb",
                 "browser_download_url": "https://example/dicto_x_amd64.deb",
             }
-        ]
+        )
+    if with_exe:
+        assets.append(
+            {
+                "name": "Dicto-99.0.0-setup.exe",
+                "browser_download_url": "https://example/Dicto-99.0.0-setup.exe",
+            }
+        )
     resp.json.return_value = {
         "tag_name": tag,
         "html_url": "https://example/releases/tag/" + tag,
@@ -64,7 +71,29 @@ class TestCheckForUpdate:
             info = updater.check_for_update()
         assert info.available is True
         assert info.latest_version == "99.0.0"
+        # Both platform assets are always recorded...
         assert info.deb_url and info.deb_url.endswith(".deb")
+        # ...and asset_url points at the artifact for the running platform.
+        if sys.platform == "win32":
+            assert info.asset_url and info.asset_url.endswith("setup.exe")
+        else:
+            assert info.asset_url == info.deb_url
+
+    def test_asset_selected_per_platform(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "win32")
+        with patch.object(
+            updater.httpx, "get", return_value=_release_response("v99.0.0")
+        ):
+            info = updater.check_for_update()
+        assert info.asset_url and info.asset_url.endswith("setup.exe")
+        assert info.asset_name == "Dicto-99.0.0-setup.exe"
+
+        monkeypatch.setattr(sys, "platform", "linux")
+        with patch.object(
+            updater.httpx, "get", return_value=_release_response("v99.0.0")
+        ):
+            info = updater.check_for_update()
+        assert info.asset_url and info.asset_url.endswith(".deb")
 
     def test_same_version_not_available(self):
         tag = "v" + get_version()
@@ -91,10 +120,20 @@ class TestCanSelfInstall:
         monkeypatch.setattr(sys, "frozen", False, raising=False)
         assert updater.can_self_install() is False
 
-    def test_non_linux(self, monkeypatch):
+    def test_windows_frozen(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "win32")
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
+        assert updater.can_self_install() is True
+
+    def test_unsupported_platform(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "darwin")
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
         assert updater.can_self_install() is False
 
+    @pytest.mark.skipif(
+        sys.platform != "linux",
+        reason="checks a POSIX install path (/opt/dicto); Path.resolve differs on Windows",
+    )
     def test_frozen_in_opt_with_pkexec(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.setattr(sys, "frozen", True, raising=False)
@@ -102,6 +141,10 @@ class TestCanSelfInstall:
         monkeypatch.setattr(updater.shutil, "which", lambda _: "/usr/bin/pkexec")
         assert updater.can_self_install() is True
 
+    @pytest.mark.skipif(
+        sys.platform != "linux",
+        reason="checks a POSIX install path (/opt/dicto); Path.resolve differs on Windows",
+    )
     def test_frozen_outside_opt(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.setattr(sys, "frozen", True, raising=False)
@@ -129,3 +172,25 @@ class TestInstallDeb:
         proc = MagicMock(returncode=0, stderr="", stdout="ok")
         with patch.object(updater.subprocess, "run", return_value=proc):
             updater.install_deb(deb)  # should not raise
+
+
+class TestInstallWindowsSetup:
+    def test_missing_file_raises(self):
+        with pytest.raises(updater.UpdateError):
+            updater.install_windows_setup(Path("/nonexistent/setup.exe"))
+
+    def test_launches_installer_silently_and_exits(self, tmp_path):
+        setup = tmp_path / "Dicto-1.0-setup.exe"
+        setup.write_bytes(b"x")
+        with (
+            patch.object(updater.subprocess, "Popen") as popen,
+            patch.object(updater.os, "_exit", side_effect=SystemExit) as exit_,
+        ):
+            with pytest.raises(SystemExit):
+                updater.install_windows_setup(setup)
+        # The installer is launched with silent flags...
+        args = popen.call_args.args[0]
+        assert args[0] == str(setup)
+        assert "/SILENT" in args
+        # ...and we exit so the installer can replace locked files.
+        exit_.assert_called_once_with(0)

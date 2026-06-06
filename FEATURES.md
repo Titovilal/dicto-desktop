@@ -17,8 +17,10 @@ Estados de la app: `IDLE → RECORDING → PROCESSING → SUCCESS/ERROR → IDLE
 
 ## Grabación
 
-- **Atajo global** para iniciar/parar. Modo *hold* (mantener) en Windows/X11;
-  modo *toggle* (pulsar para activar/desactivar) en Wayland.
+- **Atajo global** para iniciar/parar. En Windows/X11 el modo es configurable en
+  Ajustes (`behavior.recording_mode`): *hold* (mantener pulsado para grabar,
+  defecto) o *toggle* (pulsar para iniciar, pulsar de nuevo para parar). En
+  Wayland siempre es *toggle* (limitación del portal).
 - **Selección de micrófono** en Ajustes → Audio, con botón de prueba y forma de
   onda en vivo.
 - **Captura de audio del sistema** (solo Windows): mezcla el audio del sistema
@@ -66,8 +68,11 @@ Config de audio (`config.yaml`):
 - **Atajo de grabación** configurable en Ajustes. Defecto: `Ctrl+Shift+Space`
   (`hotkey.modifiers` = `["ctrl","shift"]`, `hotkey.key` = `"space"`).
 - Modificadores admitidos: `ctrl`, `shift`, `alt`, `cmd` (con variantes L/R).
-- **Windows / Linux X11**: listener global vía pynput (modo *hold*).
-- **Linux Wayland**: portal XDG GlobalShortcuts vía D-Bus (modo *toggle*;
+- **Modo de grabación** (`behavior.recording_mode`, defecto `hold`): elige entre
+  *hold* (mantener) o *toggle* (pulsar para activar/desactivar) en Ajustes. Solo
+  aplica a Windows/X11; Wayland es siempre *toggle*.
+- **Windows / Linux X11**: listener global vía pynput (modo *hold* o *toggle*).
+- **Linux Wayland**: portal XDG GlobalShortcuts vía D-Bus (siempre *toggle*;
   requiere `dbus-next`). El compositor puede pedir confirmación del atajo.
 - **Degradación elegante**: si no hay atajos disponibles, la grabación por
   botón en la GUI sigue funcionando.
@@ -108,11 +113,19 @@ ocultar, abrir la app).
 Inglés (`en`), Español (`es`, por defecto), Alemán (`de`), Francés (`fr`) y
 Portugués (`pt`). Se cambia en Ajustes; clave `ui_language`.
 
-## Auto-actualización (solo Linux)
+## Auto-actualización (Windows y Linux)
 
 - Comprueba la última *release* en GitHub (Ajustes → Updates).
-- En builds *frozen* de Linux: descarga el `.deb` de la release y lo instala vía
-  `pkexec apt-get install` (autenticación por PolicyKit).
+- En builds *frozen*, descarga e instala la nueva versión en el sitio:
+  - **Windows**: descarga el instalador `Dicto-<ver>-setup.exe` (Inno Setup), lo
+    ejecuta en modo silencioso y cierra la app para que el instalador reemplace
+    los ficheros y la **relance automáticamente** al terminar. Puede aparecer el
+    aviso de UAC si la instalación es para todos los usuarios.
+  - **Linux**: descarga el `.deb` de la release y lo instala vía
+    `pkexec apt-get install` (autenticación por PolicyKit). Tras instalar, la app
+    ofrece reiniciarse.
+- Si no es posible instalar en el sitio (p. ej. el `.tar.gz` portable), el botón
+  abre la página de la release para descargarla a mano.
 - Clave repo: env `DICTO_UPDATE_REPO` (defecto `Titovilal/dicto-desktop`).
 
 ## Reporte de errores
@@ -158,8 +171,8 @@ arranque.
 
 | Funcionalidad | Windows | Linux X11 | Linux Wayland |
 |---------------|---------|-----------|---------------|
-| Atajo global | pynput (hold) | pynput (hold) | portal XDG (toggle) |
+| Atajo global | pynput (hold/toggle) | pynput (hold/toggle) | portal XDG (toggle) |
 | Audio del sistema | ✅ WASAPI | ❌ | ❌ |
 | Auto-pegar | pynput | pynput | ydotool / xdotool |
 | Portapapeles | win32clipboard | pyperclip | pyperclip |
-| Auto-actualización | ❌ | ✅ (.deb) | ✅ (.deb) |
+| Auto-actualización | ✅ (setup.exe) | ✅ (.deb) | ✅ (.deb) |
