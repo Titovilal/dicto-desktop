@@ -224,6 +224,9 @@ class DictoApp:
         self.main_window.recording_hotkey_changed.connect(
             self.controller.update_recording_hotkey
         )
+        self.main_window.recording_mode_changed.connect(
+            self.controller.update_recording_mode
+        )
 
         # Audio device / system audio -> Controller
         self.main_window.input_device_changed.connect(

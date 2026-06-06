@@ -103,6 +103,7 @@ class Settings:
             "auto_enter": False,
             "always_on_top": False,
             "persistent_overlay": False,
+            "recording_mode": "hold",
         },
         "transformation": {"model": "qwen/qwen3-32b"},
         "edit_hotkey": {"modifiers": ["ctrl", "alt"], "key": "space"},
@@ -205,6 +206,9 @@ class Settings:
     auto_enter: bool = _config_property("behavior", "auto_enter", False)
     always_on_top: bool = _config_property("behavior", "always_on_top", False)
     persistent_overlay: bool = _config_property("behavior", "persistent_overlay", False)
+    # "hold": press-and-hold to record, release to stop.
+    # "toggle": press once to start, press again to stop.
+    recording_mode: str = _config_property("behavior", "recording_mode", "hold")
     edit_auto_paste: bool = _config_property("behavior", "edit_auto_paste", False)
     edit_auto_enter: bool = _config_property("behavior", "edit_auto_enter", False)
 

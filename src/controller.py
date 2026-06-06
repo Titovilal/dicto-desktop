@@ -97,12 +97,16 @@ class Controller(QObject):
             # cannot acquire a display, so degrade gracefully: keep the GUI usable
             # for development and leave the listeners disabled.
             try:
+                toggle = self.settings.recording_mode == "toggle"
                 self.hotkey_listener = create_hotkey_listener(
                     modifiers=self.settings.hotkey_modifiers,
                     key=self.settings.hotkey_key,
-                    on_press=self._on_hotkey_press,
+                    # In toggle mode the single press routes to _on_hotkey_toggle,
+                    # which decides start vs stop from the controller's state.
+                    on_press=self._on_hotkey_toggle if toggle else self._on_hotkey_press,
                     on_release=self._on_hotkey_release,
                     on_toggle=self._on_hotkey_toggle,
+                    mode=self._record_listener_mode(),
                     shortcut_id="dicto-record",
                     description="Dicto: Record voice",
                 )
@@ -163,6 +167,16 @@ class Controller(QObject):
             self.state_changed.emit(new_state)
 
     # ── Hotkey callbacks ─────────────────────────────────────
+
+    def _record_listener_mode(self) -> str:
+        """Translate the configured recording_mode into a listener mode.
+
+        "hold" → press-and-hold ("hold"); "toggle" → single press per tap
+        ("press"), where each tap is routed to _on_hotkey_toggle, which decides
+        start vs stop from the controller's own state. The Wayland portal backend
+        is always toggle-only regardless of this value.
+        """
+        return "press" if self.settings.recording_mode == "toggle" else "hold"
 
     def _on_hotkey_press(self):
         if self.current_state in (AppState.IDLE, AppState.SUCCESS):
@@ -385,15 +399,24 @@ class Controller(QObject):
         logger.info(f"Hotkey updated ({listener_attr}): {'+'.join(modifiers)}+{key}")
 
     def update_recording_hotkey(self, modifiers: list[str], key: str):
+        toggle = self.settings.recording_mode == "toggle"
         self._update_hotkey_listener(
             "hotkey_listener",
             modifiers,
             key,
-            self._on_hotkey_press,
+            self._on_hotkey_toggle if toggle else self._on_hotkey_press,
             self._on_hotkey_release,
             on_toggle=self._on_hotkey_toggle,
+            mode=self._record_listener_mode(),
             shortcut_id="dicto-record",
             description="Dicto: Record voice",
+        )
+
+    @Slot(str)
+    def update_recording_mode(self, mode: str):
+        """Rebuild the record hotkey listener after the hold/toggle mode changes."""
+        self.update_recording_hotkey(
+            self.settings.hotkey_modifiers, self.settings.hotkey_key
         )
 
     # ── Transform ─────────────────────────────────────────────

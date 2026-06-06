@@ -63,6 +63,7 @@ class MainWindow(BuildMixin, SettingsMixin, StateMixin, QMainWindow):
     transform_requested = Signal(str, str, str)  # (format_id, text, instructions)
     persistent_overlay_changed = Signal(bool)
     recording_hotkey_changed = Signal(list, str)  # (modifiers, key)
+    recording_mode_changed = Signal(str)  # "hold" or "toggle"
     edit_hotkey_changed = Signal(list, str)  # (modifiers, key)
     input_device_changed = Signal(object)  # int or None
     include_system_audio_changed = Signal(bool)

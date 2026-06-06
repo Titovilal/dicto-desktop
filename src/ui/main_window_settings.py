@@ -180,6 +180,10 @@ class SettingsMixin:
             self.settings.audio_include_system_audio
         )
 
+        mode_index = self.recording_mode_combo.findData(self.settings.recording_mode)
+        if mode_index >= 0:
+            self.recording_mode_combo.setCurrentIndex(mode_index)
+
         self.auto_paste_checkbox.setChecked(self.settings.auto_paste)
         self.auto_enter_checkbox.setChecked(self.settings.auto_enter)
 
@@ -439,6 +443,12 @@ class SettingsMixin:
         for key, label in self._hotkey_labels.items():
             label.setText(t(key))
 
+        # Recording mode combo items
+        self.recording_mode_combo.blockSignals(True)
+        self.recording_mode_combo.setItemText(0, t("recording_mode_hold"))
+        self.recording_mode_combo.setItemText(1, t("recording_mode_toggle"))
+        self.recording_mode_combo.blockSignals(False)
+
         # Custom prompt row
         self._custom_prompt_input.setPlaceholderText(t("custom_prompt_placeholder"))
         self._custom_apply_btn.setText(t("apply"))
@@ -460,6 +470,11 @@ class SettingsMixin:
         self._save_setting("edition_model", value)
         if self.controller and self.controller.transcriber:
             self.controller.transcriber.edition_model = value
+
+    def _on_recording_mode_changed(self, index: int):
+        mode = self.recording_mode_combo.itemData(index)
+        self._save_setting("recording_mode", mode)
+        self.recording_mode_changed.emit(mode)
 
     @Slot(list, str)
     def _on_recording_hotkey_changed(self, modifiers: list[str], key: str):

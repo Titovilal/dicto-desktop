@@ -148,15 +148,12 @@ class HotkeyListener:
         # Check if hotkey is pressed
         if not self.hotkey_pressed:
             if self._is_hotkey_combination(key):
-                if self.mode == "press":
-                    # Single press mode: fire callback and reset immediately
-                    if self.on_press_callback:
-                        self.on_press_callback()
-                else:
-                    # Hold mode: track pressed state for release
-                    self.hotkey_pressed = True
-                    if self.on_press_callback:
-                        self.on_press_callback()
+                # Mark pressed in both modes so OS key auto-repeat doesn't fire
+                # the callback again while the combo is held down. The flag is
+                # cleared on release of the main key in _on_release.
+                self.hotkey_pressed = True
+                if self.on_press_callback:
+                    self.on_press_callback()
 
     def _on_release(self, key):
         """Internal callback for key release events."""
@@ -174,7 +171,9 @@ class HotkeyListener:
         # Check if hotkey is released
         if self.hotkey_pressed and self._key_matches(key):
             self.hotkey_pressed = False
-            if self.on_release_callback:
+            # Only hold mode acts on release (stop recording on key-up). Press
+            # mode already fired on key-down; the release just re-arms it.
+            if self.mode != "press" and self.on_release_callback:
                 self.on_release_callback()
 
     def _is_hotkey_combination(self, key) -> bool:

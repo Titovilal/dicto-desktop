@@ -643,6 +643,19 @@ class BuildMixin:
             self._on_edit_hotkey_changed,
         )
 
+        # Recording mode: hold vs toggle
+        layout.addSpacing(10)
+        mode_label = QLabel(t("recording_mode"))
+        mode_label.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+        self._hotkey_labels["recording_mode"] = mode_label
+        layout.addWidget(mode_label)
+        layout.addSpacing(4)
+        self.recording_mode_combo = self._add_combo(
+            layout,
+            {"hold": t("recording_mode_hold"), "toggle": t("recording_mode_toggle")},
+            self._on_recording_mode_changed,
+        )
+
         # Behavior (transcription + edit selection together)
         self._add_section(layout, "behavior")
         self.auto_paste_checkbox = self._add_checkbox(
