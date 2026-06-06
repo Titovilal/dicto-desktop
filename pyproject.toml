@@ -28,7 +28,9 @@ dependencies = [
     "pydantic>=2.0",
     "pyyaml>=6.0",
     "python-dotenv>=1.0.0",
-    "webrtcvad>=2.0.10",
+    # NOTE: VAD (webrtcvad) is a Phase 1 dependency. Add a prebuilt wheel
+    # (e.g. "webrtcvad-wheels") when implementing core/vad.py so the editable
+    # install does not require a C toolchain on dev machines.
 ]
 
 [project.urls]

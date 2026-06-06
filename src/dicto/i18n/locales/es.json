@@ -1,0 +1,31 @@
+{
+  "app.name": "Dicto",
+  "app.loading": "Cargando Dicto…",
+
+  "tray.open": "Abrir Dicto",
+  "tray.settings": "Ajustes",
+  "tray.quit": "Salir",
+
+  "status.idle": "Listo",
+  "status.recording": "Grabando…",
+  "status.paused": "En pausa",
+  "status.processing": "Transcribiendo…",
+  "status.success": "Hecho",
+  "status.error": "Error",
+
+  "window.title": "Dicto",
+  "window.library": "Biblioteca",
+  "window.empty": "Aún no hay nada. Pulsa tu atajo para dictar.",
+
+  "settings.title": "Ajustes",
+  "settings.appearance": "Apariencia",
+  "settings.theme": "Tema",
+  "settings.theme.light": "Claro",
+  "settings.theme.dark": "Oscuro",
+  "settings.theme.system": "Seguir al sistema",
+  "settings.language": "Idioma",
+
+  "common.close": "Cerrar",
+  "common.save": "Guardar",
+  "common.cancel": "Cancelar"
+}

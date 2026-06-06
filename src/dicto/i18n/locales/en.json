@@ -1,0 +1,31 @@
+{
+  "app.name": "Dicto",
+  "app.loading": "Loading Dicto…",
+
+  "tray.open": "Open Dicto",
+  "tray.settings": "Settings",
+  "tray.quit": "Quit",
+
+  "status.idle": "Ready",
+  "status.recording": "Recording…",
+  "status.paused": "Paused",
+  "status.processing": "Transcribing…",
+  "status.success": "Done",
+  "status.error": "Error",
+
+  "window.title": "Dicto",
+  "window.library": "Library",
+  "window.empty": "Nothing here yet. Press your hotkey to dictate.",
+
+  "settings.title": "Settings",
+  "settings.appearance": "Appearance",
+  "settings.theme": "Theme",
+  "settings.theme.light": "Light",
+  "settings.theme.dark": "Dark",
+  "settings.theme.system": "Follow system",
+  "settings.language": "Language",
+
+  "common.close": "Close",
+  "common.save": "Save",
+  "common.cancel": "Cancel"
+}
