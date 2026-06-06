@@ -18,16 +18,6 @@ if sys.platform == "win32":
     app_id = "dicto.desktop.1.0"
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
 
-import os
-
-# Log Wayland session detection (hotkeys now supported via XDG GlobalShortcuts portal)
-if sys.platform == "linux" and os.environ.get("XDG_SESSION_TYPE") == "wayland":
-    import logging as _logging
-
-    _logging.getLogger(__name__).info(
-        "Wayland session detected — using XDG GlobalShortcuts portal for hotkeys"
-    )
-
 from dotenv import load_dotenv
 
 # Load .env file before importing other modules that use settings

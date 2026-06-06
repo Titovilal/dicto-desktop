@@ -9,33 +9,15 @@ A minimalist desktop application that records your voice via a global hotkey, tr
 - **Instant Clipboard**: Transcribed text is automatically copied to clipboard
 - **Visual Feedback**: Overlay window shows recording/processing status
 - **Background Operation**: Lives in system tray with minimal resource usage
-- **Cross-Platform**: Works on Windows 10/11 and Linux
+- **Windows**: Runs on Windows 10/11
 
 ## Prerequisites
 
-### All Platforms
-
+- Windows 10 or 11
 - Python 3.8 or higher
 - OpenAI API key (get one at https://platform.openai.com/api-keys)
 
-### Linux
-
-Install PortAudio development files:
-
-```bash
-# Ubuntu/Debian
-sudo apt install portaudio19-dev python3-dev
-
-# Fedora
-sudo dnf install portaudio-devel python3-devel
-
-# Arch Linux
-sudo pacman -S portaudio
-```
-
-### Windows
-
-PyAudio will be installed automatically. No additional dependencies needed.
+Audio dependencies are installed automatically. No additional system packages needed.
 
 ## Installation
 
@@ -50,12 +32,11 @@ cd dicto-desktop
 ### Option A: Using uv (recommended - 10-100x faster)
 ```bash
 # Install uv if you don't have it (one-time setup)
-curl -LsSf https://astral.sh/uv/install.sh | sh  # Linux/Mac
-# Or on Windows: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 # Create virtual environment and install dependencies
 uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+.venv\Scripts\activate
 uv pip install -r requirements.txt
 
 # Or use pyproject.toml (even cleaner):
@@ -65,7 +46,7 @@ uv sync
 ### Option B: Using traditional pip
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
@@ -74,11 +55,11 @@ pip install -r requirements.txt
 3. Configure the application:
 ```bash
 # Copy the example config
-cp config.yaml.example config.yaml
+copy config.yaml.example config.yaml
 
 # Edit config.yaml and add your OpenAI API key
 # Or set the OPENAI_API_KEY environment variable
-export OPENAI_API_KEY="sk-your-api-key-here"
+set OPENAI_API_KEY=sk-your-api-key-here
 ```
 
 ## Configuration
@@ -143,12 +124,6 @@ dicto
 
 ### "Failed to initialize audio system"
 
-**On Linux:**
-- Install PortAudio: `sudo apt install portaudio19-dev`
-- Check microphone permissions
-- Verify your microphone works: `arecord -l`
-
-**On Windows:**
 - Check microphone permissions in Windows Settings > Privacy > Microphone
 - Make sure no other application is exclusively using the microphone
 
@@ -156,7 +131,6 @@ dicto
 
 - Make sure the hotkey combination isn't already used by another application
 - Try changing the hotkey in `config.yaml`
-- On Linux, you may need to run with appropriate permissions
 
 ### "Transcription failed"
 
@@ -193,8 +167,8 @@ dicto-desktop/
 
 - **PySide6**: UI framework and system tray
 - **pynput**: Global hotkey listener
-- **pyaudio**: Audio recording
-- **pyperclip**: Clipboard operations
+- **sounddevice / soundcard**: Audio recording
+- **pywin32**: Clipboard operations
 - **httpx**: HTTP client for API calls
 - **OpenAI Whisper API**: Speech-to-text transcription
 

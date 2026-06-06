@@ -12,11 +12,11 @@ from src.config.settings import Settings
 def _pynput_available() -> bool:
     """Return True if pynput's keyboard backend can initialize.
 
-    On headless/Wayland environments (e.g. CI or a dev container with no X
-    display) importing ``pynput.keyboard`` raises ImportError because it cannot
-    acquire an X connection. Tests that exercise the pynput-based hotkey
-    listener are skipped there — the logic is platform-native and can only run
-    where a real input backend is available.
+    On headless environments (e.g. CI with no interactive desktop) importing
+    ``pynput.keyboard`` can fail because it cannot acquire an input backend.
+    Tests that exercise the pynput-based hotkey listener are skipped there —
+    the logic is platform-native and can only run where a real input backend
+    is available.
     """
     try:
         from pynput import keyboard  # noqa: F401
@@ -29,7 +29,7 @@ PYNPUT_AVAILABLE = _pynput_available()
 
 requires_pynput = pytest.mark.skipif(
     not PYNPUT_AVAILABLE,
-    reason="pynput keyboard backend unavailable (headless/Wayland environment)",
+    reason="pynput keyboard backend unavailable (headless environment)",
 )
 
 

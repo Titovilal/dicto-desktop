@@ -2,8 +2,7 @@
 
 App de escritorio para transcripción de voz a texto mediante un atajo global.
 Grabas con un atajo, Dicto transcribe el audio vía API y copia el resultado al
-portapapeles. Construida con Python + PySide6. Soporta Windows y Linux (X11 y
-Wayland).
+portapapeles. Construida con Python + PySide6. Para Windows 10/11.
 
 ## Flujo principal
 
@@ -17,13 +16,12 @@ Estados de la app: `IDLE → RECORDING → PROCESSING → SUCCESS/ERROR → IDLE
 
 ## Grabación
 
-- **Atajo global** para iniciar/parar. En Windows/X11 el modo es configurable en
+- **Atajo global** para iniciar/parar. El modo es configurable en
   Ajustes (`behavior.recording_mode`): *hold* (mantener pulsado para grabar,
-  defecto) o *toggle* (pulsar para iniciar, pulsar de nuevo para parar). En
-  Wayland siempre es *toggle* (limitación del portal).
+  defecto) o *toggle* (pulsar para iniciar, pulsar de nuevo para parar).
 - **Selección de micrófono** en Ajustes → Audio, con botón de prueba y forma de
   onda en vivo.
-- **Captura de audio del sistema** (solo Windows): mezcla el audio del sistema
+- **Captura de audio del sistema**: mezcla el audio del sistema
   con el micrófono vía WASAPI loopback, con *Stereo Mix* como alternativa.
 - **Visualización**: forma de onda en vivo y temporizador durante la grabación,
   tanto en la ventana principal como en el overlay flotante.
@@ -36,7 +34,7 @@ Config de audio (`config.yaml`):
 | `audio.max_duration` | `7200` | Duración máxima (s) — 2 horas |
 | `audio.channels` | `1` | Canales (mono) |
 | `audio.input_device` | `null` | Micrófono (null = predeterminado) |
-| `audio.include_system_audio` | `false` | Capturar audio del sistema (Windows) |
+| `audio.include_system_audio` | `false` | Capturar audio del sistema |
 
 ## Transcripción
 
@@ -60,8 +58,7 @@ Config de audio (`config.yaml`):
   transcribir.
 - `behavior.auto_enter` (defecto `false`): pulsa Enter tras pegar (requiere
   auto-paste).
-- Implementación por plataforma: pynput en Windows/X11; en Wayland se usa
-  `ydotool` (requiere `ydotoold`) o `xdotool`.
+- Implementación: pynput.
 
 ## Atajos de teclado
 
@@ -69,11 +66,8 @@ Config de audio (`config.yaml`):
   (`hotkey.modifiers` = `["ctrl","shift"]`, `hotkey.key` = `"space"`).
 - Modificadores admitidos: `ctrl`, `shift`, `alt`, `cmd` (con variantes L/R).
 - **Modo de grabación** (`behavior.recording_mode`, defecto `hold`): elige entre
-  *hold* (mantener) o *toggle* (pulsar para activar/desactivar) en Ajustes. Solo
-  aplica a Windows/X11; Wayland es siempre *toggle*.
-- **Windows / Linux X11**: listener global vía pynput (modo *hold* o *toggle*).
-- **Linux Wayland**: portal XDG GlobalShortcuts vía D-Bus (siempre *toggle*;
-  requiere `dbus-next`). El compositor puede pedir confirmación del atajo.
+  *hold* (mantener) o *toggle* (pulsar para activar/desactivar) en Ajustes.
+- **Listener global** vía pynput (modo *hold* o *toggle*).
 - **Degradación elegante**: si no hay atajos disponibles, la grabación por
   botón en la GUI sigue funcionando.
 
@@ -113,19 +107,15 @@ ocultar, abrir la app).
 Inglés (`en`), Español (`es`, por defecto), Alemán (`de`), Francés (`fr`) y
 Portugués (`pt`). Se cambia en Ajustes; clave `ui_language`.
 
-## Auto-actualización (Windows y Linux)
+## Auto-actualización
 
 - Comprueba la última *release* en GitHub (Ajustes → Updates).
-- En builds *frozen*, descarga e instala la nueva versión en el sitio:
-  - **Windows**: descarga el instalador `Dicto-<ver>-setup.exe` (Inno Setup), lo
-    ejecuta en modo silencioso y cierra la app para que el instalador reemplace
-    los ficheros y la **relance automáticamente** al terminar. Puede aparecer el
-    aviso de UAC si la instalación es para todos los usuarios.
-  - **Linux**: descarga el `.deb` de la release y lo instala vía
-    `pkexec apt-get install` (autenticación por PolicyKit). Tras instalar, la app
-    ofrece reiniciarse.
-- Si no es posible instalar en el sitio (p. ej. el `.tar.gz` portable), el botón
-  abre la página de la release para descargarla a mano.
+- En builds *frozen*, descarga el instalador `Dicto-<ver>-setup.exe` (Inno Setup),
+  lo ejecuta en modo silencioso y cierra la app para que el instalador reemplace
+  los ficheros y la **relance automáticamente** al terminar. Puede aparecer el
+  aviso de UAC si la instalación es para todos los usuarios.
+- Si no es posible instalar en el sitio, el botón abre la página de la release
+  para descargarla a mano.
 - Clave repo: env `DICTO_UPDATE_REPO` (defecto `Titovilal/dicto-desktop`).
 
 ## Reporte de errores
@@ -161,18 +151,7 @@ Base: `https://dicto.up.railway.app` (override con `DICTO_API_URL`).
 ## Ubicación de la configuración
 
 - **Desarrollo**: `config.yaml` en la raíz del proyecto.
-- **Windows (frozen)**: `%APPDATA%\dicto\config.yaml`.
-- **Linux (frozen)**: `$XDG_CONFIG_HOME/dicto/config.yaml` (o `~/.config/dicto/`).
+- **Frozen**: `%APPDATA%\dicto\config.yaml`.
 
 La configuración antigua junto al ejecutable se migra automáticamente al primer
 arranque.
-
-## Diferencias por plataforma
-
-| Funcionalidad | Windows | Linux X11 | Linux Wayland |
-|---------------|---------|-----------|---------------|
-| Atajo global | pynput (hold/toggle) | pynput (hold/toggle) | portal XDG (toggle) |
-| Audio del sistema | ✅ WASAPI | ❌ | ❌ |
-| Auto-pegar | pynput | pynput | ydotool / xdotool |
-| Portapapeles | win32clipboard | pyperclip | pyperclip |
-| Auto-actualización | ✅ (setup.exe) | ✅ (.deb) | ✅ (.deb) |

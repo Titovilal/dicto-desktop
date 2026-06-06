@@ -92,10 +92,9 @@ class Controller(QObject):
                     transformation_model=self.settings.transformation_model,
                 )
 
-            # Global hotkeys require a supported keyboard backend (X11 on Linux,
-            # native on Windows/macOS). On headless/Wayland dev containers pynput
-            # cannot acquire a display, so degrade gracefully: keep the GUI usable
-            # for development and leave the listeners disabled.
+            # Global hotkeys require a native keyboard backend. On headless dev
+            # containers pynput cannot acquire a display, so degrade gracefully:
+            # keep the GUI usable for development and leave the listeners disabled.
             try:
                 toggle = self.settings.recording_mode == "toggle"
                 self.hotkey_listener = create_hotkey_listener(
@@ -105,15 +104,12 @@ class Controller(QObject):
                     # which decides start vs stop from the controller's state.
                     on_press=self._on_hotkey_toggle if toggle else self._on_hotkey_press,
                     on_release=self._on_hotkey_release,
-                    on_toggle=self._on_hotkey_toggle,
                     mode=self._record_listener_mode(),
-                    shortcut_id="dicto-record",
-                    description="Dicto: Record voice",
                 )
             except Exception as e:
                 self.hotkey_listener = None
                 logger.warning(
-                    f"Global hotkeys unavailable on this platform: {e}. "
+                    f"Global hotkeys unavailable: {e}. "
                     "The GUI will run without hotkey support."
                 )
         except Exception as e:
@@ -173,8 +169,7 @@ class Controller(QObject):
 
         "hold" → press-and-hold ("hold"); "toggle" → single press per tap
         ("press"), where each tap is routed to _on_hotkey_toggle, which decides
-        start vs stop from the controller's own state. The Wayland portal backend
-        is always toggle-only regardless of this value.
+        start vs stop from the controller's own state.
         """
         return "press" if self.settings.recording_mode == "toggle" else "hold"
 
@@ -187,10 +182,9 @@ class Controller(QObject):
             self._stop_recording_and_process()
 
     def _on_hotkey_toggle(self):
-        """Single entry point for toggle-style hotkeys (Wayland portal).
+        """Single entry point for toggle-style hotkeys.
 
-        The Wayland GlobalShortcuts portal fires one neutral activation per tap
-        (Deactivated is unreliable across compositors), so the listener can't
+        In toggle mode the listener fires one activation per tap, so it can't
         track press/release itself. We decide start vs stop here, from the
         controller's own state — the single source of truth — which avoids the
         listener and controller drifting out of sync.
@@ -373,11 +367,8 @@ class Controller(QObject):
         key: str,
         on_press,
         on_release,
-        on_toggle=None,
         mode: str = "hold",
         suppress_key: bool = False,
-        shortcut_id: str = "dicto-shortcut",
-        description: str = "Dicto shortcut",
     ):
         """Generic hotkey listener update: stop old -> create new -> start."""
         old_listener = getattr(self, listener_attr)
@@ -388,11 +379,8 @@ class Controller(QObject):
             key=key,
             on_press=on_press,
             on_release=on_release,
-            on_toggle=on_toggle,
             mode=mode,
             suppress_key=suppress_key,
-            shortcut_id=shortcut_id,
-            description=description,
         )
         setattr(self, listener_attr, new_listener)
         new_listener.start()
@@ -406,10 +394,7 @@ class Controller(QObject):
             key,
             self._on_hotkey_toggle if toggle else self._on_hotkey_press,
             self._on_hotkey_release,
-            on_toggle=self._on_hotkey_toggle,
             mode=self._record_listener_mode(),
-            shortcut_id="dicto-record",
-            description="Dicto: Record voice",
         )
 
     @Slot(str)

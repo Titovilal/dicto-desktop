@@ -16,7 +16,7 @@ def get_icon_path(icon_name: str = "icon_green") -> Path | None:
     Get the path to an icon file.
 
     Works both in development and when packaged with PyInstaller.
-    Prefers .ico on Windows, .png on other platforms.
+    Prefers .ico (Windows).
 
     Args:
         icon_name: Base name of the icon (without extension)
@@ -32,13 +32,7 @@ def get_icon_path(icon_name: str = "icon_green") -> Path | None:
 
     icons_dir = base_path / "assets" / "icons"
 
-    # Prefer .ico on Windows, .png elsewhere
-    if sys.platform == "win32":
-        extensions = [".ico", ".png", ".svg"]
-    else:
-        extensions = [".png", ".ico", ".svg"]
-
-    for ext in extensions:
+    for ext in (".ico", ".png", ".svg"):
         icon_path = icons_dir / f"{icon_name}{ext}"
         if icon_path.exists():
             logger.debug(f"Icon found: {icon_path}")

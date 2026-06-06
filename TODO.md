@@ -18,10 +18,6 @@
 
 ## Desktop App
 
-- [ ] Instalar VM para probar la app en Linux.
-
-- [ ] Mover el fichero de configuración a una ruta especial, siempre la misma, una en cada SO.
-
 - [ ] Crear un sistema de logs para registrar errores y eventos importantes.
 
 - [ ] Implementar un sistema de actualizaciones automáticas para la app.

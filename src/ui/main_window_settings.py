@@ -8,7 +8,6 @@ A flat mixin (not a QMainWindow subclass) that assumes ``self`` is the window.
 from __future__ import annotations
 
 import os
-import sys
 
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Slot, Qt, QEvent
@@ -233,9 +232,9 @@ class SettingsMixin:
     # ── Mouse dragging (frameless window) ───────────────────
 
     def _start_window_drag(self, event: QMouseEvent):
-        """Header press handler: start a window move. Prefers the compositor's
-        native move loop (works on Wayland, where manual `move()` is ignored);
-        falls back to the manual drag tracked in mouseMoveEvent."""
+        """Header press handler: start a window move. Prefers the system's
+        native move loop; falls back to the manual drag tracked in
+        mouseMoveEvent."""
         if event.button() != Qt.MouseButton.LeftButton:
             return
         handle = self.windowHandle()
@@ -418,12 +417,7 @@ class SettingsMixin:
         self.edit_auto_paste_checkbox.setText(t("auto_paste_after_edit"))
         self.edit_auto_enter_checkbox.setText(t("press_enter_after_paste"))
         self.save_api_key_button.setText(t("save_key"))
-        if sys.platform == "darwin":
-            self.include_system_audio_checkbox.setToolTip(
-                t("system_audio_unsupported")
-            )
-        else:
-            self.include_system_audio_checkbox.setToolTip(t("include_system_audio"))
+        self.include_system_audio_checkbox.setToolTip(t("include_system_audio"))
         if self._audio_monitor and self._audio_monitor.is_running:
             self.test_audio_button.setText(t("test_audio_stop"))
         else:

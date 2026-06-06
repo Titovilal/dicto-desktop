@@ -7,7 +7,6 @@ A flat mixin (not a QMainWindow subclass) that assumes ``self`` is the window.
 from __future__ import annotations
 
 import os
-import sys
 
 from PySide6.QtWidgets import (
     QWidget,
@@ -881,11 +880,6 @@ class BuildMixin:
         self.include_system_audio_checkbox.toggled.connect(
             self._update_include_system_audio_icon
         )
-        if sys.platform == "darwin":
-            self.include_system_audio_checkbox.setEnabled(False)
-            self.include_system_audio_checkbox.setToolTip(
-                t("system_audio_unsupported")
-            )
         self._update_include_system_audio_icon(False)
         layout.addWidget(self.include_system_audio_checkbox)
 

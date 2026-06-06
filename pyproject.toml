@@ -25,13 +25,11 @@ dependencies = [
     "pynput>=1.7.6",
     "sounddevice>=0.4.6",
     "soundfile>=0.12.0",
-    "pyperclip>=1.8.2; sys_platform != 'win32'",
-    "pywin32>=306; sys_platform == 'win32'",
+    "pywin32>=306",
     "httpx>=0.24.0",
     "pyyaml>=6.0",
     "python-dotenv>=1.0.0",
     "soundcard>=0.4.6",
-    "dbus-next>=0.2.3; sys_platform == 'linux'",
 ]
 
 [project.urls]

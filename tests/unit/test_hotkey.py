@@ -11,10 +11,10 @@ from src.services.hotkey import HotkeyListener
 from tests.conftest import PYNPUT_AVAILABLE
 
 # The whole module exercises the pynput-based listener, which needs a real
-# input backend (X/Win/macOS). Skip on headless/Wayland environments.
+# input backend. Skip on headless environments.
 pytestmark = pytest.mark.skipif(
     not PYNPUT_AVAILABLE,
-    reason="pynput keyboard backend unavailable (headless/Wayland environment)",
+    reason="pynput keyboard backend unavailable (headless environment)",
 )
 
 

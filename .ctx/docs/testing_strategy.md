@@ -12,7 +12,7 @@ The test suite validates Dicto's core flows — recording, transcription, cancel
 - `tests/unit/test_hotkey.py` - Hotkey string parsing (special keys, modifiers, hold/press modes)
 - `tests/unit/test_clipboard.py` - Copy, paste, clear, wait-for-change with timeout
 - `tests/unit/test_i18n.py` - Translation retrieval, fallback to English, completeness checks
-- `tests/unit/test_platform.py` - Platform-specific behavior (Windows event filter, Wayland detection)
+- `tests/unit/test_platform.py` - Windows-specific behavior (native event filter)
 - `tests/integration/test_recording_flow.py` - Full recording → transcription → clipboard flow
 - `tests/integration/test_edit_flow.py` - Edit selection flow (copy → record → transform via API)
 - `tests/integration/test_cancel_flow.py` - Cancel edge cases during recording and processing

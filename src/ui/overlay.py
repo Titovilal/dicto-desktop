@@ -388,7 +388,8 @@ class OverlayWindow(QWidget):
         if enabled:
             self.show_idle()
             self.show()
-            # Wayland ignores move() on hidden windows, so reapply once mapped.
+            # Reapply position once the window is mapped (move() on a hidden
+            # window can be ignored).
             self._position_window()
         elif self.current_state == "idle":
             super().hide()
@@ -464,7 +465,8 @@ class OverlayWindow(QWidget):
         self._dots_timer.start(400)
         self._set_action_mode("stop")
         self.show()
-        # Wayland ignores move() on hidden windows, so reapply once mapped.
+        # Reapply position once the window is mapped (move() on a hidden
+        # window can be ignored).
         self._position_window()
 
     def show_processing(self):

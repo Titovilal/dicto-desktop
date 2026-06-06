@@ -7,10 +7,12 @@ PySide6>=6.5.0
 pynput>=1.7.6
 
 # Audio recording
-pyaudio>=0.2.13
+sounddevice>=0.4.6
+soundfile>=0.12.0
+soundcard>=0.4.6
 
-# Clipboard operations
-pyperclip>=1.8.2
+# Clipboard operations (Windows)
+pywin32>=306
 
 # HTTP client for API calls
 httpx>=0.24.0
@@ -18,5 +20,5 @@ httpx>=0.24.0
 # Configuration file parsing
 pyyaml>=6.0
 
-# Wayland global shortcuts (Linux only, optional)
-dbus-next>=0.2.3; sys_platform == "linux"
+# .env loading
+python-dotenv>=1.0.0

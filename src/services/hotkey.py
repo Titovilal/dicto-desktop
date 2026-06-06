@@ -5,7 +5,6 @@ Global hotkey listener service using pynput.
 from __future__ import annotations
 
 import logging
-import sys
 from typing import Callable, List, Set
 
 logger = logging.getLogger(__name__)
@@ -19,7 +18,7 @@ class HotkeyListener:
 
     @classmethod
     def _ensure_pynput(cls):
-        """Import pynput on first use (fails on Wayland/headless if called)."""
+        """Import pynput on first use (fails on headless if called)."""
         if cls._keyboard is not None:
             return
         from pynput import keyboard as _kb
@@ -238,8 +237,7 @@ class HotkeyListener:
         )
         if self.suppress_key:
             kwargs["suppress"] = True
-            if sys.platform == "win32":
-                kwargs["win32_event_filter"] = self._win32_filter
+            kwargs["win32_event_filter"] = self._win32_filter
 
         self.listener = kb.Listener(**kwargs)
 
@@ -267,34 +265,10 @@ def create_hotkey_listener(
     key,
     on_press=None,
     on_release=None,
-    on_toggle=None,
     mode="hold",
     suppress_key=False,
-    shortcut_id="dicto-shortcut",
-    description="Dicto shortcut",
 ):
-    """Factory: returns a WaylandHotkeyListener on Wayland, HotkeyListener otherwise.
-
-    on_toggle, when provided, is used on Wayland where the portal only exposes a
-    single neutral activation per tap; the listener fires it once per tap and the
-    caller decides start vs stop. It is ignored on platforms with real hold
-    support (pynput backend), which use on_press/on_release instead.
-    """
-    from src.services.hotkey_wayland import is_wayland
-
-    if is_wayland():
-        from src.services.hotkey_wayland import (
-            WaylandHotkeyListener,
-            format_portal_trigger,
-        )
-
-        return WaylandHotkeyListener(
-            shortcut_id=shortcut_id,
-            description=description,
-            preferred_trigger=format_portal_trigger(modifiers, key),
-            on_toggle=on_toggle if on_toggle is not None else on_press,
-            mode=mode,
-        )
+    """Factory: returns a HotkeyListener backed by pynput."""
     return HotkeyListener(
         modifiers=modifiers,
         key=key,

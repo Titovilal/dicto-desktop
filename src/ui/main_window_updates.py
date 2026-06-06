@@ -139,7 +139,7 @@ class UpdatesMixin:
 
     @Slot()
     def _on_update_action(self):
-        """Either install the .deb in place or open the release page."""
+        """Either install the update in place or open the release page."""
         info = self._pending_update
         if info is None:
             return
@@ -150,7 +150,7 @@ class UpdatesMixin:
             QDesktopServices.openUrl(QUrl(info.release_url))
             return
 
-        # In-place download + install via pkexec, on a background thread.
+        # In-place download + install, on a background thread.
         # Both buttons go busy so the install can't be triggered twice or
         # interrupted by a concurrent re-check.
         self._set_button_busy(self.update_action_button, True)
@@ -211,9 +211,8 @@ class _UpdateCheckThread(QThread):
 class _UpdateInstallThread(QThread):
     """Downloads the release asset and installs it in place, off the UI thread.
 
-    Linux: installs the .deb via pkexec and emits ``installed`` so the UI can
-    offer a restart. Windows: ``install_windows_setup`` launches the installer
-    and exits the process, so no signal fires in the success case.
+    ``install_windows_setup`` launches the installer and exits the process, so
+    no signal fires in the success case.
     """
 
     progress = Signal(str)  # status text key already resolved
@@ -225,11 +224,8 @@ class _UpdateInstallThread(QThread):
         self._info = info
 
     def run(self):
-        import sys
-
         from src.services.updater import (
             download_asset,
-            install_deb,
             install_windows_setup,
             UpdateError,
         )
@@ -237,12 +233,8 @@ class _UpdateInstallThread(QThread):
         try:
             asset_path = download_asset(self._info.asset_url, self._info.asset_name)
             self.progress.emit(t("installing_update"))
-            if sys.platform == "win32":
-                # Hands off to the installer and terminates this process.
-                install_windows_setup(asset_path)
-            else:
-                install_deb(asset_path)
-                self.installed.emit()
+            # Hands off to the installer and terminates this process.
+            install_windows_setup(asset_path)
         except UpdateError as exc:
             self.failed.emit(str(exc))
         except Exception as exc:  # noqa: BLE001

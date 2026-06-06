@@ -1,58 +1,42 @@
 """
 Clipboard manager service.
 
-Uses win32clipboard on Windows for direct access (supports more formats,
-no extra dependency beyond pywin32 which PySide6 already pulls in).
-Falls back to pyperclip on other platforms.
+Uses win32clipboard for direct access (supports more formats, no extra
+dependency beyond pywin32 which PySide6 already pulls in).
 """
 
 import logging
-import sys
 import time
+
+import win32clipboard  # pywin32  # ty: ignore[unresolved-import]
 
 logger = logging.getLogger(__name__)
 
-if sys.platform == "win32":
-    import win32clipboard  # pywin32  # ty: ignore[unresolved-import]
 
-    class _ClipboardBackend:
-        @staticmethod
-        def read() -> str:
-            try:
-                win32clipboard.OpenClipboard()
-                try:
-                    data = win32clipboard.GetClipboardData(
-                        win32clipboard.CF_UNICODETEXT
-                    )
-                    return data or ""
-                except TypeError:
-                    return ""
-                finally:
-                    win32clipboard.CloseClipboard()
-            except Exception as e:
-                logger.error(f"Error reading clipboard: {e}")
-                return ""
-
-        @staticmethod
-        def write(text: str):
+class _ClipboardBackend:
+    @staticmethod
+    def read() -> str:
+        try:
             win32clipboard.OpenClipboard()
             try:
-                win32clipboard.EmptyClipboard()
-                win32clipboard.SetClipboardText(text, win32clipboard.CF_UNICODETEXT)
+                data = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT)
+                return data or ""
+            except TypeError:
+                return ""
             finally:
                 win32clipboard.CloseClipboard()
+        except Exception as e:
+            logger.error(f"Error reading clipboard: {e}")
+            return ""
 
-else:
-    import pyperclip
-
-    class _ClipboardBackend:  # type: ignore[no-redef]
-        @staticmethod
-        def read() -> str:
-            return pyperclip.paste() or ""
-
-        @staticmethod
-        def write(text: str):
-            pyperclip.copy(text)
+    @staticmethod
+    def write(text: str):
+        win32clipboard.OpenClipboard()
+        try:
+            win32clipboard.EmptyClipboard()
+            win32clipboard.SetClipboardText(text, win32clipboard.CF_UNICODETEXT)
+        finally:
+            win32clipboard.CloseClipboard()
 
 
 class ClipboardManager:

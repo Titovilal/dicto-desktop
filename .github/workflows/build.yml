@@ -79,47 +79,8 @@ jobs:
           name: dicto-windows-installer
           path: dist/Dicto-*-setup.exe
 
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y portaudio19-dev libasound2-dev fakeroot
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-
-      - name: Build with PyInstaller (onedir)
-        run: |
-          pyinstaller --name "dicto" --onedir --windowed --noconfirm --copy-metadata dicto --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" --hidden-import dbus_next --hidden-import pynput.keyboard --hidden-import pynput.mouse --hidden-import pynput.keyboard._xorg --hidden-import pynput.mouse._xorg src/main.py
-          tar -czf dist/dicto-linux-amd64.tar.gz -C dist dicto
-
-      - name: Package .deb
-        run: |
-          # Reuse the onedir bundle just built (PyInstaller is invoked via uv in
-          # the script, which CI doesn't use, so skip that step).
-          SKIP_PYINSTALLER=1 bash scripts/build-deb.sh
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dicto-linux-amd64
-          path: |
-            dist/dicto-linux-amd64.tar.gz
-            dist/dicto_*.deb
-
   release:
-    needs: [version, build-windows, build-linux]
+    needs: [version, build-windows]
     runs-on: ubuntu-latest
     if: needs.version.outputs.should_release == 'true' || startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -134,12 +95,6 @@ jobs:
           name: dicto-windows-installer
           path: dist/
 
-      - name: Download Linux artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dicto-linux-amd64
-          path: dist/
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -147,8 +102,6 @@ jobs:
           name: v${{ needs.version.outputs.version }}
           files: |
             dist/Dicto-*-setup.exe
-            dist/dicto-linux-amd64.tar.gz
-            dist/dicto_*.deb
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

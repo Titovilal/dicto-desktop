@@ -31,23 +31,16 @@ def get_config_dir() -> Path:
     """Directory where the writable config.yaml lives.
 
     When running as an installed (frozen) app, the executable directory is
-    typically read-only (e.g. /opt/dicto on Linux, Program Files on Windows),
-    so we use a per-user config directory instead:
-      - Windows:        %APPDATA%\\dicto
-      - Linux/macOS:    $XDG_CONFIG_HOME/dicto  (default ~/.config/dicto)
+    typically read-only (Program Files), so we use a per-user config directory
+    instead: %APPDATA%\\dicto.
     When running from source (dev), keep the config next to the project root
     so local development is unaffected.
     """
     if not getattr(sys, "frozen", False):
         return get_app_dir()
 
-    if sys.platform == "win32":
-        base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
-        config_dir = Path(base) / "dicto"
-    else:
-        base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
-        config_dir = Path(base) / "dicto"
-
+    base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+    config_dir = Path(base) / "dicto"
     config_dir.mkdir(parents=True, exist_ok=True)
     return config_dir
 

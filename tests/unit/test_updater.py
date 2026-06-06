@@ -37,16 +37,9 @@ class TestVersionParsing:
         assert get_version() and get_version() != "0.0.0"
 
 
-def _release_response(tag, with_deb=True, with_exe=True):
+def _release_response(tag, with_exe=True):
     resp = MagicMock()
     assets = []
-    if with_deb:
-        assets.append(
-            {
-                "name": "dicto_x_amd64.deb",
-                "browser_download_url": "https://example/dicto_x_amd64.deb",
-            }
-        )
     if with_exe:
         assets.append(
             {
@@ -71,29 +64,9 @@ class TestCheckForUpdate:
             info = updater.check_for_update()
         assert info.available is True
         assert info.latest_version == "99.0.0"
-        # Both platform assets are always recorded...
-        assert info.deb_url and info.deb_url.endswith(".deb")
-        # ...and asset_url points at the artifact for the running platform.
-        if sys.platform == "win32":
-            assert info.asset_url and info.asset_url.endswith("setup.exe")
-        else:
-            assert info.asset_url == info.deb_url
-
-    def test_asset_selected_per_platform(self, monkeypatch):
-        monkeypatch.setattr(sys, "platform", "win32")
-        with patch.object(
-            updater.httpx, "get", return_value=_release_response("v99.0.0")
-        ):
-            info = updater.check_for_update()
+        # asset_url points at the Windows installer.
         assert info.asset_url and info.asset_url.endswith("setup.exe")
         assert info.asset_name == "Dicto-99.0.0-setup.exe"
-
-        monkeypatch.setattr(sys, "platform", "linux")
-        with patch.object(
-            updater.httpx, "get", return_value=_release_response("v99.0.0")
-        ):
-            info = updater.check_for_update()
-        assert info.asset_url and info.asset_url.endswith(".deb")
 
     def test_same_version_not_available(self):
         tag = "v" + get_version()
@@ -120,58 +93,9 @@ class TestCanSelfInstall:
         monkeypatch.setattr(sys, "frozen", False, raising=False)
         assert updater.can_self_install() is False
 
-    def test_windows_frozen(self, monkeypatch):
-        monkeypatch.setattr(sys, "platform", "win32")
+    def test_frozen(self, monkeypatch):
         monkeypatch.setattr(sys, "frozen", True, raising=False)
         assert updater.can_self_install() is True
-
-    def test_unsupported_platform(self, monkeypatch):
-        monkeypatch.setattr(sys, "platform", "darwin")
-        monkeypatch.setattr(sys, "frozen", True, raising=False)
-        assert updater.can_self_install() is False
-
-    @pytest.mark.skipif(
-        sys.platform != "linux",
-        reason="checks a POSIX install path (/opt/dicto); Path.resolve differs on Windows",
-    )
-    def test_frozen_in_opt_with_pkexec(self, monkeypatch):
-        monkeypatch.setattr(sys, "platform", "linux")
-        monkeypatch.setattr(sys, "frozen", True, raising=False)
-        monkeypatch.setattr(sys, "executable", "/opt/dicto/dicto", raising=False)
-        monkeypatch.setattr(updater.shutil, "which", lambda _: "/usr/bin/pkexec")
-        assert updater.can_self_install() is True
-
-    @pytest.mark.skipif(
-        sys.platform != "linux",
-        reason="checks a POSIX install path (/opt/dicto); Path.resolve differs on Windows",
-    )
-    def test_frozen_outside_opt(self, monkeypatch):
-        monkeypatch.setattr(sys, "platform", "linux")
-        monkeypatch.setattr(sys, "frozen", True, raising=False)
-        monkeypatch.setattr(sys, "executable", "/home/u/dicto/dicto", raising=False)
-        monkeypatch.setattr(updater.shutil, "which", lambda _: "/usr/bin/pkexec")
-        assert updater.can_self_install() is False
-
-
-class TestInstallDeb:
-    def test_missing_file_raises(self):
-        with pytest.raises(updater.UpdateError):
-            updater.install_deb(Path("/nonexistent/x.deb"))
-
-    def test_cancelled_auth_raises(self, tmp_path):
-        deb = tmp_path / "x.deb"
-        deb.write_bytes(b"x")
-        proc = MagicMock(returncode=126, stderr="", stdout="")
-        with patch.object(updater.subprocess, "run", return_value=proc):
-            with pytest.raises(updater.UpdateError, match="cancelled"):
-                updater.install_deb(deb)
-
-    def test_success(self, tmp_path):
-        deb = tmp_path / "x.deb"
-        deb.write_bytes(b"x")
-        proc = MagicMock(returncode=0, stderr="", stdout="ok")
-        with patch.object(updater.subprocess, "run", return_value=proc):
-            updater.install_deb(deb)  # should not raise
 
 
 class TestInstallWindowsSetup:

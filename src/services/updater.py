@@ -1,8 +1,7 @@
 """Self-update support for the desktop app.
 
 Checks the project's GitHub Releases for a newer version and, on frozen builds,
-installs it in place: the ``.deb`` via ``pkexec apt-get install`` on Linux, the
-``*-setup.exe`` (Inno Setup) launched silently on Windows.
+installs it in place: the ``*-setup.exe`` (Inno Setup) launched silently.
 
 Best-effort: failures surface as :class:`UpdateError`, never raised to the UI.
 """
@@ -11,7 +10,6 @@ from __future__ import annotations
 
 import os
 import sys
-import shutil
 import logging
 import subprocess
 import tempfile
@@ -41,12 +39,9 @@ class UpdateInfo:
     current_version: str
     latest_version: str
     release_url: str
-    # Installer for the running platform (.deb on Linux, *-setup.exe on Windows).
+    # Windows installer (*-setup.exe).
     asset_url: str | None
     asset_name: str | None
-    # Linux alias of the above, kept for backwards compatibility.
-    deb_url: str | None
-    deb_name: str | None
 
 
 def check_for_update(timeout: float = 15.0) -> UpdateInfo:
@@ -73,25 +68,14 @@ def check_for_update(timeout: float = 15.0) -> UpdateInfo:
 
     release_url = data.get("html_url", f"https://github.com/{GITHUB_REPO}/releases")
 
-    deb_url: str | None = None
-    deb_name: str | None = None
-    exe_url: str | None = None
-    exe_name: str | None = None
+    asset_url: str | None = None
+    asset_name: str | None = None
     for asset in data.get("assets", []):
         name = asset.get("name", "")
-        if name.endswith(".deb") and deb_url is None:
-            deb_url = asset.get("browser_download_url")
-            deb_name = name
         # Windows installer published by Inno Setup, e.g. "Dicto-2.7.3-setup.exe".
-        elif name.endswith(".exe") and "setup" in name.lower() and exe_url is None:
-            exe_url = asset.get("browser_download_url")
-            exe_name = name
-
-    # Pick the artifact installable on the running platform.
-    if sys.platform == "win32":
-        asset_url, asset_name = exe_url, exe_name
-    else:
-        asset_url, asset_name = deb_url, deb_name
+        if name.endswith(".exe") and "setup" in name.lower() and asset_url is None:
+            asset_url = asset.get("browser_download_url")
+            asset_name = name
 
     return UpdateInfo(
         available=is_newer(latest, current),
@@ -100,30 +84,15 @@ def check_for_update(timeout: float = 15.0) -> UpdateInfo:
         release_url=release_url,
         asset_url=asset_url,
         asset_name=asset_name,
-        deb_url=deb_url,
-        deb_name=deb_name,
     )
 
 
 def can_self_install() -> bool:
     """True if this build can install an update in place.
 
-    Windows: any frozen bundle (the Inno Setup installer handles files + UAC).
-    Linux: a frozen bundle under /opt/dicto with ``pkexec`` available.
+    Any frozen bundle qualifies (the Inno Setup installer handles files + UAC).
     """
-    if not getattr(sys, "frozen", False):
-        return False
-
-    if sys.platform == "win32":
-        return True
-
-    if sys.platform != "linux":
-        return False
-    if shutil.which("pkexec") is None:
-        return False
-    # Only offer in-place install when running from the packaged location.
-    exe = Path(sys.executable).resolve()
-    return str(exe).startswith("/opt/dicto")
+    return bool(getattr(sys, "frozen", False))
 
 
 def download_asset(asset_url: str, asset_name: str, timeout: float = 120.0) -> Path:
@@ -143,49 +112,6 @@ def download_asset(asset_url: str, asset_name: str, timeout: float = 120.0) -> P
 
     logger.info("Downloaded update package to %s", dest)
     return dest
-
-
-# Backwards-compatible alias (the .deb is just a release asset).
-download_deb = download_asset
-
-
-def install_deb(deb_path: Path) -> None:
-    """Install the given .deb via ``pkexec apt-get install`` (prompts for auth).
-
-    Uses ``apt-get`` so dependencies are resolved. Raises :class:`UpdateError`
-    if the install command fails or is cancelled.
-    """
-    if not deb_path.is_file():
-        raise UpdateError(f"Update package not found: {deb_path}")
-
-    cmd = [
-        "pkexec",
-        "apt-get",
-        "install",
-        "-y",
-        "--reinstall",
-        "--allow-downgrades",
-        str(deb_path),
-    ]
-    logger.info("Installing update: %s", " ".join(cmd))
-    try:
-        proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-    except Exception as exc:  # noqa: BLE001
-        raise UpdateError(f"Failed to launch installer: {exc}") from exc
-
-    if proc.returncode == 126:
-        # pkexec: user dismissed the authentication dialog.
-        raise UpdateError("Installation cancelled")
-    if proc.returncode != 0:
-        detail = (proc.stderr or proc.stdout or "").strip()
-        raise UpdateError(f"Installer failed (code {proc.returncode}): {detail}")
-
-    logger.info("Update installed successfully")
 
 
 def install_windows_setup(exe_path: Path) -> None:

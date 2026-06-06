@@ -45,22 +45,18 @@ git push origin v2.2.0
 El workflow (`.github/workflows/build.yml`) ejecuta estos pasos:
 
 1. **version** — Lee la version de `pyproject.toml` y verifica si ya existe un tag `v{version}`
-2. **build** — Compila el ejecutable con PyInstaller en paralelo para:
-   - **Windows** — instalador `.exe` (Inno Setup)
-   - **Linux** — bundle `.tar.gz` portable y paquete `.deb` instalable
-3. **release** — Si corresponde, crea un GitHub Release con tag `v{version}` y adjunta los binarios
+2. **build** — Compila el ejecutable con PyInstaller (Windows) y lo empaqueta en el instalador `.exe` (Inno Setup)
+3. **release** — Si corresponde, crea un GitHub Release con tag `v{version}` y adjunta el instalador
 
 ## Artefactos generados
 
-| Plataforma | Archivo                          | Uso                              |
-|------------|----------------------------------|----------------------------------|
-| Windows    | `Dicto-<version>-setup.exe`      | Instalador                       |
-| Linux      | `dicto-linux-amd64.tar.gz`       | Portable (descomprimir y ejecutar)|
-| Linux      | `dicto_<version>_amd64.deb`      | Instalable con `sudo apt install`|
+| Archivo                          | Uso          |
+|----------------------------------|--------------|
+| `Dicto-<version>-setup.exe`      | Instalador   |
 
 ## Build local
 
-Para generar el ejecutable localmente ver los comandos en `COMMANDS.md` (o usa el `Makefile`: `make exe` en Windows, `make deb` en Linux). En Windows el binario queda en `dist/Dicto.exe`; en Linux el paquete queda en `dist/dicto_<version>_amd64.deb`.
+Para generar el ejecutable localmente ver los comandos en `COMMANDS.md` (o usa el `Makefile`: `make exe`). El binario queda en `dist/Dicto.exe`.
 
 ## Checklist pre-release
 

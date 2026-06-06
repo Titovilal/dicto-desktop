@@ -7,8 +7,6 @@ A flat mixin (not a QMainWindow subclass) that assumes ``self`` is the window.
 
 from __future__ import annotations
 
-import sys
-
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Slot, Qt, QSize, QTimer
 from PySide6.QtGui import QIcon, QPainter, QColor, QPixmap
@@ -314,8 +312,7 @@ class StateMixin:
         self.is_recording = False
         self.is_processing = False
         self._is_editing = False
-        if sys.platform != "darwin":
-            self.include_system_audio_checkbox.setEnabled(True)
+        self.include_system_audio_checkbox.setEnabled(True)
 
         # If settings are open, don't switch the view — just remember the target page
         if self._settings_open or self._models_open:

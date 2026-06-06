@@ -88,9 +88,10 @@ Error body (any non-2xx status) always has the same shape:
   sent only if the env var is set.
 - **Response (200):** standard GitHub release object - `tag_name`/`name` is the
   latest version, `html_url` the release page, and `assets[]` carry the
-  `browser_download_url` for each file (the `.deb` is the one consumed).
+  `browser_download_url` for each file (the `Dicto-<ver>-setup.exe` installer is
+  the one consumed).
 
-### GET `<browser_download_url>` (downloading the `.deb` asset)
+### GET `<browser_download_url>` (downloading the installer asset)
 - Streamed download with redirects followed; returns the binary asset.
 
 ---

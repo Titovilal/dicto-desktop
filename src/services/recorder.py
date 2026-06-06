@@ -109,8 +109,7 @@ class _SoundcardLoopbackStream:
     """Wraps `soundcard` loopback capture behind a start/stop/close interface
     compatible with `sd.InputStream`, pushing int16 blocks to a callback.
 
-    - Windows: captures the default speaker with `include_loopback=True`.
-    - Linux (PulseAudio/PipeWire): uses the default speaker's monitor source.
+    Captures the default speaker with `include_loopback=True` (WASAPI loopback).
     """
 
     def __init__(self, callback, blocksize: int, samplerate: int, channels: int):
@@ -125,8 +124,7 @@ class _SoundcardLoopbackStream:
 
         speaker = sc.default_speaker()
         # get_microphone(..., include_loopback=True) returns a loopback mic for
-        # the given speaker on Windows; on Linux soundcard auto-selects the
-        # monitor source.
+        # the given speaker on Windows.
         self._mic = sc.get_microphone(id=str(speaker.name), include_loopback=True)
 
     def start(self):
@@ -177,11 +175,10 @@ class _SoundcardLoopbackStream:
 def _open_loopback_input_stream(callback, blocksize: int, dtype: str = "int16"):
     """Open a loopback input stream for system audio. Returns (stream, native_samplerate) or None.
 
-    Primary path (Windows + Linux): `soundcard` capture of the default speaker's
-    loopback / monitor source. Fallback on Windows: Stereo Mix via sounddevice.
-    Caller is responsible for start/stop.
+    Primary path: `soundcard` capture of the default speaker's loopback source.
+    Fallback: Stereo Mix via sounddevice. Caller is responsible for start/stop.
     """
-    # Primary: soundcard (works on Windows WASAPI loopback and Linux monitor sources)
+    # Primary: soundcard (WASAPI loopback of the default speaker)
     try:
         import soundcard as sc  # noqa: F401
 
@@ -413,9 +410,9 @@ class AudioRecorder:
     def _negotiate_mic_samplerate(self) -> int:
         """Return a sample rate the input device accepts.
 
-        Prefer self.sample_rate (16 kHz). If the device rejects it (some Linux
-        devices only expose 44.1/48 kHz), fall back to the device's default
-        rate. Captured audio is resampled to self.sample_rate before saving.
+        Prefer self.sample_rate (16 kHz). If the device rejects it (some devices
+        only expose 44.1/48 kHz), fall back to the device's default rate.
+        Captured audio is resampled to self.sample_rate before saving.
         """
         try:
             sd.check_input_settings(
