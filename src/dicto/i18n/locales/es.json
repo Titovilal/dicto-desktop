@@ -41,5 +41,27 @@
 
   "common.close": "Cerrar",
   "common.save": "Guardar",
-  "common.cancel": "Cancelar"
+  "common.cancel": "Cancelar",
+
+  "library.search": "Buscar transcripciones…",
+  "library.sort.newest": "Más recientes",
+  "library.sort.oldest": "Más antiguas",
+  "library.sort.title": "Por título",
+  "library.tag.all": "Todas las etiquetas",
+
+  "detail.none": "Selecciona una transcripción para verla.",
+  "detail.title_placeholder": "Sin título",
+  "detail.tags_placeholder": "Etiquetas, separadas por comas",
+  "detail.body_placeholder": "Texto de la transcripción",
+  "detail.copy": "Copiar",
+  "detail.copied": "Copiado al portapapeles",
+  "detail.saved": "Guardado",
+  "detail.exported": "Exportado",
+  "detail.export": "Exportar",
+  "detail.export_txt": "Exportar como texto (.txt)",
+  "detail.export_md": "Exportar como Markdown (.md)",
+
+  "delivery.pasted": "Pegado en el cursor",
+  "delivery.copied": "Copiado al portapapeles",
+  "delivery.fallback": "No se pudo pegar aquí — copiado al portapapeles"
 }

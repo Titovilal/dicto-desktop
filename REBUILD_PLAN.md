@@ -200,25 +200,27 @@ Nuevos a definir como **mock** (el usuario los implementa en su backend):
       arrastrable recuerda posición; **19 tests nuevos / 78 totales** (`pytest tests/unit/test_hotkey.py
       tests/ui/test_overlay.py`)
 
-### Fase 3 — Salida (insertar en cursor, limpieza, export)
-- [ ] `services/injector.py`: insertar en el cursor por defecto + auto-enter opcional
-- [ ] `services/clipboard.py`: portapapeles como fallback
-- [ ] `core/result_router.py`: decide cursor vs portapapeles vs biblioteca
-- [ ] `core/cleanup.py`: limpieza activada por defecto en dictado (muletillas, puntuación)
-- [ ] Exportar txt / md desde el detalle
-- [ ] **Check:** dictado rápido → texto pegado en el cursor con limpieza; fallback a portapapeles
-      donde no se puede inyectar; `pytest tests/unit/test_cleanup.py tests/unit/test_result_router.py`
+### Fase 3 — Salida (insertar en cursor, limpieza, export) ✅
+- [x] `services/injector.py`: insertar en el cursor por defecto + auto-enter opcional
+- [x] `services/clipboard.py`: portapapeles como fallback
+- [x] `core/result_router.py`: decide cursor vs portapapeles vs biblioteca
+- [x] `core/cleanup.py`: limpieza activada por defecto en dictado (muletillas, puntuación)
+- [x] Exportar txt / md desde el detalle — helpers en `core/export.py` (UI de detalle → Fase 4)
+- [x] **Check:** dictado rápido → texto pegado en el cursor con limpieza; fallback a portapapeles
+      donde no se puede inyectar; **31 tests nuevos / 112 totales** (`pytest tests/unit/test_cleanup.py
+      tests/unit/test_result_router.py tests/unit/test_export.py tests/unit/test_delivery.py`)
 
-### Fase 4 — Biblioteca + diccionario propio (vía API mock)
-- [ ] `services/api/library.py` + `mocks.py`: CRUD + búsqueda (mockeado)
-- [ ] `services/api/dictionary.py`: términos/siglas/nombres (mockeado)
-- [ ] `core/dictionary.py`: aplicar diccionario como biasing/prompt al transcribir
-- [ ] `ui/main/window.py`: contenedor de las 3 zonas (biblioteca/detalle/ajustes)
-- [ ] `ui/main/library_view.py`: lista buscable, ordenable por fecha, etiquetas/asignatura
-- [ ] `ui/main/detail_view.py`: ver/editar texto, exportar, copiar
-- [ ] Guardar toda transcripción automáticamente (no efímera)
-- [ ] **Check:** transcribir → aparece en biblioteca; buscar; etiquetar; diccionario mejora jerga;
-      `pytest tests/unit/test_dictionary.py tests/integration/test_library_flow.py`
+### Fase 4 — Biblioteca + diccionario propio (vía API mock) ✅
+- [x] `services/api/library.py` + `mocks.py`: CRUD + búsqueda (mockeado, `MockStore` en memoria)
+- [x] `services/api/dictionary.py`: términos/siglas/nombres (mockeado)
+- [x] `core/dictionary.py`: aplicar diccionario como biasing/prompt al transcribir (vía `factory`/orquestador)
+- [x] `ui/main/window.py`: contenedor de las zonas (biblioteca + detalle en un splitter; el modal de ajustes → Fase 6)
+- [x] `ui/main/library_view.py`: lista buscable, ordenable por fecha/título, filtro por etiqueta
+- [x] `ui/main/detail_view.py`: ver/editar texto + título + etiquetas, exportar (txt/md), copiar
+- [x] Guardar toda transcripción automáticamente (no efímera) → `app._on_transcription_done`
+- [x] **Check:** transcribir → aparece en biblioteca; buscar; etiquetar; diccionario sesga la jerga;
+      **24 tests nuevos / 136 totales** (`pytest tests/unit/test_dictionary.py tests/unit/test_library.py
+      tests/integration/test_library_flow.py tests/ui/test_library.py`)
 
 ### Fase 5 — Transformar (IA) para estudiantes
 - [ ] `transform/presets.py`: resumen, puntos clave, flashcards/preguntas, reescribir, chat

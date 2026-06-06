@@ -12,12 +12,17 @@ import ctypes
 import logging
 import signal
 import sys
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 
 from dicto.config.settings import Settings, get_settings
+from dicto.core.cleanup import clean_dictation
 from dicto.core.events import EventBus
+from dicto.core.result_router import route_result
 from dicto.i18n import set_language
+from dicto.services.api.library import LibraryService
+from dicto.services.api.mocks import MockStore, set_mock_store
 from dicto.utils.logger import get_logger, setup_logging
 
 logger = get_logger(__name__)
@@ -43,7 +48,9 @@ class DictoApp:
         from PySide6.QtWidgets import QApplication
 
         from dicto.orchestrator import RecordingOrchestrator
+        from dicto.services.clipboard import Clipboard
         from dicto.services.hotkey import HotkeyListener
+        from dicto.services.injector import Injector
         from dicto.ui.main.window import MainWindow
         from dicto.ui.overlay.overlay import Overlay
         from dicto.ui.theme.manager import ThemeManager
@@ -63,6 +70,11 @@ class DictoApp:
         # Domain event bus (Qt-free); the orchestrator bridges it to Qt.
         self.bus = EventBus()
 
+        # Backend (Phase 4): library + dictionary, mocked in-process for now,
+        # wired with a real UTC clock so saved transcripts carry honest stamps.
+        set_mock_store(MockStore(clock=lambda: datetime.now(timezone.utc).isoformat()))
+        self.library = LibraryService()
+
         # Theme: build, then apply so the stylesheet exists before widgets show.
         self.theme = ThemeManager(self.app, theme=self.settings.appearance.theme)
         self.theme.apply()
@@ -70,8 +82,13 @@ class DictoApp:
         # Orchestration: owns recording lifecycle, bridges the bus to Qt.
         self.orchestrator = RecordingOrchestrator(self.settings, self.bus)
 
+        # Delivery (Phase 3): cursor injection with a clipboard fallback. Both
+        # share one clipboard so the injected text and the fallback are the same.
+        self.clipboard = Clipboard()
+        self.injector = Injector(self.clipboard)
+
         # UI
-        self.window = MainWindow()
+        self.window = MainWindow(self.library, self.clipboard)
         self.tray = Tray()
         self.overlay = Overlay(self.theme, self.settings)
 
@@ -120,11 +137,40 @@ class DictoApp:
         self.orchestrator.stop_recording()
 
     def _on_transcription_done(self, text: str) -> None:
-        # Minimal delivery for Phase 2: copy to clipboard so the result is
-        # usable. Phase 3 replaces this with the result router (cursor/clipboard
-        # /library) and cleanup.
-        if text:
-            self.app.clipboard().setText(text)
+        # Clean the dictation, save it, then let the result router decide
+        # cursor vs clipboard (with a fallback when injection isn't available).
+        if not text:
+            return
+
+        if self.settings.behavior.cleanup_enabled:
+            text = clean_dictation(text, lang=self.settings.transcription.language)
+            if not text:
+                return
+
+        # Save every transcript so dictation is never lost. Best-effort — a save
+        # failure must not break delivery.
+        try:
+            self.library.create(text=text, language=self.settings.transcription.language)
+            self.window.refresh_library()
+        except Exception:  # noqa: BLE001
+            logger.warning("failed to save transcript to library", exc_info=True)
+
+        decision = route_result(
+            text=text,
+            auto_paste=self.settings.behavior.auto_paste,
+            auto_enter=self.settings.behavior.auto_enter,
+            can_inject=self.injector.available(),
+        )
+
+        if decision.inject:
+            if not self.injector.inject(text, auto_enter=decision.auto_enter):
+                # Injection failed at the last moment — the text is already on
+                # the clipboard (the injector staged it), so nothing is lost.
+                logger.info("injection failed; text left on clipboard")
+        elif decision.clipboard:
+            self.clipboard.copy(text)
+            if decision.used_fallback:
+                logger.info("cursor injection unavailable; copied to clipboard instead")
 
     def _show_window(self) -> None:
         self.window.show()

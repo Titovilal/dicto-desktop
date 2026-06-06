@@ -41,5 +41,27 @@
 
   "common.close": "Close",
   "common.save": "Save",
-  "common.cancel": "Cancel"
+  "common.cancel": "Cancel",
+
+  "library.search": "Search transcripts…",
+  "library.sort.newest": "Newest first",
+  "library.sort.oldest": "Oldest first",
+  "library.sort.title": "By title",
+  "library.tag.all": "All tags",
+
+  "detail.none": "Select a transcript to view it.",
+  "detail.title_placeholder": "Untitled",
+  "detail.tags_placeholder": "Tags, comma separated",
+  "detail.body_placeholder": "Transcript text",
+  "detail.copy": "Copy",
+  "detail.copied": "Copied to clipboard",
+  "detail.saved": "Saved",
+  "detail.exported": "Exported",
+  "detail.export": "Export",
+  "detail.export_txt": "Export as text (.txt)",
+  "detail.export_md": "Export as Markdown (.md)",
+
+  "delivery.pasted": "Pasted at the cursor",
+  "delivery.copied": "Copied to clipboard",
+  "delivery.fallback": "Couldn't paste here — copied to clipboard instead"
 }

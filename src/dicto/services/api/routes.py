@@ -34,3 +34,25 @@ def presets() -> str:
 
 def report() -> str:
     return url(f"{API_V1}/report")
+
+
+# ── Library (Phase 4, mocked) ─────────────────────────────────────────────
+
+
+def library() -> str:
+    return url(f"{API_V1}/library")
+
+
+def library_item(transcript_id: str) -> str:
+    return url(f"{API_V1}/library/{transcript_id}")
+
+
+# ── Dictionary (Phase 4, mocked) ──────────────────────────────────────────
+
+
+def dictionary() -> str:
+    return url(f"{API_V1}/dictionary")
+
+
+def dictionary_item(term_id: str) -> str:
+    return url(f"{API_V1}/dictionary/{term_id}")

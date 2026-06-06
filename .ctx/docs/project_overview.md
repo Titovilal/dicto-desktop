@@ -13,6 +13,17 @@ Dicto is a Windows desktop app that lets users record voice via a global hotkey,
 - `src/dicto/core/state.py` - Pure state machine (IDLE → RECORDING → PROCESSING → SUCCESS/ERROR)
 - `src/dicto/core/events.py` - Qt-free typed event bus connecting core to UI
 - `src/dicto/core/models.py` - Domain dataclasses: Job, Transcript, TransformResult, Account
+- `src/dicto/core/cleanup.py` - `clean_dictation`: pure dictation tidying (fillers, whitespace, capitalisation)
+- `src/dicto/core/result_router.py` - `route_result`: pure cursor/clipboard/library delivery decision
+- `src/dicto/core/export.py` - pure txt/Markdown export of a transcript
+- `src/dicto/core/dictionary.py` - `build_bias_prompt`: pure conversion of the user's dictionary terms into a biasing prompt for the STT model
+- `src/dicto/services/api/mocks.py` - `MockStore`: deterministic in-memory stand-in for the user's backend (library + dictionary)
+- `src/dicto/services/api/library.py` - `LibraryService`: CRUD + search over transcripts (mocked); `query_transcripts` is the pure filter/sort
+- `src/dicto/services/api/dictionary.py` - `DictionaryService`: CRUD for the user's dictionary terms (mocked)
+- `src/dicto/ui/main/library_view.py` - `LibraryView`: searchable/sortable/tag-filterable transcript list
+- `src/dicto/ui/main/detail_view.py` - `DetailView`: view/edit a transcript, copy, export
+- `src/dicto/services/clipboard.py` - `Clipboard`: text clipboard with win32/Qt/no-op backends
+- `src/dicto/services/injector.py` - `Injector`: paste a transcript at the cursor (clipboard + Ctrl+V, optional auto-enter)
 - `src/dicto/config/settings.py` - Pydantic settings model, loaded from `%APPDATA%\dicto\config.yaml`
 - `src/dicto/config/defaults.py` - All default values (language, hotkey, audio, models)
 - `src/dicto/i18n/__init__.py` - Translations via `t("key")`, hot-switchable language
@@ -21,7 +32,7 @@ Dicto is a Windows desktop app that lets users record voice via a global hotkey,
 - `src/dicto/ui/theme/tokens.py` - Design token enum (BG, TEXT, ACCENT, etc.)
 - `src/dicto/ui/theme/palettes.py` - Light and dark colour palettes mapped to tokens
 - `src/dicto/ui/tray.py` - System tray icon and context menu (Open / Settings / Quit)
-- `src/dicto/ui/main/window.py` - Main window shell (currently a placeholder, expands in later phases)
+- `src/dicto/ui/main/window.py` - Main window shell: library + detail split (settings modal lands in Phase 6)
 - `src/dicto/ui/icons.py` - Icon helpers for status colours and app icon
 - `src/dicto/utils/logger.py` - Logging setup
 - `src/dicto/utils/platform.py` - OS-specific path helpers (`%APPDATA%`)
@@ -29,7 +40,7 @@ Dicto is a Windows desktop app that lets users record voice via a global hotkey,
 ## Flow
 1. User launches the app (`dicto` CLI or `python -m dicto`); `DictoApp` loads settings, applies theme and language, shows the system tray icon and main window, and starts the global hotkey listener.
 2. User presses the global hotkey (default: Ctrl+Shift+Space — hold or toggle). `RecordingOrchestrator` starts an `AudioCapture` + `Pipeline`, the overlay appears showing a live waveform and elapsed timer, and the tray icon turns red. The recording can be paused/resumed without splitting the file.
-3. When recording stops, the orchestrator finalises the chunks and runs transcription on a worker thread; per-chunk progress and the final text are published on the event bus, bridged to Qt, and (Phase 2) copied to the clipboard. Phase 3 adds the result router (cursor/clipboard/library) and cleanup.
+3. When recording stops, the orchestrator finalises the chunks and runs transcription on a worker thread (biased by the user's dictionary via `core/dictionary`); per-chunk progress and the final text are published on the event bus and bridged to Qt. On the final text, `app.py` cleans the dictation (`core/cleanup`), saves it to the library (`services/api/library`, mocked) so nothing is lost, then the result router (`core/result_router`) decides delivery: inject at the cursor (`services/injector`, optional auto-enter) or copy to the clipboard (`services/clipboard`) as the fallback. The saved transcript appears in the main window's library, where it can be searched, edited, copied and exported.
 
 ## Documentation available in `.ctx/docs/`
 - **`core.md`** — state machine, event bus, and domain models

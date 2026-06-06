@@ -17,9 +17,11 @@ from PySide6.QtCore import QObject, Signal
 from dicto.audio.capture import AudioCapture
 from dicto.config.settings import Settings
 from dicto.core import events
+from dicto.core.dictionary import build_bias_prompt
 from dicto.core.pipeline import Pipeline
 from dicto.core.state import AppState, StateMachine
 from dicto.services.api.client import ApiClient
+from dicto.services.api.dictionary import DictionaryService
 from dicto.services.api.factory import make_transcribe_chunk
 from dicto.utils.platform import get_session_audio_dir
 
@@ -45,10 +47,17 @@ class RecordingOrchestrator(QObject):
     _pauseIntent = Signal()
     _resumeIntent = Signal()
 
-    def __init__(self, settings: Settings, bus: events.EventBus) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        bus: events.EventBus,
+        dictionary: DictionaryService | None = None,
+    ) -> None:
         super().__init__()
         self.settings = settings
         self.bus = bus
+        # The user dictionary biases transcription; mocked for now.
+        self._dictionary = dictionary or DictionaryService()
         self._sm = StateMachine()
         self._pipeline: Pipeline | None = None
         self._capture: AudioCapture | None = None
@@ -131,10 +140,19 @@ class RecordingOrchestrator(QObject):
             level_callback=self.levelChanged.emit,
         )
 
+        # Bias transcription with the user's dictionary (read once per session,
+        # best-effort — a dictionary failure must never block recording).
+        try:
+            bias_prompt = build_bias_prompt(self._dictionary.list())
+        except Exception:  # noqa: BLE001
+            bias_prompt = None
+
         def transcribe_chunk(path: str) -> str:
             # Bound lazily so the client only exists once we actually transcribe.
             assert self._client is not None
-            return make_transcribe_chunk(self._client, self.settings, apply_vad=True)(path)
+            return make_transcribe_chunk(
+                self._client, self.settings, apply_vad=True, prompt=bias_prompt
+            )(path)
 
         self._pipeline = Pipeline(session_id, self._capture, transcribe_chunk, self.bus)
 
