@@ -156,22 +156,22 @@ Nuevos a definir como **mock** (el usuario los implementa en su backend):
 > 3) transforms para estudiantes · 4) auto-update + planes.
 
 ### Fase 0 — Andamiaje y migración del esqueleto
-- [ ] Crear `src/dicto/` con la estructura de carpetas y `__init__.py` en cada paquete
-- [ ] `pyproject.toml`: paquete `dicto`, entrypoint `dicto = "dicto.app:main"`, deps
-- [ ] Ajustar `dicto.spec` / `installer.iss` / `build.yml` a la nueva ruta (mover a `packaging/`)
-- [ ] `core/state.py`: `AppState` (idle/recording/paused/processing/success/error) + `RecordingSession`
-- [ ] `core/events.py`: bus de eventos tipado (desacopla core de Qt)
-- [ ] `core/models.py`: dataclasses `Transcript`, `TransformResult`, `DictTerm`, `Job`, `Account`, `Plan`
-- [ ] `app.py`: `DictoApp` que arranca Qt, inyecta dependencias y conecta señales
-- [ ] `utils/logger.py` + `utils/platform.py` (rutas `%APPDATA%\dicto\`) portados
-- [ ] **Tema (transversal):** `ui/theme/tokens.py` + `palettes.py` (light/dark) + `ThemeManager`
+- [x] Crear `src/dicto/` con la estructura de carpetas y `__init__.py` en cada paquete
+- [x] `pyproject.toml`: paquete `dicto`, entrypoint `dicto = "dicto.app:main"`, deps
+- [ ] Ajustar `dicto.spec` / `installer.iss` / `build.yml` a la nueva ruta (mover a `packaging/`) — *pendiente (se hará en Fase 7); fuentes en `Antiguo/`*
+- [x] `core/state.py`: `AppState` (idle/recording/paused/processing/success/error) + `RecordingSession`
+- [x] `core/events.py`: bus de eventos tipado (desacopla core de Qt)
+- [x] `core/models.py`: dataclasses `Transcript`, `TransformResult`, `DictTerm`, `Job`, `Account`, `Plan`
+- [x] `app.py`: `DictoApp` que arranca Qt, inyecta dependencias y conecta señales
+- [x] `utils/logger.py` + `utils/platform.py` (rutas `%APPDATA%\dicto\`) portados
+- [x] **Tema (transversal):** `ui/theme/tokens.py` + `palettes.py` (light/dark) + `ThemeManager`
       que aplica QSS desde tokens, emite `themeChanged` y soporta modo **claro/oscuro/sistema**
       (detecta el tema de Windows). Persistido en `Settings`. Todo widget consume tokens, nada hardcodea color.
-- [ ] **i18n (transversal):** `i18n/` con `t()` + loader de locales y señal `languageChanged`.
+- [x] **i18n (transversal):** `i18n/` con `t()` + loader de locales y señal `languageChanged`.
       Convención de claves desde el primer widget (nada de texto literal en la UI).
-- [ ] App arranca, muestra bandeja + ventana vacía, sin funcionalidad aún, **ya con tema e i18n vivos**
-- [ ] **Check:** `python -m dicto` abre la app; cambiar tema (claro/oscuro/sistema) e idioma
-      en caliente refresca la UI vacía; `pytest tests/unit/test_state.py tests/unit/test_theme.py tests/unit/test_i18n.py` pasa
+- [x] App arranca, muestra bandeja + ventana vacía, sin funcionalidad aún, **ya con tema e i18n vivos**
+- [x] **Check:** `python -m dicto` abre la app; cambiar tema (claro/oscuro/sistema) e idioma
+      en caliente refresca la UI vacía; `pytest tests/unit/test_state.py tests/unit/test_theme.py tests/unit/test_i18n.py` pasa (25 tests verdes)
 
 ### Fase 1 — Fiabilidad en grabaciones largas (lo primero del doc)
 - [ ] `audio/devices.py`: enumerar/seleccionar micro (portado de recorder actual)
