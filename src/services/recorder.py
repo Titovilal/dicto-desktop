@@ -229,7 +229,7 @@ class AudioRecorder:
         self,
         sample_rate: int = 16000,
         channels: int = 1,
-        max_duration: int = 120,
+        max_duration: int = 7200,
         input_device: int | None = None,
         include_system_audio: bool = False,
     ):

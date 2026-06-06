@@ -93,7 +93,7 @@ class Settings:
         "transcription": {"api_key": "", "language": "es", "model": "v3-turbo"},
         "audio": {
             "sample_rate": 16000,
-            "max_duration": 120,
+            "max_duration": 7200,
             "channels": 1,
             "input_device": None,
             "include_system_audio": False,
@@ -193,7 +193,7 @@ class Settings:
     # ── Audio settings ───────────────────────────────────────
 
     audio_sample_rate: int = _config_property("audio", "sample_rate", 16000)
-    audio_max_duration: int = _config_property("audio", "max_duration", 120)
+    audio_max_duration: int = _config_property("audio", "max_duration", 7200)
     audio_channels: int = _config_property("audio", "channels", 1)
     audio_input_device: int | None = _config_property("audio", "input_device", None)
     audio_include_system_audio: bool = _config_property(

@@ -31,7 +31,7 @@ Config de audio (`config.yaml`):
 | Clave | Defecto | Descripción |
 |-------|---------|-------------|
 | `audio.sample_rate` | `16000` | Frecuencia de muestreo (Hz) |
-| `audio.max_duration` | `120` | Duración máxima (s) |
+| `audio.max_duration` | `7200` | Duración máxima (s) — 2 horas |
 | `audio.channels` | `1` | Canales (mono) |
 | `audio.input_device` | `null` | Micrófono (null = predeterminado) |
 | `audio.include_system_audio` | `false` | Capturar audio del sistema (Windows) |

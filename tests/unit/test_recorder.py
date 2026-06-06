@@ -16,7 +16,7 @@ class TestInit:
             r = AudioRecorder()
             assert r.sample_rate == 16000
             assert r.channels == 1
-            assert r.max_duration == 120
+            assert r.max_duration == 7200
             assert r.is_recording is False
 
     def test_custom_params(self):

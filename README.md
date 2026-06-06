@@ -102,7 +102,7 @@ transcription:
 
 audio:
   sample_rate: 16000            # 16kHz is optimal for speech
-  max_duration: 120             # Maximum recording duration in seconds
+  max_duration: 7200            # Maximum recording duration in seconds (2 hours)
   channels: 1                   # 1 for mono, 2 for stereo
 ```
 

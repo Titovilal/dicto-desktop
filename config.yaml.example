@@ -13,5 +13,5 @@ transcription:
 
 audio:
   sample_rate: 16000
-  max_duration: 120  # maximum recording duration in seconds
+  max_duration: 7200  # maximum recording duration in seconds (2 hours)
   channels: 1  # mono
