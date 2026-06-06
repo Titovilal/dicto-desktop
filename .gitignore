@@ -38,6 +38,9 @@ env/
 .DS_Store
 Thumbs.db
 
+# Old codebase kept locally for reference during the rebuild (see REBUILD_PLAN.md)
+Antiguo/
+
 # Application specific
 config.yaml
 *.wav
