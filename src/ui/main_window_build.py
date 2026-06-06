@@ -852,13 +852,9 @@ class BuildMixin:
 
         layout.addStretch()
 
-        # Status label (for settings feedback, right-aligned)
+        # Hidden status label kept only for settings feedback (api key / test audio).
+        # Not added to the footer layout — no longer shown next to the team toggle.
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
-        self.status_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
-        layout.addWidget(self.status_label)
 
         self.include_system_audio_checkbox = QPushButton(t("system_audio_short"))
         self.include_system_audio_checkbox.setCheckable(True)

@@ -32,17 +32,11 @@ echo ">> Dicto $VERSION ($ARCH)"
 # --- 1. build PyInstaller (onedir) ------------------------------------------
 if [[ "${SKIP_PYINSTALLER:-0}" != "1" ]]; then
   echo ">> PyInstaller build..."
-  uv run pyinstaller --name "dicto" --onedir --windowed --noconfirm \
-    --copy-metadata dicto \
-    --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" \
-    --hidden-import dbus_next \
-    --hidden-import pynput.keyboard --hidden-import pynput.mouse \
-    --hidden-import pynput.keyboard._xorg --hidden-import pynput.mouse._xorg \
-    src/main.py
+  uv run pyinstaller --noconfirm dicto-linux.spec
 fi
 
-if [[ ! -x "dist/dicto/dicto" ]]; then
-  echo "ERROR: no existe dist/dicto/dicto. Ejecuta sin SKIP_PYINSTALLER." >&2
+if [[ ! -x "dist/Dicto/Dicto" ]]; then
+  echo "ERROR: no existe dist/Dicto/Dicto. Ejecuta sin SKIP_PYINSTALLER." >&2
   exit 1
 fi
 
@@ -51,10 +45,10 @@ STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
 install -d "$STAGE/opt"
-cp -a "dist/dicto" "$STAGE/opt/dicto"
+cp -a "dist/Dicto" "$STAGE/opt/dicto"
 
 install -d "$STAGE/usr/bin"
-ln -sf "/opt/dicto/dicto" "$STAGE/usr/bin/dicto"
+ln -sf "/opt/dicto/Dicto" "$STAGE/usr/bin/dicto"
 
 install -d "$STAGE/usr/share/icons/hicolor/256x256/apps"
 cp "assets/icons/icon.png" "$STAGE/usr/share/icons/hicolor/256x256/apps/dicto.png"

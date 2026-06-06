@@ -3,11 +3,11 @@
 from PyInstaller.utils.hooks import copy_metadata
 
 a = Analysis(
-    ['src\\main.py'],
+    ['src/main.py'],
     pathex=[],
     binaries=[],
     datas=[('assets', 'assets'), ('src/ui/assets', 'src/ui/assets')] + copy_metadata('dicto'),
-    hiddenimports=[],
+    hiddenimports=['dbus_next'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -31,9 +31,7 @@ exe = EXE(
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=['assets\\icons\\icon.ico'],
+    icon='assets/icons/icon.png',
 )
 coll = COLLECT(
     exe,

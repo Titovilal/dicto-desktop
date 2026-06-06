@@ -140,8 +140,9 @@ class StateMixin:
 
         # Build format list: Original + user presets
         formats: list[tuple[str, str]] = [("raw", t("tab_original"))]
-        for p in self._user_presets:
-            formats.append((f"preset_{p['id']}", p["name"]))
+        for i, p in enumerate(self._user_presets):
+            preset_id = p.get("id", i)
+            formats.append((f"preset_{preset_id}", p["name"]))
 
         for fid, label in formats:
             self.format_combo.addItem(label, fid)
@@ -262,7 +263,9 @@ class StateMixin:
 
     @Slot(str)
     def update_status(self, status: str):
-        self.status_label.setText(status.capitalize())
+        # Footer status label was removed; status is reflected by the dot,
+        # waveform and overlay instead. Kept as a no-op for the state signal.
+        pass
 
     @Slot()
     def set_recording_state(self):
