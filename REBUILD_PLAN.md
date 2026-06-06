@@ -188,15 +188,17 @@ Nuevos a definir como **mock** (el usuario los implementa en su backend):
       tests/unit/test_vad.py tests/unit/test_session_writer.py tests/unit/test_api_client.py
       tests/integration/test_long_recording.py`). UI de grabación (botón/overlay) → Fase 2.
 
-### Fase 2 — Overlay + captura (hotkey, pausa, onda)
-- [ ] `services/hotkey.py`: listener global robusto, modos hold y toggle (portado y endurecido)
-- [ ] `ui/overlay/overlay.py` + `waveform.py` + `controls.py`: overlay efímero arrastrable
-- [ ] **Pausa** de grabación (descansos de clase sin partir el archivo)
-- [ ] Temporizador + estado + botón parar en el overlay
-- [ ] `audio/monitor.py` + panel de prueba de micro con onda en vivo
-- [ ] `ui/tray.py`: icono con color de estado (listo/grabando/procesando/error) + menú
-- [ ] **Check:** hold y toggle no se cortan a mitad de frase; pausa/reanuda; overlay arrastrable
-      recuerda posición; `pytest tests/unit/test_hotkey.py tests/ui/test_overlay.py`
+### Fase 2 — Overlay + captura (hotkey, pausa, onda) ✅
+- [x] `services/hotkey.py`: listener global robusto, modos hold y toggle (matcher puro + backend pynput)
+- [x] `ui/overlay/overlay.py` + `waveform.py` + `controls.py`: overlay efímero arrastrable
+- [x] **Pausa** de grabación (descansos de clase sin partir el archivo)
+- [x] Temporizador + estado + botón parar en el overlay
+- [x] `audio/monitor.py` + panel de prueba de micro con onda en vivo (`ui/settings/audio.py`)
+- [x] `ui/tray.py`: icono con color de estado (listo/grabando/procesando/error) + menú (Fase 0, conectado al orquestador)
+- [x] `orchestrator.py`: glue app-layer hotkey/overlay ↔ `Pipeline` ↔ UI (bus → señales Qt, transcripción en worker)
+- [x] **Check:** hold y toggle (matcher traga auto-repeat, no corta a mitad); pausa/reanuda; overlay
+      arrastrable recuerda posición; **19 tests nuevos / 78 totales** (`pytest tests/unit/test_hotkey.py
+      tests/ui/test_overlay.py`)
 
 ### Fase 3 — Salida (insertar en cursor, limpieza, export)
 - [ ] `services/injector.py`: insertar en el cursor por defecto + auto-enter opcional

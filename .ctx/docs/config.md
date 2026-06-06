@@ -11,7 +11,7 @@ Manages all user-editable preferences for the app — hotkey, audio, transcripti
 ## Flow
 1. `DictoApp` calls `get_settings()` at boot; on first call it reads `%APPDATA%\dicto\config.yaml` via `Settings.load()`.
 2. Missing or corrupt files fall back silently to defaults; the `DICTO_API_KEY` environment variable overrides the stored API key after loading.
-3. When the user changes a preference in the UI, the app mutates the `Settings` object and calls `settings.save()`, which writes the full model back to YAML.
+3. When the user changes a preference in the UI, the app mutates the `Settings` object and calls `settings.save()`, which writes the full model back to YAML. The overlay does this too: dragging it persists `overlay.x`/`overlay.y`, and "reset position" clears them so it snaps back to the `overlay.position` anchor.
 
 ---
 

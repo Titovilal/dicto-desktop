@@ -193,12 +193,15 @@ class Pipeline:
                 return text
             except Exception as exc:  # noqa: BLE001 — classify via retryable flag
                 retryable = getattr(exc, "retryable", True)
-                job.mark_failed(str(exc))
+                # Include the type: some exceptions stringify to "" and an empty
+                # log line is impossible to diagnose.
+                detail = f"{type(exc).__name__}: {exc}"
+                job.mark_failed(detail)
                 if not retryable or attempt >= self.max_attempts - 1:
-                    logger.warning("chunk %s failed permanently: %s", chunk, exc)
+                    logger.warning("chunk %s failed permanently: %s", chunk, detail, exc_info=True)
                     break
                 delay = self.retry_backoff * (2**attempt)
-                logger.info("chunk %s failed (%s); retry %d in %.0fs", chunk, exc, attempt + 1, delay)
+                logger.info("chunk %s failed (%s); retry %d in %.0fs", chunk, detail, attempt + 1, delay)
                 self._sleep(delay)
         return ""
 

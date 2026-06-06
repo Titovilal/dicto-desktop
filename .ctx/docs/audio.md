@@ -5,6 +5,7 @@ Captures microphone input (and optionally system audio) while the user is record
 
 ## Main Files
 - `src/dicto/audio/capture.py` - Streams audio from the microphone on a background thread using `sounddevice`; handles resampling, live RMS callbacks, and pause/resume
+- `src/dicto/audio/monitor.py` - `AudioMonitor`: opens an input stream purely to surface the live RMS level for the mic-test panel; writes nothing to disk, shares the level math with `capture.py`
 - `src/dicto/audio/devices.py` - Enumerates and selects input devices; negotiates sample rates; detects WASAPI loopback for system audio on Windows
 - `src/dicto/audio/loopback.py` - `LoopbackCapture`: records system audio (WASAPI loopback via `soundcard`, Stereo Mix fallback) to chunks as a selectable source
 - `src/dicto/audio/session_writer.py` - Writes int16 PCM to rotating WAV chunks using `ChunkPolicy` to decide when to start a new file

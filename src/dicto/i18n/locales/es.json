@@ -17,6 +17,20 @@
   "window.library": "Biblioteca",
   "window.empty": "Aún no hay nada. Pulsa tu atajo para dictar.",
 
+  "overlay.pause": "Pausar",
+  "overlay.resume": "Reanudar",
+  "overlay.stop": "Parar",
+  "overlay.record": "Grabar",
+  "overlay.open_app": "Abrir Dicto",
+  "overlay.reset_position": "Restablecer posición",
+
+  "mic.test": "Probar micrófono",
+  "mic.testing": "Escuchando…",
+  "mic.start": "Iniciar prueba",
+  "mic.stop": "Detener prueba",
+  "mic.device": "Micrófono",
+  "mic.no_device": "No se encontró micrófono",
+
   "settings.title": "Ajustes",
   "settings.appearance": "Apariencia",
   "settings.theme": "Tema",

@@ -42,7 +42,10 @@ class DictoApp:
         # requires a display / QApplication — keeps unit tests headless.
         from PySide6.QtWidgets import QApplication
 
+        from dicto.orchestrator import RecordingOrchestrator
+        from dicto.services.hotkey import HotkeyListener
         from dicto.ui.main.window import MainWindow
+        from dicto.ui.overlay.overlay import Overlay
         from dicto.ui.theme.manager import ThemeManager
         from dicto.ui.tray import Tray
 
@@ -57,23 +60,71 @@ class DictoApp:
         # i18n: apply the saved language before any widget builds its text.
         set_language(self.settings.appearance.language)
 
-        # Domain event bus (Qt-free); later phases publish onto it.
+        # Domain event bus (Qt-free); the orchestrator bridges it to Qt.
         self.bus = EventBus()
 
         # Theme: build, then apply so the stylesheet exists before widgets show.
         self.theme = ThemeManager(self.app, theme=self.settings.appearance.theme)
         self.theme.apply()
 
+        # Orchestration: owns recording lifecycle, bridges the bus to Qt.
+        self.orchestrator = RecordingOrchestrator(self.settings, self.bus)
+
         # UI
         self.window = MainWindow()
         self.tray = Tray()
+        self.overlay = Overlay(self.theme, self.settings)
+
+        # Global hotkey (degrades gracefully where pynput is unavailable).
+        mode = self.settings.behavior.recording_mode
+        self.hotkey = HotkeyListener(
+            self.settings.hotkey.modifiers,
+            self.settings.hotkey.key,
+            mode=mode,
+            on_start=self._on_hotkey_start,
+            on_stop=self._on_hotkey_stop,
+        )
 
         self._wire()
+        self.hotkey.start()
 
     def _wire(self) -> None:
         self.tray.openRequested.connect(self._show_window)
         self.tray.settingsRequested.connect(self._show_window)
         self.tray.quitRequested.connect(self.quit)
+
+        # Orchestrator → UI.
+        self.orchestrator.stateChanged.connect(self.tray.set_state)
+        self.orchestrator.stateChanged.connect(self.overlay.set_state)
+        self.orchestrator.levelChanged.connect(self.overlay.set_level)
+        self.orchestrator.transcriptionDone.connect(self._on_transcription_done)
+
+        # Overlay → orchestrator (visual intent → lifecycle).
+        self.overlay.stopRequested.connect(self.orchestrator.stop_recording)
+        self.overlay.pauseRequested.connect(self.orchestrator.pause)
+        self.overlay.resumeRequested.connect(self.orchestrator.resume)
+        self.overlay.openAppRequested.connect(self._show_window)
+
+    # ── hotkey callbacks (fire on pynput's thread) ──────────────────────
+
+    def _on_hotkey_start(self) -> None:
+        # In toggle mode the matcher only fires start; route through toggle so a
+        # second tap stops. In hold mode start begins recording.
+        if self.settings.behavior.recording_mode == "toggle":
+            self.orchestrator.toggle()
+        else:
+            self.orchestrator.start_recording()
+
+    def _on_hotkey_stop(self) -> None:
+        # Only meaningful in hold mode (key-up stops).
+        self.orchestrator.stop_recording()
+
+    def _on_transcription_done(self, text: str) -> None:
+        # Minimal delivery for Phase 2: copy to clipboard so the result is
+        # usable. Phase 3 replaces this with the result router (cursor/clipboard
+        # /library) and cleanup.
+        if text:
+            self.app.clipboard().setText(text)
 
     def _show_window(self) -> None:
         self.window.show()
@@ -82,6 +133,9 @@ class DictoApp:
 
     def quit(self) -> None:
         logger.info("quitting")
+        self.hotkey.stop()
+        self.orchestrator.dispose()
+        self.overlay.dispose()
         self.tray.dispose()
         self.app.quit()
 
