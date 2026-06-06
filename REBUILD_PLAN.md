@@ -173,18 +173,20 @@ Nuevos a definir como **mock** (el usuario los implementa en su backend):
 - [x] **Check:** `python -m dicto` abre la app; cambiar tema (claro/oscuro/sistema) e idioma
       en caliente refresca la UI vacía; `pytest tests/unit/test_state.py tests/unit/test_theme.py tests/unit/test_i18n.py` pasa (25 tests verdes)
 
-### Fase 1 — Fiabilidad en grabaciones largas (lo primero del doc)
-- [ ] `audio/devices.py`: enumerar/seleccionar micro (portado de recorder actual)
-- [ ] `audio/capture.py` + `audio/session_writer.py`: **stream → chunks a disco**, no RAM
-- [ ] `core/chunking.py`: política de tamaño/rotación de chunks
-- [ ] `audio/loopback.py`: WASAPI loopback (audio del sistema) como fuente seleccionable
-- [ ] `core/vad.py`: VAD para recortar silencios antes de subir (webrtcvad)
-- [ ] `services/api/client.py` + `transcribe.py`: cliente httpx con reintentos y errores tipados
-- [ ] `core/pipeline.py`: capture→persist→(vad)→transcribe como **jobs reintentables**
-- [ ] No perder audio si falla la transcripción → reintento desde el audio en disco
-- [ ] Progreso visible + resultados parciales en grabaciones largas
-- [ ] **Check:** grabar 60+ min sin reventar RAM; matar la red a mitad y reintentar OK;
-      `pytest tests/unit/test_chunking.py tests/unit/test_vad.py tests/integration/test_long_recording.py`
+### Fase 1 — Fiabilidad en grabaciones largas (lo primero del doc) ✅
+- [x] `audio/devices.py`: enumerar/seleccionar micro (portado de recorder actual)
+- [x] `audio/capture.py` + `audio/session_writer.py`: **stream → chunks a disco**, no RAM
+- [x] `core/chunking.py`: política de tamaño/rotación de chunks
+- [x] `audio/loopback.py`: WASAPI loopback (audio del sistema) como fuente seleccionable
+- [x] `core/vad.py`: VAD para recortar silencios antes de subir (webrtcvad-wheels)
+- [x] `services/api/client.py` + `transcribe.py` + `errors.py`: cliente httpx con reintentos y errores tipados
+- [x] `core/pipeline.py`: capture→persist→(vad)→transcribe como **jobs reintentables**
+- [x] No perder audio si falla la transcripción → reintento desde el audio en disco (`retry_failed`)
+- [x] Progreso visible + resultados parciales en grabaciones largas (`TranscriptionProgress`)
+- [x] **Check:** chunks acotados en un test de 63 min (RAM acotada); fallo de red a mitad
+      → reintento desde disco OK; **34 tests verdes Fase 1** (`pytest tests/unit/test_chunking.py
+      tests/unit/test_vad.py tests/unit/test_session_writer.py tests/unit/test_api_client.py
+      tests/integration/test_long_recording.py`). UI de grabación (botón/overlay) → Fase 2.
 
 ### Fase 2 — Overlay + captura (hotkey, pausa, onda)
 - [ ] `services/hotkey.py`: listener global robusto, modos hold y toggle (portado y endurecido)
