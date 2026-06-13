@@ -57,6 +57,11 @@ class MicTestPanel(QWidget):
         self._device_label.setProperty("muted", True)
         device_row.addWidget(self._device_label)
         self._device_combo = QComboBox()
+        # Long device names must elide, not force the panel wider.
+        self._device_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self._device_combo.setMinimumContentsLength(16)
         self._device_combo.currentIndexChanged.connect(self._on_device_changed)
         device_row.addWidget(self._device_combo, 1)
         layout.addLayout(device_row)

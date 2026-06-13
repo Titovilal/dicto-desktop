@@ -21,6 +21,7 @@ from dicto.core.cleanup import clean_dictation
 from dicto.core.events import EventBus
 from dicto.core.result_router import route_result
 from dicto.i18n import set_language
+from dicto.services.api.dictionary import DictionaryService
 from dicto.services.api.library import LibraryService
 from dicto.services.api.mocks import MockStore, set_mock_store
 from dicto.utils.logger import get_logger, setup_logging
@@ -74,6 +75,7 @@ class DictoApp:
         # wired with a real UTC clock so saved transcripts carry honest stamps.
         set_mock_store(MockStore(clock=lambda: datetime.now(timezone.utc).isoformat()))
         self.library = LibraryService()
+        self.dictionary = DictionaryService()
 
         # Theme: build, then apply so the stylesheet exists before widgets show.
         self.theme = ThemeManager(self.app, theme=self.settings.appearance.theme)
@@ -88,8 +90,12 @@ class DictoApp:
         self.injector = Injector(self.clipboard)
 
         # UI
-        self.window = MainWindow(self.library, self.clipboard)
-        self.tray = Tray()
+        self.window = MainWindow(self.library, self.clipboard, self.theme)
+        hotkey_label = " + ".join(
+            part.capitalize()
+            for part in (*self.settings.hotkey.modifiers, self.settings.hotkey.key)
+        )
+        self.tray = Tray(hotkey_label, self.settings.audio.include_system_audio)
         self.overlay = Overlay(self.theme, self.settings)
 
         # Global hotkey (degrades gracefully where pynput is unavailable).
@@ -107,8 +113,16 @@ class DictoApp:
 
     def _wire(self) -> None:
         self.tray.openRequested.connect(self._show_window)
-        self.tray.settingsRequested.connect(self._show_window)
+        self.tray.dictionaryRequested.connect(self._open_dictionary)
+        self.tray.settingsRequested.connect(self._open_settings)
         self.tray.quitRequested.connect(self.quit)
+        self.tray.recordRequested.connect(self.orchestrator.toggle)
+        self.tray.systemAudioToggled.connect(self._on_system_audio_toggled)
+
+        # Main-window rail intent.
+        self.window.recordRequested.connect(self.orchestrator.toggle)
+        self.window.dictionaryRequested.connect(self._open_dictionary)
+        self.window.settingsRequested.connect(self._open_settings)
 
         # Orchestrator → UI.
         self.orchestrator.stateChanged.connect(self.tray.set_state)
@@ -176,6 +190,33 @@ class DictoApp:
         self.window.show()
         self.window.raise_()
         self.window.activateWindow()
+
+    def _open_settings(self) -> None:
+        # Lazy import + lazy build: the modal only exists once asked for.
+        from dicto.ui.main.settings_modal import SettingsModal
+
+        self._show_window()
+        if getattr(self, "_settings_modal", None) is None:
+            self._settings_modal = SettingsModal(self.theme, self.settings, self.window)
+            # Keep the tray's "system audio" check in sync with the modal toggle.
+            self._settings_modal._sysaudio.toggled.connect(self.tray.set_system_audio)
+        self._settings_modal.open_centered()
+
+    def _on_system_audio_toggled(self, on: bool) -> None:
+        self.settings.audio.include_system_audio = on
+        self.settings.save()
+        modal = getattr(self, "_settings_modal", None)
+        if modal is not None:
+            modal._sysaudio.setChecked(on)
+
+    def _open_dictionary(self) -> None:
+        # Lazy import + lazy build, like the settings modal.
+        from dicto.ui.main.dictionary_modal import DictionaryModal
+
+        self._show_window()
+        if getattr(self, "_dictionary_modal", None) is None:
+            self._dictionary_modal = DictionaryModal(self.dictionary, self.theme, self.window)
+        self._dictionary_modal.open_centered()
 
     def quit(self) -> None:
         logger.info("quitting")
