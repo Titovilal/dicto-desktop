@@ -92,8 +92,25 @@ class _ItemDelegate(QStyledItemDelegate):
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        rect = option.rect.adjusted(self._PAD_X, self._PAD_Y, -self._PAD_X, -self._PAD_Y)
         selected = bool(option.state & QStyle.StateFlag.State_Selected)
+        hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
+
+        # A delegate that overrides paint() fully owns the cell, so the
+        # QListWidget::item hover/selected QSS never reaches it — draw the row
+        # background here. A 1px inset matches the stylesheet's `margin: 1px 0`.
+        if selected or hovered:
+            bg = self._color(
+                Token.BG_SELECTED if selected else Token.BG_ELEVATED, "#27272a"
+            )
+            painter.setBrush(bg)
+            if selected:
+                painter.setPen(self._color(Token.BORDER, "#3f3f46"))
+            else:
+                painter.setPen(Qt.PenStyle.NoPen)
+            bg_rect = QRectF(option.rect).adjusted(0.5, 1.5, -0.5, -1.5)
+            painter.drawRoundedRect(bg_rect, 10, 10)
+
+        rect = option.rect.adjusted(self._PAD_X, self._PAD_Y, -self._PAD_X, -self._PAD_Y)
 
         title_font = QFont(option.font)
         title_font.setPointSizeF(option.font.pointSizeF() + 0.5)
@@ -193,6 +210,7 @@ class LibraryView(QWidget):
         root.addLayout(toolrow)
 
         self._list = QListWidget()
+        self._list.setMouseTracking(True)  # so the delegate gets State_MouseOver
         self._list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._list.setItemDelegate(_ItemDelegate(theme, self._list))
         self._list.currentItemChanged.connect(self._on_current_changed)

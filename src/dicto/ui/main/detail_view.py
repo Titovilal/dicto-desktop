@@ -10,7 +10,7 @@ delivery/cleanup hints and a live word count. The export content is pure
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
@@ -430,7 +430,19 @@ class DetailView(QWidget):
         if self._current is None:
             return
         self._clipboard.copy(self._body.toPlainText())
-        self.statusMessage.emit(t("detail.copied"))
+        self._flash_copied()
+
+    def _flash_copied(self) -> None:
+        """Briefly swap the copy icon for a green check, then restore it.
+
+        Confirmation lives on the button itself rather than a status toast, so
+        no footer message is raised for a copy.
+        """
+        if self._theme is not None:
+            self._copy_btn.setIcon(
+                icons.svg_icon("check", self._theme.color(Token.STATUS_SUCCESS), 16)
+            )
+        QTimer.singleShot(1500, self._refresh_icons)
 
     def _on_export(self) -> None:
         transcript = self._edited_transcript()

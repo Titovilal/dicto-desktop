@@ -9,6 +9,12 @@ signals.)
 
 from __future__ import annotations
 
+import sys
+
+if sys.platform == "win32":
+    import ctypes
+    import ctypes.wintypes
+
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
@@ -27,9 +33,11 @@ from dicto.services.api.library import LibraryService
 from dicto.services.api.transform import TransformService
 from dicto.services.clipboard import Clipboard
 from dicto.ui import icons
+from dicto.core.state import AppState
 from dicto.ui.main.chat_view import ChatView
 from dicto.ui.main.detail_view import DetailView
 from dicto.ui.main.library_view import LibraryView
+from dicto.ui.main.titlebar import TitleBar
 from dicto.ui.theme.manager import ThemeManager
 from dicto.ui.theme.tokens import Token
 
@@ -53,6 +61,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowIcon(icons.app_icon())
         self.resize(1100, 680)
+        # Frameless: the native chrome is replaced by our custom TitleBar.
+        # Mouse tracking lets us pick up edge-resize hovers without a press.
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
+        self.setMouseTracking(True)
 
         self._library = library or LibraryService()
         self._theme = theme
@@ -78,13 +90,26 @@ class MainWindow(QMainWindow):
         lib_layout.setContentsMargins(0, 0, 0, 0)
         lib_layout.addWidget(self._library_view)
 
-        central = QWidget()
-        body = QHBoxLayout(central)
+        body_widget = QWidget()
+        body = QHBoxLayout(body_widget)
         body.setContentsMargins(0, 0, 0, 0)
         body.setSpacing(0)
         body.addWidget(rail)
         body.addWidget(library_pane)
         body.addWidget(self._detail_stack, 1)
+
+        # Custom chrome (frameless) sits above the body.
+        self._titlebar = TitleBar(theme)
+        self._titlebar.minimizeRequested.connect(self.showMinimized)
+        self._titlebar.maximizeRequested.connect(self._toggle_maximized)
+        self._titlebar.closeRequested.connect(self.close)
+
+        central = QWidget()
+        shell = QVBoxLayout(central)
+        shell.setContentsMargins(0, 0, 0, 0)
+        shell.setSpacing(0)
+        shell.addWidget(self._titlebar)
+        shell.addWidget(body_widget, 1)
         self.setCentralWidget(central)
 
         # Library selection drives both panes and snaps back to the detail view.
@@ -186,6 +211,16 @@ class MainWindow(QMainWindow):
     def _show_status(self, message: str) -> None:
         self.statusBar().showMessage(message, 3000)
 
+    def _toggle_maximized(self) -> None:
+        if self.isMaximized():
+            self.showNormal()
+        else:
+            self.showMaximized()
+
+    def set_status(self, state: AppState) -> None:
+        """Reflect the app's recording state in the title-bar status dot."""
+        self._titlebar.set_status(state)
+
     def retranslate(self) -> None:
         self.setWindowTitle(t("window.title"))
         self._record_btn.setToolTip(t("overlay.record"))
@@ -193,6 +228,48 @@ class MainWindow(QMainWindow):
         self._dict_btn.setToolTip(t("rail.dictionary"))
         self._settings_btn.setToolTip(t("tray.settings"))
         self._avatar.setText(t("rail.avatar"))
+
+    # ── frameless resize ─────────────────────────────────────────────────
+
+    # Width of the invisible edge gutter that resizes the window. Handled in
+    # nativeEvent (WM_NCHITTEST) so it works even though child widgets cover
+    # the client area — the only reliable approach for a frameless window.
+    _RESIZE_BORDER = 6
+
+    def nativeEvent(self, event_type, message):  # noqa: N802 — Qt override
+        if sys.platform != "win32" or event_type != "windows_generic_MSG":
+            return super().nativeEvent(event_type, message)
+
+        msg = ctypes.wintypes.MSG.from_address(int(message))
+        if msg.message != 0x0084:  # WM_NCHITTEST
+            return super().nativeEvent(event_type, message)
+        if self.isMaximized():
+            return super().nativeEvent(event_type, message)
+
+        # lParam packs the screen-space cursor as (y << 16 | x), 16-bit signed.
+        x = ctypes.c_short(msg.lParam & 0xFFFF).value
+        y = ctypes.c_short((msg.lParam >> 16) & 0xFFFF).value
+        # Compute edges from the window's frame geometry in screen space.
+        geo = self.frameGeometry()
+        b = self._RESIZE_BORDER
+        left = x <= geo.left() + b
+        right = x >= geo.right() - b
+        top = y <= geo.top() + b
+        bottom = y >= geo.bottom() - b
+
+        hit = {
+            (True, False, True, False): 13,   # HTTOPLEFT
+            (False, True, True, False): 14,   # HTTOPRIGHT
+            (True, False, False, True): 16,   # HTBOTTOMLEFT
+            (False, True, False, True): 17,   # HTBOTTOMRIGHT
+            (True, False, False, False): 10,  # HTLEFT
+            (False, True, False, False): 11,  # HTRIGHT
+            (False, False, True, False): 12,  # HTTOP
+            (False, False, False, True): 15,  # HTBOTTOM
+        }.get((left, right, top, bottom))
+        if hit is not None:
+            return True, hit
+        return super().nativeEvent(event_type, message)
 
     def closeEvent(self, event) -> None:  # noqa: N802 — Qt override
         # Closing hides to tray rather than quitting; the tray is the anchor.

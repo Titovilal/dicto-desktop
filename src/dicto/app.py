@@ -75,7 +75,9 @@ class DictoApp:
         # Backend (Phase 4): library + dictionary, mocked in-process for now,
         # wired with a real UTC clock so saved transcripts carry honest stamps.
         set_mock_store(MockStore(clock=lambda: datetime.now(timezone.utc).isoformat()))
-        self.library = LibraryService()
+        # Reads come from the backend (GET /api/v1/library) using the saved key,
+        # merged with transcripts dictated this session.
+        self.library = LibraryService(api_key=self.settings.transcription.api_key or None)
         self.dictionary = DictionaryService()
         # Transform (Phase 5): AI presets over a transcript; builds its own
         # API client lazily from the saved key, results cached in the store.
@@ -133,6 +135,7 @@ class DictoApp:
         # Orchestrator → UI.
         self.orchestrator.stateChanged.connect(self.tray.set_state)
         self.orchestrator.stateChanged.connect(self.overlay.set_state)
+        self.orchestrator.stateChanged.connect(self.window.set_status)
         self.orchestrator.levelChanged.connect(self.overlay.set_level)
         self.orchestrator.transcriptionDone.connect(self._on_transcription_done)
 

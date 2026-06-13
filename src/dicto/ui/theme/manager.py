@@ -16,6 +16,7 @@ import logging
 
 from PySide6.QtCore import QObject, Signal
 
+from dicto.ui.theme.fonts import load_bundled_fonts
 from dicto.ui.theme.palettes import PALETTES, Palette
 from dicto.ui.theme.tokens import Token
 
@@ -60,23 +61,31 @@ def resolve_palette(name: ThemeName) -> Palette:
     return PALETTES[resolve_theme(name)]
 
 
-def build_qss(palette: Palette) -> str:
+def build_qss(palette: Palette, ui_font: str | None = None) -> str:
     """Build the application-wide Qt stylesheet from a palette.
 
     Mirrors the design-system rules in the hand-off's ``theme.css``: zinc
     surfaces, soft 9-11px radii, pill chips, a neutral "primary" button and a
     quiet text scale. Widgets opt into a style with ``objectName`` or dynamic
     properties (``chip``, ``ghost``, ``accent``…), never literal colours.
+
+    ``ui_font`` is the bundled UI family (Hanken Grotesk) when registered; it is
+    placed ahead of the system sans fallbacks so the app looks identical across
+    machines, degrading gracefully when the font isn't available.
     """
 
     def c(token: Token) -> str:
         return palette[token]
 
+    families = ", ".join(
+        f'"{f}"' for f in ([ui_font] if ui_font else []) + ["Segoe UI Variable Text", "Segoe UI"]
+    )
+
     return f"""
     QWidget {{
         background-color: {c(Token.BG)};
         color: {c(Token.TEXT)};
-        font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
+        font-family: {families}, sans-serif;
         font-size: 13px;
     }}
     QLabel, QCheckBox {{ background: transparent; }}
@@ -107,6 +116,25 @@ def build_qss(palette: Palette) -> str:
         border-top: 1px solid {c(Token.BORDER)};
     }}
     QFrame#tabsRule {{ background-color: {c(Token.BORDER)}; border: none; }}
+
+    /* custom window chrome (frameless) */
+    QFrame#titlebar {{
+        background-color: {c(Token.BG_PANEL)};
+        border: none;
+        border-bottom: 1px solid {c(Token.BORDER)};
+    }}
+    QLabel#titleName {{ font-size: 13px; font-weight: 600; color: {c(Token.TEXT)}; }}
+    QPushButton[winctl] {{
+        background: transparent;
+        border: none;
+        border-radius: 0px;
+        color: {c(Token.TEXT_MUTED)};
+        font-size: 12px;
+        padding: 0px;
+    }}
+    QPushButton[winctl]:hover {{ background-color: {c(Token.BG_HOVER)}; color: {c(Token.TEXT)}; }}
+    QPushButton[winctl="close"]:hover {{ background-color: {c(Token.STATUS_ERROR)}; color: #ffffff; }}
+
     QLabel#avatar {{
         background-color: {c(Token.BG_HOVER)};
         border: 1px solid {c(Token.BORDER)};
@@ -162,16 +190,22 @@ def build_qss(palette: Palette) -> str:
 
     /* tag-filter chips (checkable pills) */
     QPushButton[chip="true"] {{
-        background: transparent;
+        background-color: transparent;
         border: 1px solid {c(Token.BORDER)};
         border-radius: 13px;
-        padding: 3px 11px;
+        min-height: 20px;
+        max-height: 20px;
+        padding: 2px 11px;
         font-size: 12px;
         color: {c(Token.TEXT_MUTED)};
     }}
-    QPushButton[chip="true"]:hover {{ background-color: {c(Token.BG_ELEVATED)}; }}
+    QPushButton[chip="true"]:hover {{
+        background-color: {c(Token.BG_ELEVATED)};
+        border-radius: 13px;
+    }}
     QPushButton[chip="true"]:checked {{
         background-color: {c(Token.ACCENT)};
+        border-radius: 13px;
         color: {c(Token.TEXT_ON_ACCENT)};
         border-color: {c(Token.ACCENT)};
     }}
@@ -471,6 +505,8 @@ class ThemeManager(QObject):
         self._app = app
         self._setting: ThemeName = theme
         self._effective: str = resolve_theme(theme)
+        # Bundled UI font (Hanken Grotesk); None falls back to the system sans.
+        self._ui_font: str | None = load_bundled_fonts() if app is not None else None
 
     @property
     def setting(self) -> ThemeName:
@@ -489,7 +525,7 @@ class ThemeManager(QObject):
     def apply(self) -> None:
         """(Re)build and apply the stylesheet for the current setting."""
         self._effective = resolve_theme(self._setting)
-        qss = build_qss(PALETTES[self._effective])
+        qss = build_qss(PALETTES[self._effective], self._ui_font)
         if self._app is not None:
             self._app.setStyleSheet(qss)
         logger.info("theme applied: %s (setting=%s)", self._effective, self._setting)
