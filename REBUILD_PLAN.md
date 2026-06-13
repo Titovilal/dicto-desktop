@@ -222,16 +222,17 @@ Nuevos a definir como **mock** (el usuario los implementa en su backend):
       **24 tests nuevos / 136 totales** (`pytest tests/unit/test_dictionary.py tests/unit/test_library.py
       tests/integration/test_library_flow.py tests/ui/test_library.py`)
 
-### Fase 5 — Transformar (IA) para estudiantes
-- [ ] `transform/presets.py`: resumen, puntos clave, flashcards/preguntas, reescribir, chat
-- [ ] `transform/schema.py`: preset → request de `/transform`
-- [ ] `services/api/transform.py`: llamada + manejo de errores
-- [ ] Caché de resultados de transform (vía API mock `transforms/{id}`)
-- [ ] Prompt personalizado
-- [ ] `ui/main/detail_view.py`: pestañas de transform por preset
-- [ ] `ui/main/chat_view.py`: "pregúntale a tus apuntes"
-- [ ] **Check:** cada preset devuelve resultado y se cachea; chat responde sobre la transcripción;
-      `pytest tests/integration/test_transform_flow.py`
+### Fase 5 — Transformar (IA) para estudiantes ✅
+- [x] `transform/presets.py`: resumen, puntos clave, flashcards/preguntas, reescribir, chat
+- [x] `transform/schema.py`: preset → request de `/transform` (`build_request`, puro)
+- [x] `services/api/transform.py`: llamada (`transform_text`) + `TransformService` con manejo de errores tipados
+- [x] Caché de resultados de transform (vía mock `transforms/{id}` en `MockStore`, clave `(transcript_id, preset)`)
+- [x] Prompt personalizado → la pregunta del chat se pliega en las instrucciones del preset `ask`
+- [x] `ui/main/detail_view.py`: pestañas de transform por preset (Generar/Regenerar, generación on-demand, cacheada)
+- [x] `ui/main/chat_view.py`: "pregúntale a tus apuntes" (respuestas no cacheadas; llamadas fuera del hilo Qt)
+- [x] **Check:** cada preset devuelve resultado y se cachea; chat responde sobre la transcripción;
+      **20 tests nuevos / 156 totales** (`pytest tests/unit/test_transform.py tests/integration/test_transform_flow.py
+      tests/ui/test_transform_view.py`)
 
 ### Fase 6 — Sistema: cuenta, planes, auto-update, errores, apariencia
 - [ ] `services/api/account.py` (mock): plan, minutos incluidos, minutos usados

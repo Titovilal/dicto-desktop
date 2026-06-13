@@ -25,7 +25,8 @@ import sys
 
 os.environ.setdefault("QT_QPA_PLATFORM", "windows")
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QRectF, QTimer
+from PySide6.QtGui import QColor, QPainter, QPainterPath
 from PySide6.QtWidgets import QApplication, QWidget
 
 from dicto.app import DictoApp
@@ -33,14 +34,36 @@ from dicto.core.state import AppState
 
 OUT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "screenshots"))
 
+# Modal cards round their corners via setMask (Qt's border-radius doesn't clip a
+# widget's opaque children). widget.grab() ignores that mask, so for masked
+# cards we re-apply the same rounded clip to the grabbed pixmap — making the
+# screenshot match what's actually on screen.
+_MODAL_RADIUS = 16
+
 
 def _grab(widget: QWidget, name: str) -> None:
-    """Render the widget itself (reliable for frameless translucent modals)."""
+    """Render the widget; re-clip rounded corners for masked modal cards."""
     QApplication.processEvents()
     pix = widget.grab()
-    path = os.path.join(OUT, name + ".png")
-    pix.save(path)
-    print("saved", path, pix.width(), "x", pix.height())
+    card = getattr(widget, "_card", None)
+    if card is not None:
+        dpr = pix.width() / max(1, widget.width())
+        r = _MODAL_RADIUS * dpr
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(0, 0, pix.width(), pix.height()), r, r)
+        painter = QPainter(pix)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
+        painter.setClipPath(path)
+        painter.setClipping(False)  # paint outside the path
+        # Carve the corners by filling the area outside the rounded path.
+        full = QPainterPath()
+        full.addRect(QRectF(0, 0, pix.width(), pix.height()))
+        painter.setClipPath(full.subtracted(path))
+        painter.fillRect(pix.rect(), QColor(255, 255, 255))
+        painter.end()
+    path_out = os.path.join(OUT, name + ".png")
+    pix.save(path_out)
+    print("saved", path_out, pix.width(), "x", pix.height())
 
 
 def main() -> int:
@@ -56,10 +79,57 @@ def main() -> int:
         app_obj.theme.set_theme(args.theme)
     suffix = "" if args.theme == "light" else "_dark"
 
+    # Seed a transcript so the library/detail/transform views have content.
+    seeded = app_obj.library.create(
+        text=(
+            "La mitocondria es el orgánulo encargado de producir la energía de "
+            "la célula mediante la respiración celular, generando ATP."
+        ),
+        language="es",
+        title="Apuntes de biología",
+        tags=["biología"],
+    )
+    app_obj.window.refresh_library()
+
+    # Seed cached transform results so the structured renderers (flashcards
+    # grid, key-points list, summary prose) show real content.
+    from dicto.services.api.mocks import get_mock_store
+
+    store = get_mock_store()
+    store.save_transform(
+        seeded.id, "summary",
+        "La mitocondria produce la energía celular (ATP) mediante la "
+        "respiración celular. Es esencial para el metabolismo de la célula.",
+    )
+    store.save_transform(
+        seeded.id, "flashcards",
+        "Q: ¿Qué produce la mitocondria? / A: ATP, la moneda energética de la célula.\n"
+        "Q: ¿Mediante qué proceso? / A: La respiración celular.\n"
+        "Q: ¿Por qué es importante? / A: Sin ATP la célula no tiene energía.\n"
+        "Q: ¿Cómo se le llama? / A: La central energética de la célula.",
+    )
+
     def shoot() -> None:
         win = app_obj.window
         win.show()
         _grab(win, f"01_main_window{suffix}")
+
+        # Transform tab: Flashcards (cached) — the card grid.
+        win._on_transcript_selected(seeded.id)
+        win._detail_view._tabs.setCurrentIndex(3)
+        _grab(win, f"05_transform{suffix}")
+
+        # Chat view ("ask your notes") with a sample exchange.
+        win._open_chat(seeded.id)
+        chat = win._chat_view
+        chat._add_bubble("¿Qué produce la mitocondria?", user=True)
+        chat._add_bubble(
+            "La mitocondria produce ATP, la moneda energética de la célula, "
+            "mediante la respiración celular.",
+            user=False,
+        )
+        _grab(win, f"06_chat{suffix}")
+        win._detail_stack.setCurrentWidget(win._detail_view)
 
         ov = app_obj.overlay
         ov.set_state(AppState.RECORDING)

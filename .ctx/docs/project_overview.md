@@ -21,7 +21,10 @@ Dicto is a Windows desktop app that lets users record voice via a global hotkey,
 - `src/dicto/services/api/library.py` - `LibraryService`: CRUD + search over transcripts (mocked); `query_transcripts` is the pure filter/sort
 - `src/dicto/services/api/dictionary.py` - `DictionaryService`: CRUD for the user's dictionary terms (mocked)
 - `src/dicto/ui/main/library_view.py` - `LibraryView`: searchable/sortable/tag-filterable transcript list
-- `src/dicto/ui/main/detail_view.py` - `DetailView`: view/edit a transcript, copy, export
+- `src/dicto/ui/main/detail_view.py` - `DetailView`: view/edit a transcript, copy, export, plus AI transform tabs (summary/key-points/flashcards/rewrite) generated on demand and cached
+- `src/dicto/ui/main/chat_view.py` - `ChatView`: "ask your notes" — Q&A grounded in one transcript via the `ask` preset
+- `src/dicto/services/api/transform.py` - `TransformService`: apply an AI preset to a transcript with a result cache; `transform_text()` is the stateless `/transform` POST
+- `src/dicto/transform/presets.py` + `schema.py` - declarative presets and the pure preset→request builder
 - `src/dicto/services/clipboard.py` - `Clipboard`: text clipboard with win32/Qt/no-op backends
 - `src/dicto/services/injector.py` - `Injector`: paste a transcript at the cursor (clipboard + Ctrl+V, optional auto-enter)
 - `src/dicto/config/settings.py` - Pydantic settings model, loaded from `%APPDATA%\dicto\config.yaml`

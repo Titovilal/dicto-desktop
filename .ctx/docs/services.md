@@ -18,7 +18,9 @@ The services layer handles all external communication: it sends audio to the Dic
 - `src/dicto/core/pipeline.py` - `Pipeline`: orchestrates per-chunk retryable jobs over the transcribe callable; emits progress/results on the bus
 - `src/dicto/core/events.py` - Result signals: `TranscriptionProgress`, `TranscriptionDone`, `ErrorOccurred`
 - `src/dicto/config/settings.py` - `TranscriptionSettings` and `TransformSettings` (API key, language, model)
-- `src/dicto/transform/__init__.py` - Transform service (placeholder; AI presets land in Phase 5)
+- `src/dicto/services/api/transform.py` - `transform_text()` (stateless POST to `/api/v1/transform`) + `TransformService`: resolves a preset, checks the cache (`/transforms/{id}`, mocked in `MockStore`), calls the endpoint on a miss, and stores the result. Builds its `ApiClient` lazily from the saved key; chat answers are never cached
+- `src/dicto/transform/schema.py` - `Preset` dataclass + `build_request` (preset + transcript → `/transform` payload; folds a chat question into the instructions). PURE
+- `src/dicto/transform/presets.py` - declarative student presets (summary, key points, flashcards, rewrite) + the conversational `ask` preset; `get_preset(id)`. Preset ids match the detail-view tab keys
 
 ## Flow
 1. `Pipeline` calls the transcribe callable (built by `factory.make_transcribe_chunk`) once per on-disk chunk. The callable optionally VAD-trims the chunk, then `transcribe_file` POSTs it to `/api/v1/transcribe` through `ApiClient`.
@@ -26,9 +28,10 @@ The services layer handles all external communication: it sends audio to the Dic
 3. As chunks complete, `TranscriptionProgress` (with partial text) and finally `TranscriptionDone` are published on the bus; any permanently-failed chunks surface an `ErrorOccurred(code="partial")`.
 4. **Delivery (Phase 3):** on `TranscriptionDone`, `app.py` cleans the text (`core/cleanup`, when `behavior.cleanup_enabled`), asks `core/result_router.route_result` what to do (passing `Injector.available()` as the capability), and then either injects at the cursor (`Injector`, optional auto-enter) or copies to the clipboard (`Clipboard`). Injection always stages the text on the clipboard first, so a failed paste falls back cleanly with nothing lost.
 5. **Library + dictionary (Phase 4):** before delivery, `app.py` also saves every cleaned transcript via `LibraryService.create` (mocked `MockStore`), so dictation is never lost; the main window refreshes to show it. The user dictionary biases transcription: at recording start the orchestrator reads `DictionaryService.list`, turns it into a prompt with `core/dictionary.build_bias_prompt`, and passes it to `make_transcribe_chunk(prompt=...)`.
+6. **Transform (Phase 5):** in the detail view a transform tab (summary/key-points/flashcards/rewrite) calls `TransformService.apply(transcript_id, text, preset, settings)`. On a cache miss it POSTs `build_request(...)` to `/transform` and stores the result keyed by `(transcript_id, preset)`, so reopening the tab is instant; "Regenerate" forces a fresh call. The chat view runs the `ask` preset with the user's question folded into the instructions and never caches the answer. Network calls run off the GUI thread (`ui/main/transform_worker`).
 
 ---
 
-**Note:** Transform (AI presets) and the account endpoints land in later phases (5–6). The library/dictionary calls are mocked in-process for now (`MockStore`) behind the real service signatures. The original reference implementation lives in `Antiguo/src/services/transcriber.py`.
+**Note:** The account endpoints land in Phase 6. The library/dictionary/transform calls are mocked in-process for now (`MockStore`) behind the real service signatures. The original reference implementation lives in `Antiguo/src/services/transcriber.py`.
 
 See `core.md` for the state machine and event bus, `audio.md` for how chunks are captured, and `config.md` for API key and model settings.
