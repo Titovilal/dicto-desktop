@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 
 from dicto.config.settings import Settings
 from dicto.i18n import on_language_changed, set_language, t
+from dicto.ui.components.rounded import apply_rounded_mask
 from dicto.ui.settings.audio import MicTestPanel
 from dicto.ui.theme.manager import ThemeManager
 
@@ -90,6 +91,7 @@ class SettingsModal(QDialog):
         card = QFrame()
         card.setObjectName("modalCard")
         outer.addWidget(card)
+        self._card = card
 
         root = QVBoxLayout(card)
         root.setContentsMargins(0, 0, 0, 0)
@@ -141,6 +143,9 @@ class SettingsModal(QDialog):
         body.addWidget(nav)
 
         self._stack = QStackedWidget()
+        # Named so the QSS can round its bottom-right corner to the card's
+        # radius — its opaque background would otherwise square it off.
+        self._stack.setObjectName("modalStack")
         self._stack.addWidget(self._build_recording_panel())
         self._stack.addWidget(self._build_appearance_panel())
         body.addWidget(self._stack, 1)
@@ -331,6 +336,11 @@ class SettingsModal(QDialog):
         super().mouseReleaseEvent(event)
 
     # ── lifecycle ────────────────────────────────────────────────────────
+
+    def showEvent(self, event) -> None:  # noqa: N802, ANN001 — Qt override
+        super().showEvent(event)
+        # Clip the card so opaque panes follow the card's rounded corners.
+        apply_rounded_mask(self._card, 16)
 
     def closeEvent(self, event) -> None:  # noqa: N802, ANN001 — Qt override
         self._mic_panel.stop_test()

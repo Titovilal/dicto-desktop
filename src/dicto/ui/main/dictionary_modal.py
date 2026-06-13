@@ -26,6 +26,7 @@ from dicto.core.models import DictTermKind
 from dicto.i18n import on_language_changed, t
 from dicto.services.api.dictionary import DictionaryService
 from dicto.ui import icons
+from dicto.ui.components.rounded import apply_rounded_mask
 from dicto.ui.theme.manager import ThemeManager
 from dicto.ui.theme.tokens import Token
 
@@ -60,6 +61,7 @@ class DictionaryModal(QDialog):
         card = QFrame()
         card.setObjectName("modalCard")
         outer.addWidget(card)
+        self._card = card
 
         root = QVBoxLayout(card)
         root.setContentsMargins(0, 0, 0, 0)
@@ -232,6 +234,11 @@ class DictionaryModal(QDialog):
         self._desc.setText(f"{t('dict.description')} {t('dict.count').format(n=count)}")
 
     # ── dragging (frameless) ─────────────────────────────────────────────
+
+    def showEvent(self, event) -> None:  # noqa: N802, ANN001 — Qt override
+        super().showEvent(event)
+        # Clip the card so opaque panes follow the card's rounded corners.
+        apply_rounded_mask(self._card, 16)
 
     def mousePressEvent(self, event) -> None:  # noqa: N802, ANN001 — Qt override
         if event.button() == Qt.MouseButton.LeftButton and event.position().y() < 56:

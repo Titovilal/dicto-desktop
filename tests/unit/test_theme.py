@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from dicto.ui.theme import manager
 from dicto.ui.theme.palettes import DARK, LIGHT, PALETTES
