@@ -1,11 +1,11 @@
 """DetailView — the right zone: view/edit one transcript, copy, export.
 
 Styled per the design hand-off: a large title row with actions (edit / copy /
-export), a meta row (tag · date · duration · language), a tab bar (only
-"Transcripción" is functional — the transform tabs activate in Phase 5) and a
-footer with delivery/cleanup hints and a live word count. The export content
-is pure (``core/export.build_export``); this widget only drives the dialog and
-clipboard.
+export), a meta row (tag · date · duration · language), a tab bar (Transcript
+plus AI transform tabs — summary/key-points/flashcards/rewrite, each generated
+on demand and cached; the Ask tab routes to the chat view) and a footer with
+delivery/cleanup hints and a live word count. The export content is pure
+(``core/export.build_export``); this widget only drives the dialog and clipboard.
 """
 
 from __future__ import annotations
@@ -19,22 +19,29 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMenu,
     QPushButton,
+    QScrollArea,
+    QStackedWidget,
     QTabBar,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
+from dicto.config.settings import Settings, get_settings
 from dicto.core import export
 from dicto.core.models import Transcript
 from dicto.i18n import on_language_changed, t
 from dicto.services.api.library import LibraryService
+from dicto.services.api.transform import TransformService
 from dicto.services.clipboard import Clipboard
+from dicto.transform import presets as preset_lib
 from dicto.ui import icons
+from dicto.ui.main.transform_render import render_result
+from dicto.ui.main.transform_worker import run_transform
 from dicto.ui.theme.manager import ThemeManager
 from dicto.ui.theme.tokens import Token
 
-# Tab order per the design; only the first is enabled until Phase 5.
+# Tab order per the design: transcript, then the transform presets, then Ask.
 _TABS = (
     "detail.tab.transcript",
     "detail.tab.summary",
@@ -50,19 +57,25 @@ class DetailView(QWidget):
 
     saved = Signal(str)  # transcript id
     statusMessage = Signal(str)  # transient feedback
+    askRequested = Signal(str)  # transcript id — switch to the chat view
 
     def __init__(
         self,
         library: LibraryService,
         clipboard: Clipboard | None = None,
         theme: ThemeManager | None = None,
+        transform: TransformService | None = None,
+        settings: Settings | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._library = library
         self._clipboard = clipboard or Clipboard()
         self._theme = theme
+        self._transform = transform or TransformService()
+        self._settings = settings or get_settings()
         self._current: Transcript | None = None
+        self._busy = False
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -113,14 +126,15 @@ class DetailView(QWidget):
 
         # ── tabs ─────────────────────────────────────────────────────────
         tabs_wrap = QHBoxLayout()
-        tabs_wrap.setContentsMargins(24, 8, 24, 0)
+        # Bottom -1 pulls the bar onto the rule below so the selected tab's 2px
+        # underline overlaps the 1px divider into one continuous baseline.
+        tabs_wrap.setContentsMargins(24, 8, 24, -1)
         self._tabs = QTabBar()
         self._tabs.setExpanding(False)
         self._tabs.setDrawBase(False)
-        for i, _key in enumerate(_TABS):
+        for _key in _TABS:
             self._tabs.addTab("")
-            if i > 0:  # transform tabs land in Phase 5
-                self._tabs.setTabEnabled(i, False)
+        self._tabs.currentChanged.connect(self._on_tab_changed)
         tabs_wrap.addWidget(self._tabs)
         tabs_wrap.addStretch(1)
         root.addLayout(tabs_wrap)
@@ -130,8 +144,11 @@ class DetailView(QWidget):
         rule.setFixedHeight(1)
         root.addWidget(rule)
 
-        # ── body ─────────────────────────────────────────────────────────
-        body_wrap = QVBoxLayout()
+        # ── body: a stack of [transcript editor | transform result] ────────
+        self._stack = QStackedWidget()
+
+        body_page = QWidget()
+        body_wrap = QVBoxLayout(body_page)
         body_wrap.setContentsMargins(24, 16, 24, 16)
         self._body = QTextEdit()
         self._body.setProperty("bare", True)
@@ -139,7 +156,45 @@ class DetailView(QWidget):
         self._body.setReadOnly(True)
         self._body.textChanged.connect(self._refresh_word_count)
         body_wrap.addWidget(self._body, 1)
-        root.addLayout(body_wrap, 1)
+        self._stack.addWidget(body_page)
+
+        # Transform result page: a header ("✦ Resumen" + cached chip + a small
+        # Generate/Regenerate) over a scroll area that holds the rendered result.
+        xform_page = QWidget()
+        xform_wrap = QVBoxLayout(xform_page)
+        xform_wrap.setContentsMargins(24, 16, 24, 16)
+        xform_wrap.setSpacing(12)
+
+        head = QHBoxLayout()
+        head.setSpacing(8)
+        self._xform_icon = QLabel()
+        self._xform_head = QLabel()
+        self._xform_head.setObjectName("xformHead")
+        self._xform_cache = QLabel()
+        self._xform_cache.setObjectName("cacheChip")
+        self._xform_gen = QPushButton()
+        self._xform_gen.setObjectName("xformGen")
+        self._xform_gen.clicked.connect(self._on_generate)
+        head.addWidget(self._xform_icon)
+        head.addWidget(self._xform_head)
+        head.addStretch(1)
+        head.addWidget(self._xform_cache)
+        head.addWidget(self._xform_gen)
+        xform_wrap.addLayout(head)
+
+        self._xform_scroll = QScrollArea()
+        self._xform_scroll.setObjectName("xformScroll")
+        self._xform_scroll.setWidgetResizable(True)
+        self._xform_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._xform_empty = QLabel()
+        self._xform_empty.setObjectName("xformEmpty")
+        self._xform_empty.setWordWrap(True)
+        self._xform_empty.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self._xform_scroll.setWidget(self._xform_empty)
+        xform_wrap.addWidget(self._xform_scroll, 1)
+        self._stack.addWidget(xform_page)
+
+        root.addWidget(self._stack, 1)
 
         # ── footer ───────────────────────────────────────────────────────
         footer = QFrame()
@@ -157,6 +212,9 @@ class DetailView(QWidget):
         foot.addWidget(self._foot_cleanup)
         foot.addWidget(self._foot_words)
         foot.addStretch(1)
+        self._foot_prompt = QLabel()
+        self._foot_prompt.setProperty("dim", True)
+        foot.addWidget(self._foot_prompt)
         root.addWidget(footer)
 
         self.retranslate()
@@ -182,6 +240,7 @@ class DetailView(QWidget):
         for btn in (self._copy_btn, self._export_btn):
             btn.setIcon(icons.svg_icon(btn.property("glyph"), mid, 16))
         self._edit_btn.setIcon(icons.svg_icon("edit", mid, 15))
+        self._refresh_xform_icon()
 
     # ── load / clear ─────────────────────────────────────────────────────
 
@@ -198,6 +257,8 @@ class DetailView(QWidget):
         self._meta.setText(self._meta_text(transcript))
         self._set_enabled(True)
         self._edit_btn.setChecked(False)
+        self._tabs.setCurrentIndex(0)  # always land on the transcript
+        self._on_tab_changed(0)
 
     def show_empty(self) -> None:
         """Clear the view when nothing is selected."""
@@ -237,6 +298,102 @@ class DetailView(QWidget):
     def _refresh_word_count(self) -> None:
         words = len(self._body.toPlainText().split())
         self._foot_words.setText(t("detail.words").format(n=words))
+
+    # ── transform tabs ─────────────────────────────────────────────────────
+
+    def _preset_for_tab(self, index: int):
+        """The preset behind tab ``index`` (1..4), or ``None`` for transcript/ask."""
+        # _TABS[0] is the transcript; [1..4] are TAB_PRESETS; [5] is ask (chat).
+        if 1 <= index <= len(preset_lib.TAB_PRESETS):
+            return preset_lib.TAB_PRESETS[index - 1]
+        return None
+
+    def _on_tab_changed(self, index: int) -> None:
+        # The "Ask" tab routes to the chat view rather than rendering inline.
+        if index == len(_TABS) - 1 and self._current is not None:
+            self.askRequested.emit(self._current.id)
+            # Snap back to the transcript so re-selecting Ask fires again.
+            self._tabs.blockSignals(True)
+            self._tabs.setCurrentIndex(0)
+            self._tabs.blockSignals(False)
+            self._stack.setCurrentIndex(0)
+            return
+
+        preset = self._preset_for_tab(index)
+        if preset is None:  # transcript tab
+            self._stack.setCurrentIndex(0)
+            return
+
+        self._stack.setCurrentIndex(1)
+        if self._current is None:
+            self._render_transform(preset, None)
+            return
+        cached = self._transform.cached(self._current.id, preset.id)
+        self._render_transform(preset, cached.text if cached else None, cached=bool(cached))
+
+    def _set_xform_content(self, widget: QWidget) -> None:
+        """Swap the scroll area's content widget (deletes the previous one)."""
+        old = self._xform_scroll.takeWidget()
+        if old is not None and old is not self._xform_empty:
+            old.deleteLater()
+        widget.setParent(None)
+        self._xform_scroll.setWidget(widget)
+
+    def _render_transform(self, preset, text: str | None, *, cached: bool = False) -> None:
+        self._active_preset = preset
+        self._xform_head.setText(t(preset.label_key))
+        if text is None:
+            self._xform_empty.setText(t("detail.transform.empty"))
+            self._set_xform_content(self._xform_empty)
+            self._xform_cache.setText("")
+            self._xform_gen.setText(t("detail.transform.generate"))
+        else:
+            self._set_xform_content(render_result(preset.id, text))
+            self._xform_cache.setText(
+                "↺ " + t("detail.transform.cached") if cached else ""
+            )
+            self._xform_gen.setText(t("detail.transform.regenerate"))
+        self._xform_gen.setEnabled(self._current is not None and not self._busy)
+        self._refresh_xform_icon()
+
+    def _on_generate(self) -> None:
+        preset = getattr(self, "_active_preset", None)
+        if preset is None or self._current is None or self._busy:
+            return
+        transcript_id = self._current.id
+        text = self._current.text
+        settings = self._settings
+        force = bool(self._transform.cached(transcript_id, preset.id))
+        self._busy = True
+        self._xform_gen.setEnabled(False)
+        self._xform_cache.setText(t("detail.transform.generating"))
+
+        run_transform(
+            lambda: self._transform.apply(
+                transcript_id, text, preset, settings, force=force
+            ).text,
+            lambda result: self._on_generate_done(transcript_id, preset, result),
+            lambda err: self._on_generate_failed(err),
+        )
+
+    def _on_generate_done(self, transcript_id: str, preset, result: str) -> None:
+        self._busy = False
+        # Only paint if the user is still on this transcript + preset.
+        if self._current is not None and self._current.id == transcript_id \
+                and getattr(self, "_active_preset", None) is preset:
+            self._render_transform(preset, result)
+
+    def _on_generate_failed(self, err: str) -> None:
+        self._busy = False
+        self._xform_cache.setText(t("detail.transform.failed"))
+        self._xform_gen.setEnabled(self._current is not None)
+
+    def _refresh_xform_icon(self) -> None:
+        if self._theme is None:
+            return
+        self._xform_icon.setPixmap(
+            icons.svg_icon("sparkles", self._theme.color(Token.TEXT_MUTED), 15).pixmap(15, 15)
+        )
 
     # ── actions ──────────────────────────────────────────────────────────
 
@@ -312,6 +469,9 @@ class DetailView(QWidget):
             self._tabs.setTabText(i, t(key))
         self._foot_insert.setText("⚡ " + t("detail.foot.insert"))
         self._foot_cleanup.setText("✓ " + t("detail.foot.cleanup"))
+        self._foot_prompt.setText("✦ " + t("detail.foot.prompt"))
         self._refresh_word_count()
+        # Re-render the active transform tab so its button/placeholder follow.
+        self._on_tab_changed(self._tabs.currentIndex())
         if self._current is None:
             self._meta.setText(t("detail.none"))

@@ -253,21 +253,90 @@ def build_qss(palette: Palette) -> str:
     }}
 
     /* ── tabs (detail view) ──────────────────────────────────── */
+    /* The selected tab's 2px underline sits flush on the #tabsRule baseline
+       directly below the bar (no padding-bottom gap), so the indicator and
+       the divider read as one continuous line. */
     QTabBar {{ background: transparent; }}
     QTabBar::tab {{
         background: transparent;
         border: none;
         border-bottom: 2px solid transparent;
-        padding: 9px 12px 11px;
+        margin-right: 4px;
+        padding: 8px 4px 8px;
         font-weight: 500;
         color: {c(Token.TEXT_DIM)};
     }}
-    QTabBar::tab:hover {{ color: {c(Token.TEXT_MUTED)}; }}
+    QTabBar::tab:hover:!selected:!disabled {{ color: {c(Token.TEXT_MUTED)}; }}
     QTabBar::tab:selected {{
         color: {c(Token.TEXT)};
         border-bottom-color: {c(Token.ACCENT)};
     }}
     QTabBar::tab:disabled {{ color: {c(Token.BORDER)}; }}
+
+    /* ── transform result (detail tabs) ──────────────────────── */
+    /* Result header: "✦ Resumen" left, "↺ Cacheado" chip right. */
+    QLabel#xformHead {{ font-size: 13px; font-weight: 600; color: {c(Token.TEXT_MUTED)}; }}
+    QLabel#cacheChip {{ font-size: 11px; color: {c(Token.TEXT_DIM)}; }}
+    QPushButton#xformGen {{
+        background-color: {c(Token.BG_ELEVATED)};
+        border: 1px solid {c(Token.BORDER)};
+        border-radius: 8px;
+        padding: 4px 11px;
+        font-size: 12px;
+        font-weight: 500;
+        color: {c(Token.TEXT_MUTED)};
+    }}
+    QPushButton#xformGen:hover {{ background-color: {c(Token.BG_HOVER)}; color: {c(Token.TEXT)}; }}
+    QPushButton#xformGen:disabled {{ color: {c(Token.TEXT_DIM)}; }}
+    QLabel#xformEmpty {{ color: {c(Token.TEXT_DIM)}; font-size: 14px; }}
+    QScrollArea#xformScroll, QScrollArea#chatScroll {{ background: transparent; border: none; }}
+    QScrollArea#xformScroll > QWidget > QWidget,
+    QScrollArea#chatScroll > QWidget > QWidget {{ background: transparent; }}
+
+    /* prose (summary / rewrite) */
+    QLabel#prose {{ font-size: 14px; line-height: 1.7; color: {c(Token.TEXT)}; }}
+
+    /* key points: numbered chip + text */
+    QLabel#kpNum {{
+        background-color: {c(Token.BG_ELEVATED)};
+        border: 1px solid {c(Token.BORDER)};
+        border-radius: 7px;
+        color: {c(Token.TEXT_MUTED)};
+        font-weight: 600;
+        font-size: 12px;
+    }}
+    QLabel#kpText {{ font-size: 14px; color: {c(Token.TEXT)}; }}
+
+    /* flashcards: grid of cards */
+    QFrame#xformCard {{
+        background-color: {c(Token.BG_ELEVATED)};
+        border: 1px solid {c(Token.BORDER)};
+        border-radius: 12px;
+    }}
+    QLabel#cardTag {{
+        font-size: 10px; font-weight: 600; color: {c(Token.TEXT_DIM)};
+    }}
+    QLabel#cardQ {{ font-size: 13px; font-weight: 600; color: {c(Token.TEXT)}; }}
+    QLabel#cardA {{ font-size: 13px; color: {c(Token.TEXT_MUTED)}; }}
+
+    /* ── chat ("ask your notes") ─────────────────────────────── */
+    QLabel#chatHead {{ font-size: 17px; font-weight: 600; color: {c(Token.TEXT)}; }}
+    QLabel#chatEmpty {{ color: {c(Token.TEXT_DIM)}; font-size: 14px; }}
+    QLabel#bubbleUser {{
+        background-color: {c(Token.ACCENT)};
+        color: {c(Token.TEXT_ON_ACCENT)};
+        border-radius: 14px;
+        padding: 10px 14px;
+        font-size: 14px;
+    }}
+    QLabel#bubbleAi {{
+        background-color: {c(Token.BG_ELEVATED)};
+        border: 1px solid {c(Token.BORDER)};
+        color: {c(Token.TEXT)};
+        border-radius: 14px;
+        padding: 10px 14px;
+        font-size: 14px;
+    }}
 
     /* ── menus (tray / context) ──────────────────────────────── */
     QMenu {{
@@ -303,9 +372,6 @@ def build_qss(palette: Palette) -> str:
         background-color: {c(Token.BG_PANEL)};
         border: none;
         border-right: 1px solid {c(Token.BORDER)};
-        /* Match the card's radius on the bottom-left so the opaque nav
-           doesn't square off the card's rounded corner. */
-        border-bottom-left-radius: 15px;
     }}
     QFrame#modalHead {{
         background: transparent;

@@ -24,6 +24,7 @@ from dicto.i18n import set_language
 from dicto.services.api.dictionary import DictionaryService
 from dicto.services.api.library import LibraryService
 from dicto.services.api.mocks import MockStore, set_mock_store
+from dicto.services.api.transform import TransformService
 from dicto.utils.logger import get_logger, setup_logging
 
 logger = get_logger(__name__)
@@ -76,6 +77,9 @@ class DictoApp:
         set_mock_store(MockStore(clock=lambda: datetime.now(timezone.utc).isoformat()))
         self.library = LibraryService()
         self.dictionary = DictionaryService()
+        # Transform (Phase 5): AI presets over a transcript; builds its own
+        # API client lazily from the saved key, results cached in the store.
+        self.transform = TransformService()
 
         # Theme: build, then apply so the stylesheet exists before widgets show.
         self.theme = ThemeManager(self.app, theme=self.settings.appearance.theme)
@@ -90,7 +94,9 @@ class DictoApp:
         self.injector = Injector(self.clipboard)
 
         # UI
-        self.window = MainWindow(self.library, self.clipboard, self.theme)
+        self.window = MainWindow(
+            self.library, self.clipboard, self.theme, self.transform, self.settings
+        )
         hotkey_label = " + ".join(
             part.capitalize()
             for part in (*self.settings.hotkey.modifiers, self.settings.hotkey.key)

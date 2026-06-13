@@ -16,14 +16,18 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QPushButton,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from dicto.config.settings import Settings
 from dicto.i18n import on_language_changed, t
 from dicto.services.api.library import LibraryService
+from dicto.services.api.transform import TransformService
 from dicto.services.clipboard import Clipboard
 from dicto.ui import icons
+from dicto.ui.main.chat_view import ChatView
 from dicto.ui.main.detail_view import DetailView
 from dicto.ui.main.library_view import LibraryView
 from dicto.ui.theme.manager import ThemeManager
@@ -43,6 +47,8 @@ class MainWindow(QMainWindow):
         library: LibraryService | None = None,
         clipboard: Clipboard | None = None,
         theme: ThemeManager | None = None,
+        transform: TransformService | None = None,
+        settings: Settings | None = None,
     ) -> None:
         super().__init__()
         self.setWindowIcon(icons.app_icon())
@@ -50,9 +56,18 @@ class MainWindow(QMainWindow):
 
         self._library = library or LibraryService()
         self._theme = theme
+        self._transform = transform or TransformService()
 
         self._library_view = LibraryView(self._library, theme)
-        self._detail_view = DetailView(self._library, clipboard, theme)
+        self._detail_view = DetailView(
+            self._library, clipboard, theme, self._transform, settings
+        )
+        self._chat_view = ChatView(self._library, self._transform, settings)
+
+        # Detail and chat share the right pane; the detail's Ask tab flips here.
+        self._detail_stack = QStackedWidget()
+        self._detail_stack.addWidget(self._detail_view)
+        self._detail_stack.addWidget(self._chat_view)
 
         rail = self._build_rail()
 
@@ -69,14 +84,18 @@ class MainWindow(QMainWindow):
         body.setSpacing(0)
         body.addWidget(rail)
         body.addWidget(library_pane)
-        body.addWidget(self._detail_view, 1)
+        body.addWidget(self._detail_stack, 1)
         self.setCentralWidget(central)
 
-        # Library selection drives the detail view; saves/edits refresh the list.
-        self._library_view.transcriptSelected.connect(self._detail_view.load)
+        # Library selection drives both panes and snaps back to the detail view.
+        self._library_view.transcriptSelected.connect(self._on_transcript_selected)
         self._library_view.emptied.connect(self._detail_view.show_empty)
+        self._library_view.emptied.connect(self._chat_view.show_empty)
         self._detail_view.saved.connect(lambda _id: self._library_view.refresh())
         self._detail_view.statusMessage.connect(self._show_status)
+        self._chat_view.statusMessage.connect(self._show_status)
+        # The detail view's Ask tab opens the chat for the same transcript.
+        self._detail_view.askRequested.connect(self._open_chat)
         # The library emitted its initial selection while building, before these
         # connections existed — re-emit so the detail pane starts populated.
         self._library_view.refresh()
@@ -153,6 +172,16 @@ class MainWindow(QMainWindow):
     def refresh_library(self) -> None:
         """Reload the library list (called after a transcript is auto-saved)."""
         self._library_view.refresh()
+
+    def _on_transcript_selected(self, transcript_id: str) -> None:
+        # Load both panes; show the detail view (chat is opened explicitly).
+        self._detail_view.load(transcript_id)
+        self._chat_view.load(transcript_id)
+        self._detail_stack.setCurrentWidget(self._detail_view)
+
+    def _open_chat(self, transcript_id: str) -> None:
+        self._chat_view.load(transcript_id)
+        self._detail_stack.setCurrentWidget(self._chat_view)
 
     def _show_status(self, message: str) -> None:
         self.statusBar().showMessage(message, 3000)
