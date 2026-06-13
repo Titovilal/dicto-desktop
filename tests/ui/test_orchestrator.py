@@ -73,7 +73,9 @@ def test_stop_builds_client_and_transcribes(qtbot, orchestrator, tmp_path):
 
     orchestrator.stop_recording()  # emits intent → _do_stop on this thread
     # _build_client must have populated _client before submitting the worker.
-    assert orchestrator._client is not None
+    # The instant fake STT may already have finished and cleaned the client up
+    # on the worker thread, so "done has fired" also proves the client existed.
+    assert orchestrator._client is not None or done
 
     qtbot.waitUntil(lambda: bool(done), timeout=3000)
     assert done == ["hola mundo"]
