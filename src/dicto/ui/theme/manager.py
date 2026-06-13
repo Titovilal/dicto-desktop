@@ -63,9 +63,10 @@ def resolve_palette(name: ThemeName) -> Palette:
 def build_qss(palette: Palette) -> str:
     """Build the application-wide Qt stylesheet from a palette.
 
-    Intentionally small for Phase 0 — just enough that the empty window and
-    common widgets pick up the theme. Components add their own rules later,
-    always referencing tokens via this palette, never literal colours.
+    Mirrors the design-system rules in the hand-off's ``theme.css``: zinc
+    surfaces, soft 9-11px radii, pill chips, a neutral "primary" button and a
+    quiet text scale. Widgets opt into a style with ``objectName`` or dynamic
+    properties (``chip``, ``ghost``, ``accent``…), never literal colours.
     """
 
     def c(token: Token) -> str:
@@ -75,34 +76,320 @@ def build_qss(palette: Palette) -> str:
     QWidget {{
         background-color: {c(Token.BG)};
         color: {c(Token.TEXT)};
+        font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
         font-size: 13px;
     }}
-    QFrame#elevated, QMenu, QToolTip {{
+    QLabel, QCheckBox {{ background: transparent; }}
+    QLabel[muted="true"] {{ color: {c(Token.TEXT_MUTED)}; }}
+    QLabel[dim="true"] {{ color: {c(Token.TEXT_DIM)}; }}
+    QLabel[heading="true"] {{ font-size: 17px; font-weight: 600; }}
+
+    QFrame#elevated, QToolTip {{
         background-color: {c(Token.BG_ELEVATED)};
         border: 1px solid {c(Token.BORDER)};
     }}
-    QLabel[muted="true"] {{
+
+    /* panels that sit next to the body (rail, titlebar, footers) */
+    QFrame[panel="true"] {{ background-color: {c(Token.BG_PANEL)}; border: none; }}
+    QFrame#rail {{
+        background-color: {c(Token.BG_PANEL)};
+        border: none;
+        border-right: 1px solid {c(Token.BORDER)};
+    }}
+    QFrame#libraryPane {{
+        background: transparent;
+        border: none;
+        border-right: 1px solid {c(Token.BORDER)};
+    }}
+    QFrame#detailFooter {{
+        background-color: {c(Token.BG_PANEL)};
+        border: none;
+        border-top: 1px solid {c(Token.BORDER)};
+    }}
+    QFrame#tabsRule {{ background-color: {c(Token.BORDER)}; border: none; }}
+    QLabel#avatar {{
+        background-color: {c(Token.BG_HOVER)};
+        border: 1px solid {c(Token.BORDER)};
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: 600;
         color: {c(Token.TEXT_MUTED)};
     }}
+
+    /* ── buttons ─────────────────────────────────────────────── */
     QPushButton {{
         background-color: {c(Token.BG_ELEVATED)};
         border: 1px solid {c(Token.BORDER)};
-        border-radius: 6px;
-        padding: 6px 12px;
+        border-radius: 9px;
+        padding: 6px 13px;
+        font-weight: 500;
     }}
-    QPushButton:hover {{
-        background-color: {c(Token.BG_HOVER)};
-    }}
+    QPushButton:hover {{ background-color: {c(Token.BG_HOVER)}; }}
+    QPushButton:disabled {{ color: {c(Token.TEXT_DIM)}; }}
     QPushButton[accent="true"] {{
         background-color: {c(Token.ACCENT)};
         color: {c(Token.TEXT_ON_ACCENT)};
+        border: 1px solid {c(Token.ACCENT)};
+    }}
+    QPushButton[accent="true"]:hover {{ background-color: {c(Token.ACCENT_HOVER)}; }}
+    QPushButton[ghost="true"] {{
+        background: transparent;
+        border: 1px solid transparent;
+        color: {c(Token.TEXT_MUTED)};
+    }}
+    QPushButton[ghost="true"]:hover {{
+        background-color: {c(Token.BG_ELEVATED)};
+        color: {c(Token.TEXT)};
+    }}
+    QPushButton[iconBtn="true"] {{
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        padding: 0px;
+        color: {c(Token.TEXT_DIM)};
+    }}
+    QPushButton[iconBtn="true"]:hover {{
+        background-color: {c(Token.BG_ELEVATED)};
+        color: {c(Token.TEXT)};
+    }}
+    QPushButton[iconBtn="bordered"] {{
+        background-color: {c(Token.BG_ELEVATED)};
+        border: 1px solid {c(Token.BORDER)};
+        border-radius: 9px;
+        padding: 0px;
+    }}
+    QPushButton[iconBtn="bordered"]:hover {{ background-color: {c(Token.BG_HOVER)}; }}
+
+    /* tag-filter chips (checkable pills) */
+    QPushButton[chip="true"] {{
+        background: transparent;
+        border: 1px solid {c(Token.BORDER)};
+        border-radius: 13px;
+        padding: 3px 11px;
+        font-size: 12px;
+        color: {c(Token.TEXT_MUTED)};
+    }}
+    QPushButton[chip="true"]:hover {{ background-color: {c(Token.BG_ELEVATED)}; }}
+    QPushButton[chip="true"]:checked {{
+        background-color: {c(Token.ACCENT)};
+        color: {c(Token.TEXT_ON_ACCENT)};
+        border-color: {c(Token.ACCENT)};
+    }}
+
+    /* left rail */
+    QPushButton[rail="true"] {{
+        background: transparent;
         border: none;
+        border-radius: 11px;
+        color: {c(Token.TEXT_DIM)};
     }}
-    QPushButton[accent="true"]:hover {{
-        background-color: {c(Token.ACCENT_HOVER)};
+    QPushButton[rail="true"]:hover {{ background-color: {c(Token.BG_ELEVATED)}; }}
+    QPushButton[rail="true"]:checked {{
+        background-color: {c(Token.BG_ELEVATED)};
+        color: {c(Token.TEXT)};
     }}
-    QMenu::item:selected {{
+    QPushButton#railRecord {{
+        background-color: {c(Token.STATUS_RECORDING)};
+        border: none;
+        border-radius: 20px;
+    }}
+    QPushButton#railRecord:hover {{ background-color: {c(Token.STATUS_RECORDING_HOVER)}; }}
+
+    /* ── inputs ──────────────────────────────────────────────── */
+    QLineEdit, QTextEdit, QPlainTextEdit {{
+        background-color: {c(Token.BG_ELEVATED)};
+        border: 1px solid {c(Token.BORDER)};
+        border-radius: 9px;
+        padding: 6px 10px;
+        selection-background-color: {c(Token.BLUE)};
+        selection-color: {c(Token.BG)};
+    }}
+    QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {{
+        border-color: {c(Token.TEXT_DIM)};
+    }}
+    QLineEdit[bare="true"], QTextEdit[bare="true"] {{
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+    }}
+    QLineEdit#detailTitle {{
+        font-size: 20px;
+        font-weight: 600;
+        padding: 2px 4px;
+    }}
+
+    QComboBox {{
+        background-color: {c(Token.BG_ELEVATED)};
+        border: 1px solid {c(Token.BORDER)};
+        border-radius: 9px;
+        padding: 5px 10px;
+    }}
+    QComboBox:hover {{ background-color: {c(Token.BG_HOVER)}; }}
+    QComboBox::drop-down {{ border: none; width: 22px; }}
+    QComboBox QAbstractItemView {{
+        background-color: {c(Token.BG_PANEL)};
+        border: 1px solid {c(Token.BORDER)};
+        border-radius: 9px;
+        selection-background-color: {c(Token.BG_ELEVATED)};
+        selection-color: {c(Token.TEXT)};
+        outline: none;
+    }}
+
+    /* ── lists ───────────────────────────────────────────────── */
+    QListWidget {{
+        background: transparent;
+        border: none;
+        outline: none;
+    }}
+    QListWidget::item {{
+        border: 1px solid transparent;
+        border-radius: 10px;
+        margin: 1px 0px;
+    }}
+    QListWidget::item:hover {{ background-color: {c(Token.BG_ELEVATED)}; }}
+    QListWidget::item:selected {{
         background-color: {c(Token.BG_SELECTED)};
+        border-color: {c(Token.BORDER)};
+    }}
+
+    /* ── tabs (detail view) ──────────────────────────────────── */
+    QTabBar {{ background: transparent; }}
+    QTabBar::tab {{
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        padding: 9px 12px 11px;
+        font-weight: 500;
+        color: {c(Token.TEXT_DIM)};
+    }}
+    QTabBar::tab:hover {{ color: {c(Token.TEXT_MUTED)}; }}
+    QTabBar::tab:selected {{
+        color: {c(Token.TEXT)};
+        border-bottom-color: {c(Token.ACCENT)};
+    }}
+    QTabBar::tab:disabled {{ color: {c(Token.BORDER)}; }}
+
+    /* ── menus (tray / context) ──────────────────────────────── */
+    QMenu {{
+        background-color: {c(Token.BG_PANEL)};
+        border: 1px solid {c(Token.BORDER)};
+        border-radius: 12px;
+        padding: 7px;
+    }}
+    QMenu::item {{
+        border-radius: 8px;
+        padding: 8px 12px;
+    }}
+    QMenu::item:selected {{ background-color: {c(Token.BG_ELEVATED)}; }}
+    QMenu::separator {{
+        height: 1px;
+        background-color: {c(Token.BORDER)};
+        margin: 5px 4px;
+    }}
+
+    /* ── settings modal ──────────────────────────────────────── */
+    /* The dialog itself is translucent (WA_TranslucentBackground) so the
+       card's rounded corners read as real transparency on all four sides;
+       the fill + border + radius live on the inner #modalCard frame. */
+    QDialog#settingsModal, QDialog#dictionaryModal {{
+        background: transparent;
+    }}
+    QFrame#modalCard {{
+        background-color: {c(Token.BG)};
+        border: 1px solid {c(Token.BORDER)};
+        border-radius: 16px;
+    }}
+    QFrame#modalNav {{
+        background-color: {c(Token.BG_PANEL)};
+        border: none;
+        border-right: 1px solid {c(Token.BORDER)};
+        /* Match the card's radius on the bottom-left so the opaque nav
+           doesn't square off the card's rounded corner. */
+        border-bottom-left-radius: 15px;
+    }}
+    QFrame#modalHead {{
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid {c(Token.BORDER)};
+    }}
+    QPushButton[mnav="true"] {{
+        background: transparent;
+        border: none;
+        border-radius: 9px;
+        padding: 8px 11px;
+        font-weight: 500;
+        color: {c(Token.TEXT_MUTED)};
+        text-align: left;
+    }}
+    QPushButton[mnav="true"]:hover {{
+        background-color: {c(Token.BG_ELEVATED)};
+        color: {c(Token.TEXT)};
+    }}
+    QPushButton[mnav="true"]:checked {{
+        background-color: {c(Token.BG_ELEVATED)};
+        color: {c(Token.TEXT)};
+    }}
+    QLabel[settingsTitle="true"] {{ font-size: 14px; font-weight: 600; }}
+    QLabel[fieldLabel="true"] {{ font-size: 13px; font-weight: 500; }}
+    QFrame[fieldRule="true"] {{
+        background-color: {c(Token.BORDER_SOFT)};
+        border: none;
+        max-height: 1px;
+    }}
+    /* ── dictionary modal table ──────────────────────────────── */
+    QLabel[tableHead="true"] {{
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        color: {c(Token.TEXT_DIM)};
+    }}
+    QFrame[dictRow="true"] {{
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid {c(Token.BORDER_SOFT)};
+    }}
+    QFrame[dictRow="true"]:hover {{ background-color: {c(Token.BG_HOVER)}; }}
+    QLabel[dictTerm="true"] {{
+        font-family: "Consolas";
+        font-size: 13px;
+        font-weight: 600;
+    }}
+
+    QLabel#kbdPill {{
+        font-family: "Consolas";
+        font-size: 11px;
+        padding: 2px 7px;
+        border-radius: 6px;
+        background-color: {c(Token.KBD_BG)};
+        border: 1px solid {c(Token.BORDER)};
+        color: {c(Token.TEXT_MUTED)};
+    }}
+
+    /* ── scrollbars ──────────────────────────────────────────── */
+    QScrollBar:vertical {{
+        background: transparent; width: 10px; margin: 2px;
+    }}
+    QScrollBar::handle:vertical {{
+        background-color: {c(Token.BORDER)};
+        border-radius: 4px; min-height: 28px;
+    }}
+    QScrollBar::handle:vertical:hover {{ background-color: {c(Token.TEXT_DIM)}; }}
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+    QScrollBar:horizontal {{
+        background: transparent; height: 10px; margin: 2px;
+    }}
+    QScrollBar::handle:horizontal {{
+        background-color: {c(Token.BORDER)};
+        border-radius: 4px; min-width: 28px;
+    }}
+    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0; }}
+
+    /* splitter / status bar */
+    QSplitter::handle {{ background-color: {c(Token.BORDER)}; }}
+    QStatusBar {{
+        background-color: {c(Token.BG_PANEL)};
+        color: {c(Token.TEXT_DIM)};
+        border-top: 1px solid {c(Token.BORDER)};
     }}
     """
 
