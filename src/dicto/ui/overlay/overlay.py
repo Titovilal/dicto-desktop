@@ -65,7 +65,7 @@ class Overlay(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedSize(190, 64)
+        self.setFixedSize(330, 96)
 
         self._build_ui()
         self._apply_card_style()
@@ -84,21 +84,40 @@ class Overlay(QWidget):
         self._card = QWidget()
         self._card.setObjectName("overlayCard")
         card_layout = QVBoxLayout(self._card)
-        card_layout.setContentsMargins(0, 6, 0, 6)
-        card_layout.setSpacing(4)
+        card_layout.setContentsMargins(0, 0, 0, 12)
+        card_layout.setSpacing(0)
 
-        # Status row: dot + label + open-app button.
+        # Drag grip (dots), per the design's top strip.
+        self._grip = QLabel()
+        self._grip.setObjectName("overlayGrip")
+        self._grip.setFixedHeight(16)
+        self._grip.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(self._grip)
+
+        # Controls own the stop / pause buttons and the timer label; this
+        # widget lays them out: [stop] [status+timer / waveform] [pause].
+        self._controls = OverlayControls(self._theme)
+        self._controls.pauseRequested.connect(self.pauseRequested)
+        self._controls.resumeRequested.connect(self.resumeRequested)
+        self._controls.stopRequested.connect(self.stopRequested)
+
+        main_row = QHBoxLayout()
+        main_row.setContentsMargins(16, 2, 16, 0)
+        main_row.setSpacing(14)
+        main_row.addWidget(self._controls.stop_btn, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        mid = QVBoxLayout()
+        mid.setSpacing(7)
+
         status_row = QHBoxLayout()
-        status_row.setContentsMargins(8, 0, 6, 0)
-        status_row.setSpacing(5)
-
+        status_row.setSpacing(7)
         self._dot = QWidget()
-        self._dot.setFixedSize(6, 6)
+        self._dot.setFixedSize(8, 8)
         status_row.addWidget(self._dot, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self._label = QLabel()
         self._label.setObjectName("overlayLabel")
-        status_row.addWidget(self._label, 1)
+        status_row.addWidget(self._label)
 
         self._open_btn = QPushButton()
         self._open_btn.setObjectName("overlayOpenBtn")
@@ -108,21 +127,20 @@ class Overlay(QWidget):
         self._open_btn.clicked.connect(self.openAppRequested)
         status_row.addWidget(self._open_btn, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        card_layout.addLayout(status_row)
+        status_row.addStretch(1)
+        status_row.addWidget(self._controls.time_label, 0, Qt.AlignmentFlag.AlignVCenter)
+        mid.addLayout(status_row)
 
-        # Waveform.
+        # Per the design the live wave is quiet grey; only processing recolours.
         self._waveform = WaveformWidget(
-            self._theme, token=Token.STATUS_RECORDING, height=16, mode="live"
+            self._theme, token=Token.TEXT_MUTED, height=28, mode="live"
         )
-        card_layout.addWidget(self._waveform)
+        mid.addWidget(self._waveform)
 
-        # Controls (timer + pause/stop), hidden until recording.
-        self._controls = OverlayControls(self._theme)
-        self._controls.pauseRequested.connect(self.pauseRequested)
-        self._controls.resumeRequested.connect(self.resumeRequested)
-        self._controls.stopRequested.connect(self.stopRequested)
-        card_layout.addWidget(self._controls)
-        self._controls.hide()
+        main_row.addLayout(mid, 1)
+        main_row.addWidget(self._controls.pause_btn, 0, Qt.AlignmentFlag.AlignVCenter)
+        card_layout.addLayout(main_row)
+        self._controls.set_visible(False)
 
         outer.addWidget(self._card)
         self.retranslate()
@@ -130,15 +148,18 @@ class Overlay(QWidget):
 
     # ── theme / i18n ────────────────────────────────────────────────────
 
-    def _apply_card_style(self, accent_token: Token = Token.BORDER) -> None:
-        bg = self._theme.color(Token.BG_ELEVATED)
-        border = self._theme.color(accent_token)
-        text = self._theme.color(Token.TEXT)
+    def _apply_card_style(self, accent_token: Token | None = None) -> None:
+        bg = self._theme.color(Token.BG)
+        border = self._theme.color(Token.BORDER)
+        # The status label takes the state colour; the card border stays quiet.
+        label = self._theme.color(accent_token) if accent_token else self._theme.color(Token.TEXT)
         self._card.setStyleSheet(
             f"QWidget#overlayCard {{ background-color: {bg};"
-            f" border: 1px solid {border}; border-radius: 10px; }}"
-            f" QLabel#overlayLabel {{ color: {text}; font-size: 12px; font-weight: 600;"
-            " background: transparent; }"
+            f" border: 1px solid {border}; border-radius: 16px; }}"
+            f" QLabel#overlayLabel {{ color: {label}; font-size: 12px; font-weight: 600;"
+            " background: transparent; border: none; }"
+            " QLabel#overlayGrip { background: transparent; border: none; }"
+            " QWidget { border: none; }"
             " QPushButton[overlayIcon=\"true\"] { background: transparent; border: none;"
             " border-radius: 6px; padding: 2px; }"
             f" QPushButton[overlayIcon=\"true\"]:hover {{ background-color:"
@@ -155,10 +176,13 @@ class Overlay(QWidget):
         }.get(self._state, self._theme.color(Token.TEXT_MUTED))
 
     def _refresh_dot(self) -> None:
-        self._dot.setStyleSheet(f"background-color: {self._dot_color()}; border-radius: 3px;")
+        self._dot.setStyleSheet(f"background-color: {self._dot_color()}; border-radius: 4px;")
 
     def _refresh_icons(self) -> None:
         self._open_btn.setIcon(icons.svg_icon("external", self._theme.color(Token.TEXT_MUTED), 14))
+        self._grip.setPixmap(
+            icons.svg_icon("grip", self._theme.color(Token.TEXT_DIM), 13).pixmap(26, 8)
+        )
 
     def _on_theme_changed(self) -> None:
         self._apply_card_style()
@@ -191,9 +215,9 @@ class Overlay(QWidget):
         self._label.setText(t(f"status.{self._state.value}"))
 
     def _show_recording(self) -> None:
-        self._controls.show()
+        self._controls.set_visible(True)
         self._controls.start()
-        self._waveform.set_token(Token.STATUS_RECORDING)
+        self._waveform.set_token(Token.TEXT_MUTED)
         self._waveform.mode = "live"
         self._waveform.start()
         self._apply_state_label()
@@ -206,6 +230,7 @@ class Overlay(QWidget):
         self._waveform.stop()
         self._apply_state_label()
         self._refresh_dot()
+        self._apply_card_style(Token.STATUS_PROCESSING)
 
     def _show_processing(self) -> None:
         self._controls.set_paused(False)
@@ -219,7 +244,7 @@ class Overlay(QWidget):
 
     def _show_success(self) -> None:
         self._controls.stop()
-        self._controls.hide()
+        self._controls.set_visible(False)
         self._waveform.set_token(Token.STATUS_SUCCESS)
         self._waveform.mode = "settle"
         self._waveform.start()
@@ -230,7 +255,7 @@ class Overlay(QWidget):
 
     def _show_error(self) -> None:
         self._controls.stop()
-        self._controls.hide()
+        self._controls.set_visible(False)
         self._waveform.stop()
         self._apply_state_label()
         self._refresh_dot()
@@ -239,7 +264,7 @@ class Overlay(QWidget):
 
     def _show_idle(self) -> None:
         self._controls.stop()
-        self._controls.hide()
+        self._controls.set_visible(False)
         self._waveform.clear()
         self._apply_state_label()
         self._refresh_dot()
