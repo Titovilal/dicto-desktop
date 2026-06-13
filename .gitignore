@@ -38,6 +38,9 @@ env/
 .DS_Store
 Thumbs.db
 
+# Old codebase kept locally for reference during the rebuild (see REBUILD_PLAN.md)
+Antiguo/
+
 # Application specific
 config.yaml
 *.wav
@@ -47,3 +50,7 @@ temp_audio_*
 
 # Logs
 *.log
+Dicto - Entrega/
+
+# Dev screenshot output (scripts/screenshot.py); the script itself is tracked
+screenshots/

@@ -1,103 +1,110 @@
-"""Unit tests for HotkeyListener key parsing and combination matching."""
+"""Unit tests for the pure hotkey matcher (no pynput, headless)."""
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
-import pytest
-
-from src.services.hotkey import HotkeyListener
-
-from tests.conftest import PYNPUT_AVAILABLE
-
-# The whole module exercises the pynput-based listener, which needs a real
-# input backend. Skip on headless environments.
-pytestmark = pytest.mark.skipif(
-    not PYNPUT_AVAILABLE,
-    reason="pynput keyboard backend unavailable (headless environment)",
-)
+from dicto.services.hotkey import HotkeyMatcher, canonical_modifier
 
 
-class TestKeyParsing:
-    def test_parse_special_key_space(self):
-        listener = HotkeyListener(modifiers=["ctrl"], key="space")
-        from pynput import keyboard
-
-        assert listener.key == keyboard.Key.space
-
-    def test_parse_special_key_enter(self):
-        listener = HotkeyListener(modifiers=["ctrl"], key="enter")
-        from pynput import keyboard
-
-        assert listener.key == keyboard.Key.enter
-
-    def test_parse_regular_char(self):
-        listener = HotkeyListener(modifiers=["ctrl"], key="a")
-        from pynput import keyboard
-
-        assert listener.key == keyboard.KeyCode.from_char("a")
+def _matcher(mode: str = "hold"):
+    events: list[str] = []
+    m = HotkeyMatcher(
+        ["ctrl", "shift"],
+        "space",
+        mode=mode,
+        on_start=lambda: events.append("start"),
+        on_stop=lambda: events.append("stop"),
+    )
+    return m, events
 
 
-class TestModifierParsing:
-    def test_parse_generic_modifiers(self):
-        from pynput import keyboard
-
-        listener = HotkeyListener(modifiers=["ctrl", "shift"], key="space")
-        assert keyboard.Key.ctrl in listener.modifiers
-        assert keyboard.Key.shift in listener.modifiers
-
-    def test_parse_specific_lr_adds_generic(self):
-        from pynput import keyboard
-
-        listener = HotkeyListener(modifiers=["ctrl_l"], key="space")
-        assert keyboard.Key.ctrl in listener.modifiers
-
-    def test_parse_alt(self):
-        from pynput import keyboard
-
-        listener = HotkeyListener(modifiers=["alt"], key="space")
-        assert keyboard.Key.alt in listener.modifiers
+def test_canonical_modifier_normalises_sides():
+    assert canonical_modifier("ctrl_l") == "ctrl"
+    assert canonical_modifier("CTRL_R") == "ctrl"
+    assert canonical_modifier("win") == "cmd"
+    assert canonical_modifier("space") is None
 
 
-class TestModes:
-    def test_hold_mode_default(self):
-        listener = HotkeyListener(modifiers=["ctrl"], key="space")
-        assert listener.mode == "hold"
+def test_hold_start_on_combo_stop_on_release():
+    m, events = _matcher("hold")
+    m.on_press("ctrl")
+    m.on_press("shift")
+    m.on_press("space")
+    assert events == ["start"]
+    m.on_release("space")
+    assert events == ["start", "stop"]
 
-    def test_press_mode(self):
-        listener = HotkeyListener(modifiers=["ctrl"], key="space", mode="press")
-        assert listener.mode == "press"
+
+def test_hold_ignores_key_without_all_modifiers():
+    m, events = _matcher("hold")
+    m.on_press("ctrl")
+    m.on_press("space")  # shift missing
+    assert events == []
 
 
-class TestStartStop:
-    def test_start_creates_listener(self):
-        from pynput import keyboard
+def test_hold_swallows_autorepeat():
+    m, events = _matcher("hold")
+    m.on_press("ctrl")
+    m.on_press("shift")
+    m.on_press("space")
+    m.on_press("space")  # OS auto-repeat while held
+    m.on_press("space")
+    assert events == ["start"]
+    m.on_release("space")
+    assert events == ["start", "stop"]
 
-        with patch.object(keyboard, "Listener") as MockListener:
-            listener = HotkeyListener(modifiers=["ctrl"], key="space")
-            listener.start()
-            assert listener.listener is not None
-            MockListener.return_value.start.assert_called_once()
 
-    def test_start_twice_is_noop(self):
-        from pynput import keyboard
+def test_side_modifiers_satisfy_generic_requirement():
+    m, events = _matcher("hold")
+    m.on_press("ctrl_l")
+    m.on_press("shift_r")
+    m.on_press("space")
+    assert events == ["start"]
 
-        with patch.object(keyboard, "Listener") as MockListener:
-            listener = HotkeyListener(modifiers=["ctrl"], key="space")
-            listener.start()
-            listener.start()
-            assert MockListener.return_value.start.call_count == 1
 
-    def test_stop(self):
-        from pynput import keyboard
+def test_toggle_alternates_start_stop():
+    m, events = _matcher("toggle")
+    # First full press: start.
+    m.on_press("ctrl")
+    m.on_press("shift")
+    m.on_press("space")
+    m.on_release("space")
+    assert events == ["start"]
+    # Second full press: stop.
+    m.on_press("space")
+    m.on_release("space")
+    assert events == ["start", "stop"]
+    # Third: start again.
+    m.on_press("space")
+    m.on_release("space")
+    assert events == ["start", "stop", "start"]
 
-        with patch.object(keyboard, "Listener") as MockListener:
-            listener = HotkeyListener(modifiers=["ctrl"], key="space")
-            listener.start()
-            listener.stop()
-            MockListener.return_value.stop.assert_called_once()
-            assert listener.listener is None
 
-    def test_is_running(self):
-        listener = HotkeyListener(modifiers=["ctrl"], key="space")
-        assert listener.is_running() is False
+def test_toggle_release_does_not_stop():
+    m, events = _matcher("toggle")
+    m.on_press("ctrl")
+    m.on_press("shift")
+    m.on_press("space")
+    assert events == ["start"]
+    m.on_release("space")
+    # Release must NOT fire stop in toggle mode.
+    assert events == ["start"]
+
+
+def test_reset_clears_held_state():
+    m, events = _matcher("hold")
+    m.on_press("ctrl")
+    m.on_press("shift")
+    m.on_press("space")
+    m.reset()
+    # After reset, a lone space press should not start (modifiers cleared).
+    m.on_press("space")
+    assert events == ["start"]
+
+
+def test_callback_exception_is_swallowed():
+    def boom() -> None:
+        raise RuntimeError("nope")
+
+    m = HotkeyMatcher(["ctrl"], "space", mode="hold", on_start=boom)
+    m.on_press("ctrl")
+    m.on_press("space")  # must not raise
