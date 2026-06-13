@@ -12,7 +12,7 @@ import itertools
 import threading
 from collections.abc import Callable, Iterator
 
-from dicto.core.models import DictTerm, DictTermKind, Transcript
+from dicto.core.models import DictTerm, DictTermKind, Transcript, TransformResult
 
 
 def _counter(prefix: str) -> Callable[[], str]:
@@ -33,10 +33,16 @@ class MockStore:
     def __init__(self, *, clock: Callable[[], str] | None = None) -> None:
         self._transcripts: dict[str, Transcript] = {}
         self._terms: dict[str, DictTerm] = {}
+        # Transform cache keyed by (transcript_id, preset).
+        self._transforms: dict[tuple[str, str], TransformResult] = {}
         self._next_trx = _counter("trx")
         self._next_trm = _counter("trm")
         self._clock = clock or (lambda: "1970-01-01T00:00:00Z")
         self._lock = threading.RLock()
+
+    def now(self) -> str:
+        """The store's current timestamp (same clock used for created_at)."""
+        return self._clock()
 
     # ── library ──────────────────────────────────────────────────────────
 
@@ -87,6 +93,32 @@ class MockStore:
     def delete_transcript(self, transcript_id: str) -> bool:
         with self._lock:
             return self._transcripts.pop(transcript_id, None) is not None
+
+    # ── transforms (cache) ─────────────────────────────────────────────────
+
+    def get_transform(self, transcript_id: str, preset: str) -> TransformResult | None:
+        with self._lock:
+            cached = self._transforms.get((transcript_id, preset))
+            return copy.deepcopy(cached) if cached is not None else None
+
+    def list_transforms(self, transcript_id: str) -> list[TransformResult]:
+        with self._lock:
+            return [
+                copy.deepcopy(r)
+                for (tid, _), r in self._transforms.items()
+                if tid == transcript_id
+            ]
+
+    def save_transform(self, transcript_id: str, preset: str, text: str) -> TransformResult:
+        with self._lock:
+            result = TransformResult(
+                transcript_id=transcript_id,
+                preset=preset,
+                text=text,
+                created_at=self._clock(),
+            )
+            self._transforms[(transcript_id, preset)] = result
+            return copy.deepcopy(result)
 
     # ── dictionary ───────────────────────────────────────────────────────
 

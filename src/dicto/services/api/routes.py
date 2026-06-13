@@ -56,3 +56,10 @@ def dictionary() -> str:
 
 def dictionary_item(term_id: str) -> str:
     return url(f"{API_V1}/dictionary/{term_id}")
+
+
+# ── Transforms cache (Phase 5, mocked) ────────────────────────────────────
+
+
+def transforms(transcript_id: str) -> str:
+    return url(f"{API_V1}/transforms/{transcript_id}")
