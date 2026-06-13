@@ -243,6 +243,12 @@ Nuevos a definir como **mock** (el usuario los implementa en su backend):
       (sobre el `ThemeManager` e `i18n` de Fase 0)
 - [ ] `ui/settings/privacy.py`: panel **"Datos y privacidad"** (qué se guarda, qué pasa con el audio)
 - [ ] `ui/main/settings_modal.py` + paneles: todos los ajustes como modal en la principal
+      — *parcial: el modal ya existe (estructura nav + paneles, estilo del rediseño) con
+      Grabación (atajo, modo, micro, WASAPI, posición overlay) y Apariencia (tema + idioma);
+      faltan cuenta, salida, sistema y privacidad. El **modal de Diccionario** (añadir/listar/
+      borrar términos, estilo del rediseño) ya está hecho y cableado a rail + bandeja; la
+      bandeja ya muestra cabecera de estado y toggle de "Audio del sistema" sincronizado
+      con Ajustes (faltan los minutos restantes → cuenta, Fase 6)*
 - [ ] **Check:** auto-update detecta versión nueva e instala; bug report se envía; cambiar idioma
       y tema en caliente desde el panel de apariencia; `pytest tests/unit/test_updater.py tests/unit/test_i18n.py`
 

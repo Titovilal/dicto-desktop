@@ -32,7 +32,10 @@ Dicto is a Windows desktop app that lets users record voice via a global hotkey,
 - `src/dicto/ui/theme/tokens.py` - Design token enum (BG, TEXT, ACCENT, etc.)
 - `src/dicto/ui/theme/palettes.py` - Light and dark colour palettes mapped to tokens
 - `src/dicto/ui/tray.py` - System tray icon and context menu (Open / Settings / Quit)
-- `src/dicto/ui/main/window.py` - Main window shell: library + detail split (settings modal lands in Phase 6)
+- `src/dicto/ui/main/window.py` - Main window shell: rail + library + detail split, opens the settings/dictionary modals
+- `src/dicto/ui/main/settings_modal.py` - `SettingsModal`: frameless, translucent in-window modal (recording + appearance panels) rendered on a rounded `#modalCard`
+- `src/dicto/ui/main/dictionary_modal.py` - `DictionaryModal`: frameless, translucent modal to manage the user's bias dictionary terms
+- `scripts/screenshot.py` - Dev aid: boots the app and saves PNGs of each view to `screenshots/` (gitignored). Lets an agent *see* the UI to iterate; `--theme dark` for the dark palette
 - `src/dicto/ui/icons.py` - Icon helpers for status colours and app icon
 - `src/dicto/utils/logger.py` - Logging setup
 - `src/dicto/utils/platform.py` - OS-specific path helpers (`%APPDATA%`)
@@ -41,6 +44,16 @@ Dicto is a Windows desktop app that lets users record voice via a global hotkey,
 1. User launches the app (`dicto` CLI or `python -m dicto`); `DictoApp` loads settings, applies theme and language, shows the system tray icon and main window, and starts the global hotkey listener.
 2. User presses the global hotkey (default: Ctrl+Shift+Space — hold or toggle). `RecordingOrchestrator` starts an `AudioCapture` + `Pipeline`, the overlay appears showing a live waveform and elapsed timer, and the tray icon turns red. The recording can be paused/resumed without splitting the file.
 3. When recording stops, the orchestrator finalises the chunks and runs transcription on a worker thread (biased by the user's dictionary via `core/dictionary`); per-chunk progress and the final text are published on the event bus and bridged to Qt. On the final text, `app.py` cleans the dictation (`core/cleanup`), saves it to the library (`services/api/library`, mocked) so nothing is lost, then the result router (`core/result_router`) decides delivery: inject at the cursor (`services/injector`, optional auto-enter) or copy to the clipboard (`services/clipboard`) as the fallback. The saved transcript appears in the main window's library, where it can be searched, edited, copied and exported.
+
+## Development
+
+- **Seeing the UI** — run `PYTHONPATH=src .venv/Scripts/python.exe scripts/screenshot.py`
+  to render the main window, overlay, settings modal and dictionary modal to
+  `screenshots/*.png`, then read those PNGs to inspect or iterate on the visuals.
+  Add `--theme dark` for the dark palette. The modals are frameless + translucent,
+  so the script renders each widget with `widget.grab()` (screen-region capture is
+  unreliable for frameless windows on Windows); the 1px translucent margin around a
+  modal shows as a flat colour in the PNG but is transparent in the running app.
 
 ## Documentation available in `.ctx/docs/`
 - **`core.md`** — state machine, event bus, and domain models

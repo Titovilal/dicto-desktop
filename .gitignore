@@ -50,3 +50,7 @@ temp_audio_*
 
 # Logs
 *.log
+Dicto - Entrega/
+
+# Dev screenshot output (scripts/screenshot.py); the script itself is tracked
+screenshots/
