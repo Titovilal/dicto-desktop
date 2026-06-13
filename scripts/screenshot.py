@@ -137,6 +137,8 @@ def main() -> int:
         _grab(ov, f"02_overlay{suffix}")
         ov.hide()
 
+        # Modals: widget.grab() is reliable but can't show the separate dim
+        # backdrop window (verify the dim in the running app instead).
         app_obj._open_settings()
         _grab(app_obj._settings_modal, f"03_settings{suffix}")
         app_obj._settings_modal.close()

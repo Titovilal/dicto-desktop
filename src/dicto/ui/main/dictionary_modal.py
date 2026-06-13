@@ -26,6 +26,7 @@ from dicto.core.models import DictTermKind
 from dicto.i18n import on_language_changed, t
 from dicto.services.api.dictionary import DictionaryService
 from dicto.ui import icons
+from dicto.ui.components.backdrop import Backdrop
 from dicto.ui.components.rounded import apply_rounded_mask
 from dicto.ui.theme.manager import ThemeManager
 from dicto.ui.theme.tokens import Token
@@ -52,8 +53,13 @@ class DictionaryModal(QDialog):
         # Translucent so the card's rounded corners read as real transparency
         # on all four sides; the fill/border/radius live on the inner card.
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setModal(True)
         self.setFixedSize(720, 648)
+
+        # Dim the window behind us and close on an outside click. (A real
+        # QDialog modal grab beeps on outside clicks instead of dismissing.)
+        self._backdrop = Backdrop(parent) if parent is not None else None
+        if self._backdrop is not None:
+            self._backdrop.clicked.connect(self.close)
 
         # Outer layout holds a single rounded card; the dialog itself is clear.
         outer = QVBoxLayout(self)
@@ -258,10 +264,17 @@ class DictionaryModal(QDialog):
 
     # ── lifecycle ────────────────────────────────────────────────────────
 
+    def closeEvent(self, event) -> None:  # noqa: N802, ANN001 — Qt override
+        if self._backdrop is not None:
+            self._backdrop.hide()
+        super().closeEvent(event)
+
     def open_centered(self) -> None:
-        """Show centred over the parent window, with fresh data."""
+        """Show centred over the parent window, dimming it behind, with fresh data."""
         self.refresh()
         parent = self.parentWidget()
+        if self._backdrop is not None:
+            self._backdrop.show_over()
         if parent is not None:
             geo = parent.frameGeometry()
             self.move(

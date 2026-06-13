@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 
 from dicto.config.settings import Settings
 from dicto.i18n import on_language_changed, set_language, t
+from dicto.ui.components.backdrop import Backdrop
 from dicto.ui.components.rounded import apply_rounded_mask
 from dicto.ui.settings.audio import MicTestPanel
 from dicto.ui.theme.manager import ThemeManager
@@ -82,8 +83,13 @@ class SettingsModal(QDialog):
         # Translucent so the card's rounded corners read as real transparency
         # on all four sides; the fill/border/radius live on the inner card.
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setModal(True)
         self.setFixedSize(720, 600)
+
+        # Dim the window behind us and close on an outside click. (A real
+        # QDialog modal grab beeps on outside clicks instead of dismissing.)
+        self._backdrop = Backdrop(parent) if parent is not None else None
+        if self._backdrop is not None:
+            self._backdrop.clicked.connect(self.close)
 
         # Outer layout holds a single rounded card; the dialog itself is clear.
         outer = QVBoxLayout(self)
@@ -344,11 +350,15 @@ class SettingsModal(QDialog):
 
     def closeEvent(self, event) -> None:  # noqa: N802, ANN001 — Qt override
         self._mic_panel.stop_test()
+        if self._backdrop is not None:
+            self._backdrop.hide()
         super().closeEvent(event)
 
     def open_centered(self) -> None:
-        """Show centred over the parent window."""
+        """Show centred over the parent window, dimming it behind."""
         parent = self.parentWidget()
+        if self._backdrop is not None:
+            self._backdrop.show_over()
         if parent is not None:
             geo = parent.frameGeometry()
             self.move(
