@@ -1,13 +1,24 @@
-"""MainWindow — library list (left) + detail view (right) in a splitter.
+"""MainWindow — rail (left) + library list + detail view, per the design.
 
-Selecting a transcript loads it in the detail view; saving or auto-saving
-refreshes the list. (The settings modal — the third zone — lands in Phase 6.)
+Layout follows the design hand-off: a 58px icon rail (record / library /
+dictionary / settings / avatar), a fixed-width library column and the detail
+pane filling the rest. The rail only emits intent signals; ``app.py`` wires
+them. (The settings and dictionary modals — Phase 6 — will hang off the same
+signals.)
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QMainWindow, QSplitter, QWidget
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from dicto.i18n import on_language_changed, t
 from dicto.services.api.library import LibraryService
@@ -15,53 +26,129 @@ from dicto.services.clipboard import Clipboard
 from dicto.ui import icons
 from dicto.ui.main.detail_view import DetailView
 from dicto.ui.main.library_view import LibraryView
+from dicto.ui.theme.manager import ThemeManager
+from dicto.ui.theme.tokens import Token
+
+_LIBRARY_WIDTH = 344
+_RAIL_WIDTH = 58
 
 
 class MainWindow(QMainWindow):
+    recordRequested = Signal()
+    dictionaryRequested = Signal()
+    settingsRequested = Signal()
+
     def __init__(
         self,
         library: LibraryService | None = None,
         clipboard: Clipboard | None = None,
+        theme: ThemeManager | None = None,
     ) -> None:
         super().__init__()
         self.setWindowIcon(icons.app_icon())
-        self.resize(1000, 640)
+        self.resize(1100, 680)
 
         self._library = library or LibraryService()
+        self._theme = theme
 
-        self._library_view = LibraryView(self._library)
-        self._detail_view = DetailView(self._library, clipboard)
+        self._library_view = LibraryView(self._library, theme)
+        self._detail_view = DetailView(self._library, clipboard, theme)
 
-        # Pad each pane; the splitter itself stays flush.
-        left = self._wrap(self._library_view)
-        right = self._wrap(self._detail_view)
+        rail = self._build_rail()
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(left)
-        splitter.addWidget(right)
-        splitter.setStretchFactor(0, 2)
-        splitter.setStretchFactor(1, 3)
-        splitter.setChildrenCollapsible(False)
-        self.setCentralWidget(splitter)
+        library_pane = QFrame()
+        library_pane.setObjectName("libraryPane")
+        library_pane.setFixedWidth(_LIBRARY_WIDTH)
+        lib_layout = QVBoxLayout(library_pane)
+        lib_layout.setContentsMargins(0, 0, 0, 0)
+        lib_layout.addWidget(self._library_view)
+
+        central = QWidget()
+        body = QHBoxLayout(central)
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(0)
+        body.addWidget(rail)
+        body.addWidget(library_pane)
+        body.addWidget(self._detail_view, 1)
+        self.setCentralWidget(central)
 
         # Library selection drives the detail view; saves/edits refresh the list.
         self._library_view.transcriptSelected.connect(self._detail_view.load)
         self._library_view.emptied.connect(self._detail_view.show_empty)
         self._detail_view.saved.connect(lambda _id: self._library_view.refresh())
         self._detail_view.statusMessage.connect(self._show_status)
+        # The library emitted its initial selection while building, before these
+        # connections existed — re-emit so the detail pane starts populated.
+        self._library_view.refresh()
 
         self.retranslate()
+        self._refresh_icons()
+        if theme is not None:
+            theme.themeChanged.connect(lambda _e: self._refresh_icons())
         self._unsub_lang = on_language_changed(lambda _lang: self.retranslate())
 
-    @staticmethod
-    def _wrap(widget: QWidget) -> QWidget:
-        from PySide6.QtWidgets import QVBoxLayout
+    # ── rail ─────────────────────────────────────────────────────────────
 
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.addWidget(widget)
-        return container
+    def _build_rail(self) -> QFrame:
+        rail = QFrame()
+        rail.setObjectName("rail")
+        rail.setFixedWidth(_RAIL_WIDTH)
+        layout = QVBoxLayout(rail)
+        layout.setContentsMargins(0, 12, 0, 14)
+        layout.setSpacing(6)
+        layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+
+        self._record_btn = QPushButton()
+        self._record_btn.setObjectName("railRecord")
+        self._record_btn.setFixedSize(40, 40)
+        self._record_btn.setIconSize(QSize(20, 20))
+        self._record_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._record_btn.clicked.connect(self.recordRequested)
+        layout.addWidget(self._record_btn, 0, Qt.AlignmentFlag.AlignHCenter)
+        layout.addSpacing(4)
+
+        self._lib_btn = self._rail_button("list")
+        self._lib_btn.setCheckable(True)
+        self._lib_btn.setChecked(True)
+        layout.addWidget(self._lib_btn, 0, Qt.AlignmentFlag.AlignHCenter)
+
+        self._dict_btn = self._rail_button("book")
+        self._dict_btn.clicked.connect(self.dictionaryRequested)
+        layout.addWidget(self._dict_btn, 0, Qt.AlignmentFlag.AlignHCenter)
+
+        layout.addStretch(1)
+
+        self._settings_btn = self._rail_button("settings_small")
+        self._settings_btn.clicked.connect(self.settingsRequested)
+        layout.addWidget(self._settings_btn, 0, Qt.AlignmentFlag.AlignHCenter)
+
+        self._avatar = QLabel()
+        self._avatar.setObjectName("avatar")
+        self._avatar.setFixedSize(30, 30)
+        self._avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self._avatar, 0, Qt.AlignmentFlag.AlignHCenter)
+
+        return rail
+
+    @staticmethod
+    def _rail_button(glyph: str) -> QPushButton:
+        btn = QPushButton()
+        btn.setProperty("rail", True)
+        btn.setProperty("glyph", glyph)
+        btn.setFixedSize(42, 42)
+        btn.setIconSize(QSize(20, 20))
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        return btn
+
+    def _refresh_icons(self) -> None:
+        if self._theme is None:
+            return
+        self._record_btn.setIcon(icons.svg_icon("mic", "#ffffff", 20))
+        for btn in (self._lib_btn, self._dict_btn, self._settings_btn):
+            color = self._theme.color(Token.TEXT if btn.isChecked() else Token.TEXT_DIM)
+            btn.setIcon(icons.svg_icon(btn.property("glyph"), color, 20))
+
+    # ── api ──────────────────────────────────────────────────────────────
 
     def refresh_library(self) -> None:
         """Reload the library list (called after a transcript is auto-saved)."""
@@ -72,6 +159,11 @@ class MainWindow(QMainWindow):
 
     def retranslate(self) -> None:
         self.setWindowTitle(t("window.title"))
+        self._record_btn.setToolTip(t("overlay.record"))
+        self._lib_btn.setToolTip(t("window.library"))
+        self._dict_btn.setToolTip(t("rail.dictionary"))
+        self._settings_btn.setToolTip(t("tray.settings"))
+        self._avatar.setText(t("rail.avatar"))
 
     def closeEvent(self, event) -> None:  # noqa: N802 — Qt override
         # Closing hides to tray rather than quitting; the tray is the anchor.
