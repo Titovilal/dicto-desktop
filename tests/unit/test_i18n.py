@@ -7,9 +7,9 @@ from dicto import i18n
 
 def test_translates_known_key_per_language():
     i18n.set_language("en")
-    assert i18n.t("tray.open") == "Open Dicto"
+    assert i18n.t("tray.open") == "Open library"
     i18n.set_language("es")
-    assert i18n.t("tray.open") == "Abrir Dicto"
+    assert i18n.t("tray.open") == "Abrir biblioteca"
 
 
 def test_missing_key_returns_key():
