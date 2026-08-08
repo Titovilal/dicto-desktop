@@ -443,6 +443,10 @@ class SettingsMixin:
         for key, label in self._hotkey_labels.items():
             label.setText(t(key))
 
+        # Hotkey buttons (modifier/key names are localized too)
+        self.recording_hotkey_button.retranslate()
+        self.edit_hotkey_button.retranslate()
+
         # Recording mode combo items
         self.recording_mode_combo.blockSignals(True)
         self.recording_mode_combo.setItemText(0, t("recording_mode_hold"))

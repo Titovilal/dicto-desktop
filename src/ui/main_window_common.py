@@ -134,12 +134,28 @@ class HotkeyButton(QPushButton):
         self.clicked.connect(self._start_listening)
 
     @staticmethod
+    def _part_label(name: str) -> str:
+        """Localized name for a modifier or key, falling back to capitalization."""
+        label = t(f"key_{name}")
+        # ``t`` returns the key itself when there is no translation (e.g. plain
+        # letters and digits), which is our cue to just capitalize.
+        return name.capitalize() if label == f"key_{name}" else label
+
+    @staticmethod
     def format_hotkey(modifiers: list[str], key: str) -> str:
-        parts = [m.capitalize() for m in modifiers] + [key.capitalize()]
+        parts = [HotkeyButton._part_label(p) for p in [*modifiers, key]]
         return "+".join(parts)
 
     def _update_display(self):
         self.setText(self.format_hotkey(self._modifiers, self._key))
+
+    def retranslate(self):
+        """Re-render the label after a UI language change."""
+        self.setText(
+            t("press_combination") if self._listening else self.format_hotkey(
+                self._modifiers, self._key
+            )
+        )
 
     def _start_listening(self):
         self._listening = True
