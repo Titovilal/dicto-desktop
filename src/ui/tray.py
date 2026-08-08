@@ -22,12 +22,16 @@ class TrayManager(QObject):
     quit_requested = Signal()
     show_window_requested = Signal()
     open_config_requested = Signal()
+    update_requested = Signal()
 
     def __init__(self, app):
         super().__init__()
         self.app = app
         self.tray_icon: QSystemTrayIcon | None = None
         self.menu: QMenu | None = None
+        self.update_action: QAction | None = None
+        self._update_version: str | None = None
+        self._status_label: str = t("status_idle")
         self._create_tray_icon()
 
     def _create_tray_icon(self):
@@ -56,6 +60,12 @@ class TrayManager(QObject):
         settings_action = QAction(t("settings"), self.menu)
         settings_action.triggered.connect(self._on_open_config)
         self.menu.addAction(settings_action)
+
+        # Update entry — hidden until the startup check finds a newer release.
+        self.update_action = QAction(t("check_for_updates"), self.menu)
+        self.update_action.triggered.connect(self._on_update_requested)
+        self.update_action.setVisible(False)
+        self.menu.addAction(self.update_action)
 
         self.menu.addSeparator()
 
@@ -95,6 +105,29 @@ class TrayManager(QObject):
     def _on_quit(self):
         self.quit_requested.emit()
 
+    @Slot()
+    def _on_update_requested(self):
+        self.update_requested.emit()
+
+    @Slot(str)
+    def notify_update_available(self, version: str):
+        """Advertise a pending update in the menu, tooltip and a notification."""
+        self._update_version = version
+        if self.update_action:
+            self.update_action.setText(t("update_available", version=version))
+            self.update_action.setVisible(True)
+        self._refresh_tooltip()
+        self.show_message("Dicto", t("update_available", version=version))
+
+    def _refresh_tooltip(self):
+        """Rebuild the tooltip from the current status + pending update."""
+        if not self.tray_icon:
+            return
+        tooltip = f"Dicto — {self._status_label}"
+        if self._update_version:
+            tooltip += f"\n{t('update_available', version=self._update_version)}"
+        self.tray_icon.setToolTip(tooltip)
+
     @Slot(str)
     def update_status(self, status: str):
         if self.tray_icon:
@@ -105,7 +138,8 @@ class TrayManager(QObject):
                 "success": t("status_success"),
                 "error": t("status_error"),
             }
-            self.tray_icon.setToolTip(f"Dicto — {status_labels.get(status, status)}")
+            self._status_label = status_labels.get(status, status)
+            self._refresh_tooltip()
             self._update_tray_icon(status)
 
     def _update_tray_icon(self, status: str):

@@ -1,86 +1,100 @@
-"""Self-update flow and error reporting for the main window.
+"""Self-update flow for the main window.
 
-`UpdatesMixin` handles the "Check for updates" / install-in-place flow plus the
-"Send report" action. The background `QThread` workers used by the flow live
-here too. Mixed into `MainWindow`.
+`UpdatesMixin` handles the "Check for updates" / install-in-place flow, plus the
+silent check that runs shortly after startup and raises `update_available` so
+the window badge, tray menu and system notification can advertise it. The
+background `QThread` workers used by the flow live here too. Mixed into
+`MainWindow`.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal, Slot, QUrl, QThread
+import logging
+
+from PySide6.QtCore import Qt, Signal, Slot, QUrl, QThread, QTimer
 from PySide6.QtGui import QDesktopServices
 
 from src.i18n import t
-from src.services import routes
 from src.ui.main_window_styles import TEXT_DIM, RED
+
+logger = logging.getLogger(__name__)
+
+# Delay before the automatic check fires, so startup (splash, devices, hotkeys)
+# is not competing with a network request.
+AUTO_CHECK_DELAY_MS = 5000
 
 
 class UpdatesMixin:
-    """Updates + error-report actions for MainWindow."""
+    """Update check + install actions for MainWindow."""
 
-    # ── Report ──────────────────────────────────────────────
+    # ── Automatic check ─────────────────────────────────────
 
-    def _refresh_report_log_view(self):
-        """Show the current console log buffer (what gets sent with the report)."""
-        from src.utils.logger import get_log_buffer
+    def start_auto_update_check(self):
+        """Schedule the silent startup check.
 
-        logs = "\n".join(get_log_buffer())
-        self.report_log_view.setPlainText(logs)
-        # Scroll to the latest log line
-        sb = self.report_log_view.verticalScrollBar()
-        sb.setValue(sb.maximum())
+        Runs once, a few seconds after launch. Failures are swallowed: an
+        offline start must never surface an error the user did not ask for.
+        """
+        QTimer.singleShot(AUTO_CHECK_DELAY_MS, self._run_auto_update_check)
 
-    def _copy_logs(self):
-        """Copy the current console log buffer to the clipboard."""
-        from PySide6.QtWidgets import QApplication
-        from src.utils.logger import get_log_buffer
+    @Slot()
+    def _run_auto_update_check(self):
+        # A manual check may have been started in the meantime; don't race it.
+        if (
+            self._update_check_thread is not None
+            and self._update_check_thread.isRunning()
+        ):
+            return
+        self._update_check_thread = _UpdateCheckThread(self)
+        self._update_check_thread.finished_ok.connect(self._on_auto_update_check_done)
+        self._update_check_thread.failed.connect(self._on_auto_update_check_failed)
+        self._update_check_thread.start()
 
-        logs = "\n".join(get_log_buffer())
-        self.report_log_view.setPlainText(logs)
-        QApplication.clipboard().setText(logs)
-        self.report_status_label.setText(t("logs_copied"))
-        self.report_status_label.setStyleSheet("color: #4ade80; font-size: 11px;")
-        self.report_status_label.show()
+    @Slot(object)
+    def _on_auto_update_check_done(self, info):
+        if not info.available:
+            logger.info("Auto update check: already on the latest version")
+            return
 
-    def _send_report(self):
-        import httpx
-        from src.utils.logger import get_log_buffer
+        logger.info("Auto update check: v%s available", info.latest_version)
+        self._pending_update = info
+        self._mark_update_available(info)
+        # Tray notification + menu entry are wired by the app (main.py).
+        self.update_available.emit(info.latest_version)
 
-        self.send_report_button.setEnabled(False)
-        self.report_status_label.hide()
-        logs = "\n".join(get_log_buffer())
-        self.report_log_view.setPlainText(logs)
+    @Slot(str)
+    def _on_auto_update_check_failed(self, msg: str):
+        # Silent by design — this check was not user-initiated.
+        logger.info("Auto update check failed (ignored): %s", msg)
 
-        try:
-            api_key = self.settings.transcription_api_key if self.settings else ""
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            }
-            response = httpx.post(
-                routes.report(),
-                headers=headers,
-                json={"logs": logs, "source": "desktop_app"},
-                timeout=15.0,
-            )
-            if response.status_code in (200, 201):
-                self.report_status_label.setText(t("report_sent"))
-                self.report_status_label.setStyleSheet(
-                    "color: #4ade80; font-size: 11px;"
-                )
-            else:
-                self.report_status_label.setText(t("report_send_failed"))
-                self.report_status_label.setStyleSheet(
-                    f"color: {RED}; font-size: 11px;"
-                )
-        except Exception:
-            self.report_status_label.setText(t("report_send_failed"))
-            self.report_status_label.setStyleSheet(f"color: {RED}; font-size: 11px;")
+    def _mark_update_available(self, info):
+        """Show the header badge and point the user at the Updates section."""
+        self.update_badge.show()
+        self.settings_button.setToolTip(
+            f"{t('settings')} — {t('update_available', version=info.latest_version)}"
+        )
+        # If the settings page is already open, fill in the status line too.
+        self._show_pending_update_in_settings(info)
 
-        self.report_status_label.show()
-        self.send_report_button.setEnabled(True)
+    def _show_pending_update_in_settings(self, info):
+        """Reflect a known pending update in the Updates section widgets."""
+        from src.services.updater import can_self_install
 
-    # ── Updates ─────────────────────────────────────────────
+        self._set_update_status(
+            t("update_available", version=info.latest_version), "#4ade80"
+        )
+        if can_self_install() and info.asset_url:
+            self.update_action_button.setText(t("download_install_update"))
+        else:
+            self.update_action_button.setText(t("open_release_page"))
+        self.update_action_button.show()
+
+    def _clear_update_badge(self):
+        """Hide the badge once the user has seen the Updates section."""
+        self.update_badge.hide()
+        self.settings_button.setToolTip(t("settings"))
+
+    # ── Manual check ────────────────────────────────────────
 
     def _set_update_status(self, text: str, color: str = TEXT_DIM):
         self.update_status_label.setText(text)
@@ -115,21 +129,13 @@ class UpdatesMixin:
         self._set_button_busy(self.check_updates_button, False)
         self.check_updates_button.setText(t("check_for_updates"))
         if not info.available:
+            self._pending_update = None
+            self._clear_update_badge()
             self._set_update_status(t("up_to_date"), "#4ade80")
             return
 
         self._pending_update = info
-        self._set_update_status(
-            t("update_available", version=info.latest_version), "#4ade80"
-        )
-
-        from src.services.updater import can_self_install
-
-        if can_self_install() and info.asset_url:
-            self.update_action_button.setText(t("download_install_update"))
-        else:
-            self.update_action_button.setText(t("open_release_page"))
-        self.update_action_button.show()
+        self._show_pending_update_in_settings(info)
 
     @Slot(str)
     def _on_update_check_failed(self, _msg: str):

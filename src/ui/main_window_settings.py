@@ -68,6 +68,11 @@ class SettingsMixin:
         self._prev_page = self.content_stack.currentIndex()
         self.content_stack.setCurrentIndex(3)  # settings page
         self._refresh_report_log_view()
+        # The user is now looking at the Updates section, so the badge has done
+        # its job — but keep the pending update itself actionable.
+        if self._pending_update is not None:
+            self._show_pending_update_in_settings(self._pending_update)
+        self._clear_update_badge()
         self.settings_button.setIcon(_make_icon(SVG_SETTINGS, 16, TEXT))
         self.settings_button.setStyleSheet(HEADER_BUTTON_ACTIVE)
         self.footer.hide()
@@ -119,7 +124,10 @@ class SettingsMixin:
 
         try:
             api_key = self.settings.transcription_api_key if self.settings else ""
-            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
             base_url = os.environ.get("DICTO_API_URL", "https://dicto.up.railway.app")
             response = httpx.post(
                 f"{base_url}/api/report",
@@ -129,10 +137,14 @@ class SettingsMixin:
             )
             if response.status_code in (200, 201):
                 self.report_status_label.setText(t("report_sent"))
-                self.report_status_label.setStyleSheet("color: #4ade80; font-size: 11px;")
+                self.report_status_label.setStyleSheet(
+                    "color: #4ade80; font-size: 11px;"
+                )
             else:
                 self.report_status_label.setText(t("report_send_failed"))
-                self.report_status_label.setStyleSheet(f"color: {RED}; font-size: 11px;")
+                self.report_status_label.setStyleSheet(
+                    f"color: {RED}; font-size: 11px;"
+                )
         except Exception:
             self.report_status_label.setText(t("report_send_failed"))
             self.report_status_label.setStyleSheet(f"color: {RED}; font-size: 11px;")
@@ -320,7 +332,8 @@ class SettingsMixin:
             self.include_system_audio_checkbox.setStyleSheet(HEADER_BUTTON)
         else:
             self.include_system_audio_checkbox.setStyleSheet(
-                HEADER_BUTTON + f"QPushButton {{ color: {TEXT_DIM}; text-decoration: line-through; }}"
+                HEADER_BUTTON
+                + f"QPushButton {{ color: {TEXT_DIM}; text-decoration: line-through; }}"
             )
 
     def _update_always_on_top_icon(self, checked: bool):
@@ -419,9 +432,7 @@ class SettingsMixin:
         self.edit_auto_enter_checkbox.setText(t("press_enter_after_paste"))
         self.save_api_key_button.setText(t("save_key"))
         if sys.platform == "darwin":
-            self.include_system_audio_checkbox.setToolTip(
-                t("system_audio_unsupported")
-            )
+            self.include_system_audio_checkbox.setToolTip(t("system_audio_unsupported"))
         else:
             self.include_system_audio_checkbox.setToolTip(t("include_system_audio"))
         if self._audio_monitor and self._audio_monitor.is_running:
@@ -434,6 +445,14 @@ class SettingsMixin:
         self.models_button.setToolTip(t("models"))
         self.send_report_button.setText(t("send_report"))
         self._report_desc_label.setText(t("report_error_description"))
+
+        # Updates section
+        from src.version import get_version
+
+        self._version_label.setText(t("current_version", version=get_version()))
+        self.check_updates_button.setText(t("check_for_updates"))
+        if self._pending_update is not None:
+            self._show_pending_update_in_settings(self._pending_update)
 
         # Section labels
         for key, label in self._section_labels.items():

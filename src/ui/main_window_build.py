@@ -289,6 +289,17 @@ class BuildMixin:
         self.settings_button.installEventFilter(self)
         layout.addWidget(self.settings_button)
 
+        # Update badge: a small green dot overlaying the settings gear, shown
+        # when the startup check finds a newer release. Parented to the button
+        # so it tracks its position without taking layout space of its own.
+        self.update_badge = QWidget(self.settings_button)
+        self.update_badge.setFixedSize(7, 7)
+        self.update_badge.setStyleSheet(
+            f"background-color: #4ade80; border-radius: 3px; border: 1px solid {MUTED};"
+        )
+        self.update_badge.move(19, 4)
+        self.update_badge.hide()
+
         # Close button
         close_btn = QPushButton()
         close_btn.setFixedSize(28, 28)
@@ -408,7 +419,9 @@ class BuildMixin:
         parent_layout.addWidget(self.tabs_bar)
 
         self._active_format = "raw"
-        self._custom_prompt_open = False  # kept for compat, no longer toggles visibility
+        self._custom_prompt_open = (
+            False  # kept for compat, no longer toggles visibility
+        )
         # format_tabs list kept for compat methods that iterate it (now empty; combo is used)
         self.format_tabs = []
 
@@ -509,7 +522,9 @@ class BuildMixin:
         layout.addWidget(cb)
         return cb
 
-    def _add_combo(self, layout, items: dict, callback, with_provider_icons: bool = False) -> QComboBox:
+    def _add_combo(
+        self, layout, items: dict, callback, with_provider_icons: bool = False
+    ) -> QComboBox:
         """Create a combo box with items, connect its signal, add to layout, and return it.
 
         If ``with_provider_icons`` is True, a small provider logo is shown next to
@@ -524,7 +539,9 @@ class BuildMixin:
                 provider_svg = _get_provider_svg_for_model(value)
                 if provider_svg:
                     # Simple Icons SVGs don't use currentColor — inject fill directly
-                    colored_svg = provider_svg.replace("<svg ", f'<svg fill="{TEXT}" ', 1)
+                    colored_svg = provider_svg.replace(
+                        "<svg ", f'<svg fill="{TEXT}" ', 1
+                    )
                     icon = _make_icon(colored_svg, 14, TEXT)
                     combo.addItem(icon, label, value)
                     continue
@@ -721,6 +738,37 @@ class BuildMixin:
             layout, UI_LANGUAGES, self._on_ui_language_changed
         )
 
+        # Updates
+        self._add_section(layout, "updates")
+        from src.version import get_version
+
+        self._version_label = QLabel(t("current_version", version=get_version()))
+        self._version_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 12px;")
+        layout.addWidget(self._version_label)
+        layout.addSpacing(8)
+
+        self.check_updates_button = QPushButton(t("check_for_updates"))
+        self.check_updates_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.check_updates_button.setFixedHeight(32)
+        self.check_updates_button.setStyleSheet(FLAT_BUTTON)
+        self.check_updates_button.clicked.connect(self._on_check_updates)
+        layout.addWidget(self.check_updates_button)
+
+        # Shown only once a check found a newer release.
+        self.update_action_button = QPushButton(t("download_install_update"))
+        self.update_action_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_action_button.setFixedHeight(32)
+        self.update_action_button.setStyleSheet(FLAT_BUTTON)
+        self.update_action_button.clicked.connect(self._on_update_action)
+        self.update_action_button.hide()
+        layout.addWidget(self.update_action_button)
+
+        self.update_status_label = QLabel("")
+        self.update_status_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
+        self.update_status_label.setWordWrap(True)
+        self.update_status_label.hide()
+        layout.addWidget(self.update_status_label)
+
         # Report error
         self._add_section(layout, "report_error")
         self._report_desc_label = QLabel(t("report_error_description"))
@@ -883,9 +931,7 @@ class BuildMixin:
         )
         if sys.platform == "darwin":
             self.include_system_audio_checkbox.setEnabled(False)
-            self.include_system_audio_checkbox.setToolTip(
-                t("system_audio_unsupported")
-            )
+            self.include_system_audio_checkbox.setToolTip(t("system_audio_unsupported"))
         self._update_include_system_audio_icon(False)
         layout.addWidget(self.include_system_audio_checkbox)
 

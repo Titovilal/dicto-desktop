@@ -2,12 +2,14 @@
 Main window for Dicto application.
 Redesigned to match the dicto web component aesthetic.
 
-The window's behavior is split across three flat mixins:
+The window's behavior is split across four flat mixins:
 - BuildMixin (main_window_build.py): UI construction
 - SettingsMixin (main_window_settings.py): settings/models panels, load/save,
   event handling, frameless-window dragging, i18n
 - StateMixin (main_window_state.py): formats/transform, animations, copy/cancel,
   recording/processing/idle/editing state transitions
+- UpdatesMixin (main_window_updates.py): startup + manual update checks and the
+  in-place install flow
 
 Shared module-level helpers live in main_window_common.py.
 """
@@ -30,9 +32,10 @@ from src.ui.main_window_common import (  # noqa: F401 (re-exported for callers)
 from src.ui.main_window_build import BuildMixin
 from src.ui.main_window_settings import SettingsMixin
 from src.ui.main_window_state import StateMixin
+from src.ui.main_window_updates import UpdatesMixin
 
 
-class MainWindow(BuildMixin, SettingsMixin, StateMixin, QMainWindow):
+class MainWindow(BuildMixin, SettingsMixin, StateMixin, UpdatesMixin, QMainWindow):
     controller: Controller | None
     """Main application window matching the web component design."""
 
@@ -67,6 +70,7 @@ class MainWindow(BuildMixin, SettingsMixin, StateMixin, QMainWindow):
     edit_hotkey_changed = Signal(list, str)  # (modifiers, key)
     input_device_changed = Signal(object)  # int or None
     include_system_audio_changed = Signal(bool)
+    update_available = Signal(str)  # latest version, from the startup check
     _test_audio_level = Signal(float)
 
     FULL_SIZE = (420, 370)
@@ -82,13 +86,18 @@ class MainWindow(BuildMixin, SettingsMixin, StateMixin, QMainWindow):
         self._copied = False
         self._settings_open = False
         self._models_open = False
-        self._format_cache: dict[str, str] = {}  # format_id -> transformed text (LRU, max 30)
+        self._format_cache: dict[
+            str, str
+        ] = {}  # format_id -> transformed text (LRU, max 30)
         self._transforming_format: str | None = None
         self._user_presets: list[dict] = []  # [{id, name, instructions}]
         self.controller = None  # set externally after init
         self._section_labels: dict[str, QLabel] = {}  # key -> section QLabel
         self._hotkey_labels: dict[str, QLabel] = {}  # key -> hotkey row QLabel
         self._audio_monitor = None  # AudioMonitor while test is active
+        self._pending_update = None  # UpdateInfo once a newer release is found
+        self._update_check_thread = None
+        self._update_install_thread = None
         self._setup_ui()
         self._populate_input_devices()
         self._load_settings()

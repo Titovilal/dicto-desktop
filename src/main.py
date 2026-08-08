@@ -253,6 +253,15 @@ class DictoApp:
         self.tray_manager.open_config_requested.connect(
             self.main_window.show_settings_tab
         )
+        # Clicking the tray's "update available" entry opens the Updates section.
+        self.tray_manager.update_requested.connect(self.main_window.show_settings_tab)
+
+        # Startup update check: the window raises this once it finds a newer
+        # release, and the tray turns it into a menu entry + notification.
+        self.main_window.update_available.connect(
+            self.tray_manager.notify_update_available
+        )
+        self.main_window.start_auto_update_check()
 
         logger.info("Signals connected")
 
