@@ -633,6 +633,38 @@ class BuildMixin:
         self.save_api_key_button.clicked.connect(self._on_save_api_key)
         layout.addWidget(self.save_api_key_button)
 
+        # Updates (near the top: it's short, and the header badge sends the user
+        # straight here, so it shouldn't require scrolling to the bottom)
+        self._add_section(layout, "updates")
+        from src.version import get_version
+
+        self._version_label = QLabel(t("current_version", version=get_version()))
+        self._version_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 12px;")
+        layout.addWidget(self._version_label)
+        layout.addSpacing(8)
+
+        self.check_updates_button = QPushButton(t("check_for_updates"))
+        self.check_updates_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.check_updates_button.setFixedHeight(32)
+        self.check_updates_button.setStyleSheet(FLAT_BUTTON)
+        self.check_updates_button.clicked.connect(self._on_check_updates)
+        layout.addWidget(self.check_updates_button)
+
+        # Shown only once a check found a newer release.
+        self.update_action_button = QPushButton(t("download_install_update"))
+        self.update_action_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_action_button.setFixedHeight(32)
+        self.update_action_button.setStyleSheet(FLAT_BUTTON)
+        self.update_action_button.clicked.connect(self._on_update_action)
+        self.update_action_button.hide()
+        layout.addWidget(self.update_action_button)
+
+        self.update_status_label = QLabel("")
+        self.update_status_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
+        self.update_status_label.setWordWrap(True)
+        self.update_status_label.hide()
+        layout.addWidget(self.update_status_label)
+
         # Keyboard shortcuts
         self._add_section(layout, "keyboard_shortcuts")
         layout.addSpacing(2)
@@ -737,37 +769,6 @@ class BuildMixin:
         self.ui_language_combo = self._add_combo(
             layout, UI_LANGUAGES, self._on_ui_language_changed
         )
-
-        # Updates
-        self._add_section(layout, "updates")
-        from src.version import get_version
-
-        self._version_label = QLabel(t("current_version", version=get_version()))
-        self._version_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 12px;")
-        layout.addWidget(self._version_label)
-        layout.addSpacing(8)
-
-        self.check_updates_button = QPushButton(t("check_for_updates"))
-        self.check_updates_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.check_updates_button.setFixedHeight(32)
-        self.check_updates_button.setStyleSheet(FLAT_BUTTON)
-        self.check_updates_button.clicked.connect(self._on_check_updates)
-        layout.addWidget(self.check_updates_button)
-
-        # Shown only once a check found a newer release.
-        self.update_action_button = QPushButton(t("download_install_update"))
-        self.update_action_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.update_action_button.setFixedHeight(32)
-        self.update_action_button.setStyleSheet(FLAT_BUTTON)
-        self.update_action_button.clicked.connect(self._on_update_action)
-        self.update_action_button.hide()
-        layout.addWidget(self.update_action_button)
-
-        self.update_status_label = QLabel("")
-        self.update_status_label.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px;")
-        self.update_status_label.setWordWrap(True)
-        self.update_status_label.hide()
-        layout.addWidget(self.update_status_label)
 
         # Report error
         self._add_section(layout, "report_error")
