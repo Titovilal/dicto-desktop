@@ -1,5 +1,10 @@
 #define MyAppName "Dicto"
-#define MyAppVersion "2.5.1"
+; No edites MyAppVersion a mano: la fuente de verdad es pyproject.toml y
+; `scripts/sync-installer-version.py` la reescribe aqui (lo llaman tanto
+; `make installer` como el CI). Se habia quedado clavada en 2.5.1 con el
+; proyecto en 2.8.4, y un build local escupia Dicto-2.5.1-setup.exe que el
+; updater aceptaba como valido.
+#define MyAppVersion "2.8.4"
 #define MyAppPublisher "Titovilal"
 #define MyAppURL "https://github.com/Titovilal/dicto-desktop"
 #define MyAppExeName "Dicto.exe"

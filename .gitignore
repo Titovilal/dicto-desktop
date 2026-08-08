@@ -47,3 +47,20 @@ temp_audio_*
 
 # Logs
 *.log
+
+# PyInstaller
+# Los specs versionados son dicto.spec (Windows) y dicto-linux.spec (Linux),
+# ambos en minusculas, y son los unicos que se invocan.
+#
+# Aqui habia un `/Dicto.spec` para bloquear el duplicado que generaba
+# `pyinstaller --name Dicto`. Se ha quitado porque era CONTRAPRODUCENTE: en un
+# filesystem case-insensitive (Windows, macOS por defecto) git aplica el
+# patron sin distinguir mayusculas, asi que `/Dicto.spec` tambien casa con
+# `dicto.spec`, el spec de verdad. Comprobado con core.ignorecase=true:
+# `git check-ignore -v dicto.spec` -> lo da por ignorado. Con dicto.spec
+# trackeado no pasa nada (gitignore no afecta a ficheros ya trackeados), pero
+# si alguna vez se destrackea en Windows se volveria invisible a `git add`.
+#
+# La regla ya no hace falta: no queda ningun sitio que llame a PyInstaller con
+# `--name Dicto`. El ultimo era `make build-onefile`, eliminado junto a
+# `exe-onefile` (ver Makefile).

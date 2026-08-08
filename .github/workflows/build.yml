@@ -47,6 +47,52 @@ jobs:
             echo "should_release=false" >> $GITHUB_OUTPUT
           fi
 
+  test:
+    runs-on: ubuntu-22.04
+    # Hard stop: a hung test is immune to a failing exit code -- nothing fails,
+    # the run just never returns and holds a runner for the full 6h default.
+    # The suite is green and fast today (233 passed in ~33s locally), so this
+    # cap should never be reached; it exists so that a future deadlock costs
+    # 15 minutes instead of 6 hours.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          # Qt needs a virtual X server and the xcb platform libs for the
+          # pytest-qt (tests/ui) suite; portaudio for the recorder tests.
+          sudo apt-get install -y \
+            portaudio19-dev libasound2-dev \
+            xvfb libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
+            libxcb-image0 libxcb-keysyms1 libxcb-render-util0 \
+            libxcb-shape0 libxcb-xkb1 libegl1
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # This step is REQUIRED: `test` is in `release.needs`, so a red suite
+      # blocks the release instead of just annotating it. The suite was red
+      # (9 failures) around v2.8.4 and carried a `continue-on-error` for that
+      # reason; those are fixed and the run is green, so the flag is gone.
+      # Do not reintroduce it to paper over a regression -- fix the test.
+      #
+      # Note: a benign `_pythonToCppCopy: Cannot copy-convert ... (MagicMock)`
+      # line appears on stderr from the Qt binding when a mock is handed to the
+      # C++ layer. It does not fail or hang the run; don't chase it as an error.
+      - name: Run tests
+        run: xvfb-run -a pytest -m "not api" -v --tb=short
+        env:
+          QT_QPA_PLATFORM: xcb
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -69,8 +115,10 @@ jobs:
 
       - name: Build installer with Inno Setup
         run: |
-          $version = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matches.Groups[1].Value
-          (Get-Content installer.iss) -replace '#define MyAppVersion ".*"', "#define MyAppVersion `"$version`"" | Set-Content installer.iss
+          # Same script `make installer` runs, so a local build and a CI build
+          # can no longer disagree about the version (installer.iss used to be
+          # patched only here, and drifted to 2.5.1 in the working tree).
+          python scripts/sync-installer-version.py
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 
       - name: Upload installer
@@ -80,7 +128,15 @@ jobs:
           path: dist/Dicto-*-setup.exe
 
   build-linux:
-    runs-on: ubuntu-latest
+    # Pinned, NOT ubuntu-latest. PyInstaller links against the build machine's
+    # glibc and glibc is only backward compatible, so the runner's version is
+    # the hard floor for users. `ubuntu-latest` silently became 24.04
+    # (glibc 2.39), which locks out Ubuntu 22.04 (glibc 2.35) with a segfault
+    # rather than a clean apt error. Building on 22.04 costs nothing (we ship
+    # no 2.36+ symbols) and keeps both releases working. Bump this only when
+    # 22.04 is genuinely dropped -- and never back to a floating label.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -93,6 +149,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y portaudio19-dev libasound2-dev fakeroot
+          # Smoke-test-only: a dummy PulseAudio daemon so PortAudio can
+          # actually expose its Pulse host API, plus a virtual X server and the
+          # xcb libs Qt needs to open a window headlessly. Not runtime deps of
+          # the .deb -- those are declared in scripts/build-deb.sh.
+          sudo apt-get install -y \
+            pulseaudio pulseaudio-utils \
+            xvfb libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
+            libxcb-image0 libxcb-keysyms1 libxcb-render-util0 \
+            libxcb-shape0 libxcb-xkb1 libegl1
 
       - name: Install Python dependencies
         run: |
@@ -105,6 +170,120 @@ jobs:
           # the app links against the system ones (see .ctx/docs/release.md).
           DICTO_BUNDLE_NAME=dicto pyinstaller --noconfirm dicto-linux.spec
           tar -czf dist/dicto-linux-amd64.tar.gz -C dist dicto
+
+      # ── Smoke tests: catch the v2.8.2 "mic is dead in the .deb" regression ──
+      # These run on the built bundle and BEFORE packaging, so a broken bundle
+      # never reaches a .deb. See .ctx/docs/release.md.
+
+      - name: Smoke test — no audio libs bundled
+        run: |
+          # The regression: PyInstaller pulled sounddevice's PortAudio (built
+          # without a PulseAudio backend) and a libasound.so.2 without its
+          # alsa-lib modules into the bundle, killing the `pulse`/`pipewire`/
+          # `default` PCMs. dicto-linux.spec strips them so the app links
+          # against the system libs the .deb requires in Depends.
+          #
+          # This assert is the deterministic half of the check: it needs no
+          # audio server, so it can never flake on a headless runner, and it
+          # tests exactly the thing that broke.
+          found=$(find dist/dicto \
+            \( -name 'libportaudio*' -o -name 'libasound*' -o -name 'libjack*' \) \
+            -print)
+          if [ -n "$found" ]; then
+            echo "::error::Audio libs were bundled; the spec's exclusion broke."
+            echo "$found"
+            exit 1
+          fi
+          echo "OK: no libportaudio/libasound/libjack inside dist/dicto"
+
+      - name: Smoke test — PulseAudio host API is reachable
+        run: |
+          # The positive half: with the bundle's lib dir on the search path,
+          # PortAudio must still expose a PulseAudio host API and see the
+          # `pulse` PCM. Pa_Initialize() ABORTS with PaErrorCode -9999 when no
+          # server is listening, so a bare runner would fail this for the wrong
+          # reason -- hence the dummy daemon below (null sink/source, no
+          # hardware required).
+          #
+          # NOTE: treat this as defence in depth, not as the primary guard.
+          # If the bundle re-acquires a libportaudio copied from a build host
+          # whose own PortAudio *does* have Pulse support, this still passes
+          # while the shipped .deb breaks on user machines. The preceding
+          # "no audio libs bundled" step is the assertion that actually pins
+          # the regression; this one catches a PortAudio built without the
+          # Pulse backend, which is what bit us on the runner.
+          set -x
+          pulseaudio --start --exit-idle-time=-1 --disallow-exit -n \
+            --load="module-null-sink sink_name=dummy" \
+            --load="module-null-source source_name=dummymic"
+          pactl info
+
+          python - <<'PY'
+          import sounddevice as sd
+          apis = [h["name"] for h in sd.query_hostapis()]
+          print("host APIs:", apis)
+          assert "PulseAudio" in apis, f"PulseAudio backend missing: {apis}"
+          print("OK: PulseAudio host API present")
+          PY
+        env:
+          # Put the bundle's lib dir first: if a PortAudio/ALSA ever sneaks
+          # back in, this is the copy that gets loaded, so the check exercises
+          # what the .deb would actually ship rather than the system libs.
+          LD_LIBRARY_PATH: dist/dicto/_internal
+
+      - name: Smoke test — the built binary starts
+        run: |
+          # The binary opens a GUI and never exits on its own, so we run it
+          # under a virtual X server, give it a fixed budget and then kill it.
+          # Success is the "Dicto started!" banner, which main.py logs only
+          # after settings, controller, tray, overlay and hotkeys are all wired
+          # up -- i.e. a real startup, not just "the ELF was executable".
+          # SIGTERM at 60s (main.py handles it and shuts down cleanly),
+          # SIGKILL 15s later so a wedged Qt loop can never park the job.
+          # 60s is only the ceiling: the app is killed as soon as the banner
+          # shows up, so a healthy run takes a few seconds.
+          # Run from a scratch dir purely for hygiene: the run leaves $PWD
+          # untouched. (It does NOT write config.yaml into $PWD -- a frozen
+          # build resolves the config to ~/.config/dicto/config.yaml, see
+          # get_config_dir() in src/config/settings.py.)
+          bundle="$PWD/dist/dicto/dicto"
+          run_dir="$(mktemp -d)"
+          ( cd "$run_dir" && \
+            timeout --signal=TERM --kill-after=15s 60s \
+              xvfb-run -a "$bundle" ) >/tmp/dicto-smoke.log 2>&1 &
+          app_pid=$!
+
+          for _ in $(seq 60); do
+            grep -q "Dicto started!" /tmp/dicto-smoke.log && break
+            kill -0 "$app_pid" 2>/dev/null || break   # died early
+            sleep 1
+          done
+          kill "$app_pid" 2>/dev/null || true
+          wait "$app_pid" 2>/dev/null || true
+
+          echo "----- startup log -----"
+          cat /tmp/dicto-smoke.log
+          echo "-----------------------"
+
+          if ! grep -q "Dicto started!" /tmp/dicto-smoke.log; then
+            echo "::error::Binary did not reach a working startup."
+            exit 1
+          fi
+          # "Failed to initialize components" (main.py) and NOT "Failed to
+          # start application": the latter is logged by an `except Exception`
+          # in main(), but the init failure path calls sys.exit(1), which
+          # raises SystemExit -- not a subclass of Exception -- so that handler
+          # never runs and the string can never appear. This check grepped for
+          # a line the app cannot emit, i.e. it could never fire.
+          if grep -qi "Failed to initialize components" /tmp/dicto-smoke.log; then
+            echo "::error::Startup reported a fatal error."
+            exit 1
+          fi
+          echo "OK: binary started cleanly"
+        env:
+          # No API key on the runner; the app must still boot without one.
+          DICTO_API_KEY: ci-smoke-test
+          QT_QPA_PLATFORM: xcb
 
       - name: Package .deb
         run: |
@@ -121,7 +300,9 @@ jobs:
             dist/dicto_*.deb
 
   release:
-    needs: [version, build-windows, build-linux]
+    # `test` is here on purpose: a red suite must block the release, not just
+    # annotate it. Removing it silently makes the test job decorative.
+    needs: [version, test, build-windows, build-linux]
     runs-on: ubuntu-latest
     if: needs.version.outputs.should_release == 'true' || startsWith(github.ref, 'refs/tags/v')
     permissions:
