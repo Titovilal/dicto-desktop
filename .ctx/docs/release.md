@@ -103,3 +103,23 @@ bash scripts/release.sh
 bash scripts/build-deb.sh          # build PyInstaller + empaqueta
 SKIP_PYINSTALLER=1 bash scripts/build-deb.sh   # reusa dist/dicto/ existente
 ```
+
+## Audio: librerías del sistema, no del bundle
+
+`dicto-linux.spec` **excluye** del bundle `libportaudio.so*`, `libasound.so*` y
+`libjack.so*` para que la app enlace contra las del sistema (el `.deb` ya las
+exige en `Depends`: `libportaudio2`, `libasound2`, `libpulse0`).
+
+El PortAudio que PyInstaller recoge del wheel de `sounddevice` viene compilado
+**sin backend de PulseAudio**, y el `libasound.so.2` que arrastra viaja sin sus
+módulos de `alsa-lib`. Si se empaquetan, desaparecen los PCM `pulse`, `pipewire`
+y `default`: solo quedan los `hw:` en acceso exclusivo, PipeWire ya tiene el
+micro cogido y grabar falla con `Invalid sample rate [PaErrorCode -9997]`. En
+`uv run` no se nota porque ahí se usa el PortAudio del sistema.
+
+Para comprobarlo tras un build, `PulseAudio` debe salir en la lista:
+
+```bash
+LD_LIBRARY_PATH=dist/Dicto/_internal .venv/bin/python -c \
+  "import sounddevice as sd; print([h['name'] for h in sd.query_hostapis()])"
+```
