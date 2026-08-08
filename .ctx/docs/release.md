@@ -292,6 +292,12 @@ Se cierra por los dos lados:
    completa. Un fallo de `docker pull`/apt degrada a *warning* (es
    infraestructura, no el bundle); el guard determinista es el punto 1.
 
+   Reutiliza `scripts/smoke-run-bundle.sh`, el mismo script que usan el paso de
+   arranque normal y los builds locales, para que "el bundle arranca" tenga
+   **una sola definición** en vez de dos copias que se separan con el tiempo.
+   El workspace del runner se monta de solo lectura, así que el step recrea el
+   layout mínimo que el script espera (`scripts/` + `dist/dicto/`) en `/tmp`.
+
    Ojo con `libasound2`: en 24.04 se llama **`libasound2t64`** (transición a
    time_t de 64 bits) y pedir el nombre viejo **aborta el `apt-get install`
    entero**, lo que hacía fallar el paso con un engañoso `xvfb: No such file`.

@@ -354,46 +354,47 @@ jobs:
             exit 0
           fi
 
-          docker run --rm -v "$PWD/dist/dicto:/bundle:ro" ubuntu:24.04 bash -c '
-            set -e
-            apt-get update -qq >/dev/null 2>&1
-            # libasound2 was renamed libasound2t64 in 24.04 (the 64-bit time_t
-            # transition), and plain `libasound2` has no install candidate
-            # there. Asking for the wrong one aborts the whole apt call, which
-            # made this step fail with a bogus "xvfb: No such file" instead of
-            # a real result. Pick whichever the release actually provides.
-            asound=libasound2
-            apt-cache policy libasound2 | grep -q "Candidate: (none)" \
-              && asound=libasound2t64
-            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-              libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 libfontconfig1 \
-              libportaudio2 "$asound" libpulse0 libxcb-cursor0 libxcb-icccm4 \
-              libxcb-image0 libxcb-keysyms1 libxcb-render-util0 \
-              libxcb-shape0 libxcb-util1 libxcb-xkb1 libdbus-1-3 xvfb \
-              >/dev/null 2>&1
-            echo "container glibc: $(ldd --version | head -1)"
+          # The banner/timeout/kill logic lives in scripts/smoke-run-bundle.sh,
+          # the same script the step above and local builds use, so there is
+          # one definition of "the bundle starts" instead of a second copy that
+          # can drift. It also runs under a throwaway HOME, which matters here
+          # too: the container is disposable, but the script is the shared
+          # entry point.
+          if ! docker run --rm \
+            -v "$PWD:/src:ro" ubuntu:24.04 bash -c '
+              set -e
+              apt-get update -qq >/dev/null 2>&1
+              # libasound2 was renamed libasound2t64 in 24.04 (the 64-bit
+              # time_t transition) and the old name has no install candidate
+              # there. Asking for the wrong one aborts the whole apt call,
+              # which failed this step with a bogus "xvfb: No such file"
+              # instead of a real result. Pick what the release provides.
+              asound=libasound2
+              apt-cache policy libasound2 | grep -q "Candidate: (none)" \
+                && asound=libasound2t64
+              DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+                libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 \
+                libfontconfig1 libportaudio2 "$asound" libpulse0 \
+                libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+                libxcb-render-util0 libxcb-shape0 libxcb-util1 libxcb-xkb1 \
+                libdbus-1-3 xvfb >/dev/null 2>&1
+              echo "container glibc: $(ldd --version | head -1)"
 
-            export DICTO_API_KEY=ci-smoke-test QT_QPA_PLATFORM=xcb HOME=/root
-            timeout --signal=TERM --kill-after=15s 90s \
-              xvfb-run -a /bundle/dicto >/tmp/log 2>&1 &
-            pid=$!
-            for _ in $(seq 80); do
-              grep -q "Dicto started!" /tmp/log && break
-              kill -0 $pid 2>/dev/null || break
-              sleep 1
-            done
-            kill $pid 2>/dev/null || true; wait $pid 2>/dev/null || true
-
-            echo "----- startup log (ubuntu 24.04) -----"; cat /tmp/log
-            echo "--------------------------------------"
-            grep -q "Dicto started!" /tmp/log || {
-              echo "::error::Binary does not start on Ubuntu 24.04."
-              echo "This is the v2.8.5 failure mode: a library in the bundle is"
-              echo "shadowing a newer system library. See .ctx/docs/release.md."
-              exit 1
-            }
-            echo "OK: binary starts on Ubuntu 24.04"
-          '
+              # /src is the runner workspace, mounted read-only. The script
+              # resolves the binary relative to its own parent dir, so rebuild
+              # that minimal layout (scripts/ + dist/dicto/) somewhere
+              # writable.
+              mkdir -p /tmp/run/dist /tmp/run/scripts
+              cp -a /src/dist/dicto /tmp/run/dist/dicto
+              cp /src/scripts/smoke-run-bundle.sh /tmp/run/scripts/
+              cd /tmp/run && bash scripts/smoke-run-bundle.sh
+            '; then
+            echo "::error::Binary does not start on Ubuntu 24.04."
+            echo "This is the v2.8.5 failure mode: a library in the bundle is"
+            echo "shadowing a newer system library. See .ctx/docs/release.md."
+            exit 1
+          fi
+          echo "OK: binary starts on Ubuntu 24.04"
 
       - name: Package .deb
         run: |
