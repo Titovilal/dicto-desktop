@@ -196,6 +196,33 @@ jobs:
           fi
           echo "OK: no libportaudio/libasound/libjack inside dist/dicto"
 
+      - name: Smoke test — the bundle does not shadow system libraries
+        run: |
+          # The v2.8.5 regression, which the startup smoke test below could NOT
+          # catch. Excluding libportaudio/libasound/libjack means the app loads
+          # the SYSTEM PortAudio, which pulls in the SYSTEM libjack. On a modern
+          # distro that libjack needs GLIBCXX_3.4.32, but the bundle's own
+          # libstdc++.so.6 (copied from this 22.04 runner, capped at 3.4.30)
+          # came first on the linker's search path and won:
+          #
+          #   OSError: cannot load library 'libportaudio.so.2': .../_internal/
+          #   libstdc++.so.6: version `GLIBCXX_3.4.32' not found
+          #   (required by /usr/lib/x86_64-linux-gnu/libjack.so.0)
+          #
+          # Why the startup test missed it: it runs on the SAME 22.04 runner we
+          # build on, where the system libjack is just as old as the bundled
+          # libstdc++, so they match and the app starts. The failure only shows
+          # up on distros NEWER than the build box -- i.e. on users' machines.
+          # A smoke test confined to the build distro cannot, by construction,
+          # see this class of bug.
+          #
+          # This check is static (objdump only): no audio server, no display,
+          # no container, and it asserts the bundle carries no C++/GCC runtime
+          # at all, so it fails on a 22.04 runner too -- where the bug itself
+          # does not reproduce.
+          sudo apt-get install -y -qq binutils
+          python3 scripts/check-bundle-abi.py dist/dicto
+
       - name: Smoke test — PulseAudio host API is reachable
         run: |
           # The positive half: with the bundle's lib dir on the search path,
@@ -260,11 +287,17 @@ jobs:
           # untouched. (It does NOT write config.yaml into $PWD -- a frozen
           # build resolves the config to ~/.config/dicto/config.yaml, see
           # get_config_dir() in src/config/settings.py.)
+          # HOME desechable, no sólo $PWD: el arranque escribe su config en
+          # ~/.config/dicto/config.yaml. Lanzar el bundle con el HOME real
+          # machaca la config del usuario -- incluida su API key, sin backup.
+          # Da igual en un runner efímero, pero este bloque se copia y se pega
+          # para reproducir en local, y allí sí duele. Ya pasó.
           bundle="$PWD/dist/dicto/dicto"
           run_dir="$(mktemp -d)"
           ( cd "$run_dir" && \
             timeout --signal=TERM --kill-after=15s 60s \
-              xvfb-run -a "$bundle" ) >/tmp/dicto-smoke.log 2>&1 &
+              env "HOME=$run_dir" "XDG_CONFIG_HOME=$run_dir/.config" \
+                xvfb-run -a "$bundle" ) >/tmp/dicto-smoke.log 2>&1 &
           app_pid=$!
 
           for _ in $(seq 60); do
@@ -298,6 +331,69 @@ jobs:
           # No API key on the runner; the app must still boot without one.
           DICTO_API_KEY: ci-smoke-test
           QT_QPA_PLATFORM: xcb
+
+      - name: Smoke test — the binary starts on a NEWER distro
+        run: |
+          # The other half of the v2.8.5 gap. The step above proves the binary
+          # starts on the distro we BUILD on; this one proves it starts on a
+          # distro newer than that, which is where v2.8.5 died and where most
+          # users actually are. Ubuntu 24.04 ships the glibc/libstdc++/libjack
+          # generation that exposed the bug (its libjack needs GLIBCXX_3.4.32).
+          #
+          # Docker is preinstalled on GitHub runners. Only the .deb's declared
+          # Depends are installed inside -- nothing from this runner leaks in --
+          # so this doubles as a check that the Depends list is complete.
+          #
+          # Not flaky by design: no audio server and no network beyond apt; the
+          # app is killed the moment the banner appears. A pull/apt failure is
+          # an infrastructure problem, not a bundle problem, so it downgrades to
+          # a warning -- the static check above is the deterministic guard.
+          if ! docker pull -q ubuntu:24.04; then
+            echo "::warning::Could not pull ubuntu:24.04; skipping the" \
+                 "newer-distro run. The static shadowing check still ran."
+            exit 0
+          fi
+
+          docker run --rm -v "$PWD/dist/dicto:/bundle:ro" ubuntu:24.04 bash -c '
+            set -e
+            apt-get update -qq >/dev/null 2>&1
+            # libasound2 was renamed libasound2t64 in 24.04 (the 64-bit time_t
+            # transition), and plain `libasound2` has no install candidate
+            # there. Asking for the wrong one aborts the whole apt call, which
+            # made this step fail with a bogus "xvfb: No such file" instead of
+            # a real result. Pick whichever the release actually provides.
+            asound=libasound2
+            apt-cache policy libasound2 | grep -q "Candidate: (none)" \
+              && asound=libasound2t64
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+              libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 libfontconfig1 \
+              libportaudio2 "$asound" libpulse0 libxcb-cursor0 libxcb-icccm4 \
+              libxcb-image0 libxcb-keysyms1 libxcb-render-util0 \
+              libxcb-shape0 libxcb-util1 libxcb-xkb1 libdbus-1-3 xvfb \
+              >/dev/null 2>&1
+            echo "container glibc: $(ldd --version | head -1)"
+
+            export DICTO_API_KEY=ci-smoke-test QT_QPA_PLATFORM=xcb HOME=/root
+            timeout --signal=TERM --kill-after=15s 90s \
+              xvfb-run -a /bundle/dicto >/tmp/log 2>&1 &
+            pid=$!
+            for _ in $(seq 80); do
+              grep -q "Dicto started!" /tmp/log && break
+              kill -0 $pid 2>/dev/null || break
+              sleep 1
+            done
+            kill $pid 2>/dev/null || true; wait $pid 2>/dev/null || true
+
+            echo "----- startup log (ubuntu 24.04) -----"; cat /tmp/log
+            echo "--------------------------------------"
+            grep -q "Dicto started!" /tmp/log || {
+              echo "::error::Binary does not start on Ubuntu 24.04."
+              echo "This is the v2.8.5 failure mode: a library in the bundle is"
+              echo "shadowing a newer system library. See .ctx/docs/release.md."
+              exit 1
+            }
+            echo "OK: binary starts on Ubuntu 24.04"
+          '
 
       - name: Package .deb
         run: |
