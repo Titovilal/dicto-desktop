@@ -54,6 +54,30 @@ class TestOverlayStates:
         assert overlay._action_mode == "settings"
 
 
+class TestOverlayWarning:
+    """A partial success must not look, or read, like a failure."""
+
+    MESSAGE = "Your text is safe on the clipboard — press Ctrl+V to paste it."
+
+    def test_shows_the_message_verbatim(self, overlay):
+        """Not truncated: the actionable part sits at the end of the text."""
+        overlay.show_warning(self.MESSAGE, auto_hide_delay=100000)
+        assert overlay.status_label.text() == self.MESSAGE
+
+    def test_has_no_error_prefix_and_is_not_red(self, overlay):
+        from src.ui.main_window_styles import AMBER, RED
+
+        overlay.show_warning(self.MESSAGE, auto_hide_delay=100000)
+        assert overlay.current_state == "warning"
+        assert not overlay.status_label.text().startswith(f"{t('error')}:")
+        assert AMBER in overlay.status_label.styleSheet()
+        assert RED not in overlay.status_label.styleSheet()
+
+    def test_full_text_is_available_as_a_tooltip(self, overlay):
+        overlay.show_warning(self.MESSAGE, auto_hide_delay=100000)
+        assert overlay.status_label.toolTip() == self.MESSAGE
+
+
 class TestOverlayActionButton:
     def test_stop_button_emits_signal(self, overlay, qtbot):
         # While recording, the record button acts as a stop button.

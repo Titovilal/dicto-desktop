@@ -5,7 +5,7 @@ A minimalist desktop application that records your voice via a global hotkey, tr
 ## Features
 
 - **Global Hotkey**: Press and hold a keyboard shortcut to record audio
-- **AI Transcription**: Powered by OpenAI Whisper API
+- **AI Transcription**: Powered by the Dicto API (`https://dicto.up.railway.app`)
 - **Instant Clipboard**: Transcribed text is automatically copied to clipboard
 - **Visual Feedback**: Overlay window shows recording/processing status
 - **Background Operation**: Lives in system tray with minimal resource usage
@@ -15,8 +15,12 @@ A minimalist desktop application that records your voice via a global hotkey, tr
 
 ### All Platforms
 
-- Python 3.8 or higher
-- OpenAI API key (get one at https://platform.openai.com/api-keys)
+- Python 3.9 or higher (`requires-python` in `pyproject.toml`; CI builds on 3.11)
+- A **Dicto API key**. Dicto talks to its own backend
+  (`https://dicto.up.railway.app`, overridable with the `DICTO_API_URL` env var),
+  **not** to OpenAI directly — there is no `platform.openai.com` key involved.
+  Set it in the app's settings window, in `config.yaml`, or via the
+  `DICTO_API_KEY` environment variable.
 
 ### Linux
 
@@ -35,7 +39,9 @@ sudo pacman -S portaudio
 
 ### Windows
 
-PyAudio will be installed automatically. No additional dependencies needed.
+No additional system dependencies. Audio capture uses `sounddevice` (which ships
+its own PortAudio wheel on Windows) plus `soundcard` for optional system-audio
+capture — the project does **not** use PyAudio.
 
 ## Installation
 
@@ -76,14 +82,18 @@ pip install -r requirements.txt
 # Copy the example config
 cp config.yaml.example config.yaml
 
-# Edit config.yaml and add your OpenAI API key
-# Or set the OPENAI_API_KEY environment variable
-export OPENAI_API_KEY="sk-your-api-key-here"
+# Edit config.yaml and add your Dicto API key
+# Or set the DICTO_API_KEY environment variable
+export DICTO_API_KEY="your-dicto-api-key"
 ```
 
 ## Configuration
 
-Edit `config.yaml` to customize the application:
+Edit `config.yaml` to customize the application. Running from source it sits in
+the project root; in an installed build it lives in the per-user config dir
+(`~/.config/dicto/config.yaml` on Linux/macOS, `%APPDATA%\dicto\config.yaml` on
+Windows) because the install dir is read-only. Most settings are also editable
+from the app's settings window.
 
 ```yaml
 hotkey:
@@ -96,9 +106,9 @@ overlay:
   opacity: 0.9                  # 0.0 to 1.0
 
 transcription:
-  provider: "openai"            # Currently only OpenAI is supported
-  api_key: ""                   # Or use OPENAI_API_KEY env var
-  language: "auto"              # auto, or ISO code like "es", "en"
+  api_key: ""                   # Or use the DICTO_API_KEY env var
+  language: "es"                # ISO code like "es", "en"
+  model: "v3-turbo"
 
 audio:
   sample_rate: 16000            # 16kHz is optimal for speech
@@ -136,10 +146,11 @@ dicto
 
 ## Troubleshooting
 
-### "No OpenAI API key found"
+### "No API key found"
 
-- Make sure you've set your API key in `config.yaml` or as an environment variable
-- Get an API key at https://platform.openai.com/api-keys
+- Make sure you've set your **Dicto** API key in the settings window, in
+  `config.yaml`, or via the `DICTO_API_KEY` environment variable
+- This is a Dicto API key, not an OpenAI one
 
 ### "Failed to initialize audio system"
 
@@ -160,10 +171,10 @@ dicto
 
 ### "Transcription failed"
 
-- Check your internet connection (API requires internet)
-- Verify your OpenAI API key is valid
-- Check if you have API credits remaining
+- Check your internet connection (the API requires internet)
+- Verify your Dicto API key is valid and has credit remaining
 - Make sure the audio is clear and not too short
+- To point the app at a different backend, set `DICTO_API_URL`
 
 ## Development
 
@@ -172,31 +183,41 @@ Project structure:
 ```
 dicto-desktop/
 ├── src/
-│   ├── main.py              # Application entry point
-│   ├── controller.py        # Main controller
+│   ├── main.py                  # Application entry point
+│   ├── controller.py            # Main controller
 │   ├── ui/
-│   │   ├── tray.py         # System tray manager
-│   │   └── overlay.py      # Overlay window
+│   │   ├── main_window*.py      # Settings window (split by concern)
+│   │   ├── tray.py              # System tray manager
+│   │   └── overlay.py           # Overlay window
 │   ├── services/
-│   │   ├── hotkey.py       # Global hotkey listener
-│   │   ├── recorder.py     # Audio recording
-│   │   ├── transcriber.py  # API transcription
-│   │   └── clipboard.py    # Clipboard operations
+│   │   ├── hotkey.py            # Global hotkey listener
+│   │   ├── hotkey_wayland.py    # Wayland-specific hotkey path
+│   │   ├── recorder.py          # Audio recording
+│   │   ├── transcriber.py       # API transcription
+│   │   ├── keyboard_actions.py  # Auto-paste / auto-enter
+│   │   ├── clipboard.py         # Clipboard operations
+│   │   ├── routes.py            # Dicto API endpoints
+│   │   └── updater.py           # Self-update
+│   ├── i18n/                    # Translations
 │   └── config/
-│       └── settings.py     # Configuration management
-├── config.yaml.example      # Example configuration
-├── requirements.txt         # Python dependencies
-└── README.md               # This file
+│       └── settings.py          # Configuration management
+├── dicto.spec / dicto-linux.spec  # PyInstaller build specs
+├── config.yaml.example          # Example configuration
+└── README.md                    # This file
 ```
+
+See `COMMANDS.md` for the full command reference, `RELEASING.md` for the release
+process, and `.ctx/docs/` for design notes.
 
 ## Technology Stack
 
 - **PySide6**: UI framework and system tray
 - **pynput**: Global hotkey listener
-- **pyaudio**: Audio recording
+- **sounddevice**: Audio recording (PortAudio bindings)
+- **soundcard**: Optional system-audio (loopback) capture
 - **pyperclip**: Clipboard operations
 - **httpx**: HTTP client for API calls
-- **OpenAI Whisper API**: Speech-to-text transcription
+- **Dicto API**: Speech-to-text transcription and text transformation
 
 ## Resource Usage
 
@@ -206,10 +227,9 @@ dicto-desktop/
 
 ## Privacy & Security
 
-- Audio is recorded locally and only sent to OpenAI's API for transcription
+- Audio is recorded locally and sent to the Dicto API for transcription
 - No audio is stored permanently (temporary files are deleted after transcription)
-- Your OpenAI API key should be kept secure
-- See OpenAI's privacy policy for how they handle audio data
+- Your Dicto API key should be kept secure
 
 ## License
 
@@ -222,13 +242,12 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Roadmap
 
 Future improvements:
-- [ ] Custom icons for tray and overlay
+- [x] Audio device selection in UI
+- [x] Packaging as standalone executable (Windows installer, Linux `.deb` / tarball — see `RELEASING.md`)
+- [x] Auto-update functionality (`src/services/updater.py`)
 - [ ] Support for other transcription providers (local Whisper, Google, etc.)
-- [ ] Audio device selection in UI
 - [ ] Transcription history with search
 - [ ] Configurable post-processing (punctuation, formatting)
-- [ ] Packaging as standalone executable
-- [ ] Auto-update functionality
 
 ## Support
 

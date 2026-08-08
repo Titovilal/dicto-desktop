@@ -2,7 +2,16 @@
 
 Guía para instalar y ejecutar Dicto Desktop en distribuciones Linux basadas en Ubuntu/Debian.
 
-> **Requisito**: Se necesita **X11** (no Wayland). La captura de hotkeys globales y la simulación de teclado no funcionan en Wayland por restricciones de seguridad del protocolo. La mayoría de distros LTS permiten seleccionar X11 en la pantalla de login.
+> **Sesiones soportadas**: funciona tanto en **X11** como en **Wayland**.
+>
+> - **X11**: atajo global vía pynput, en modo *hold* (mantener pulsado) o
+>   *toggle*, configurable en Ajustes. Auto-pegado con pynput.
+> - **Wayland**: atajo global vía el portal XDG GlobalShortcuts (D-Bus), siempre
+>   en modo *toggle* (pulsar para iniciar, pulsar para parar) por limitación del
+>   portal; el compositor puede pedir confirmación del atajo la primera vez. El
+>   auto-pegado necesita `ydotool` (con `ydotoold`) o `xdotool` instalados a mano
+>   (ver más abajo); sin ellos el texto se copia al portapapeles y se pega con
+>   `Ctrl+V`.
 
 ---
 
@@ -99,12 +108,34 @@ xclip -selection clipboard -o
 ```
 
 ### Hotkey no responde
-- Verificar que estás en sesión **X11**, no Wayland:
-  ```bash
-  echo $XDG_SESSION_TYPE
-  # Debe mostrar "x11"
-  ```
-- Si muestra "wayland", cerrar sesión y seleccionar "Ubuntu on Xorg" (o equivalente) en la pantalla de login.
+
+Comprueba primero qué tipo de sesión usas:
+```bash
+echo $XDG_SESSION_TYPE   # "x11" o "wayland"
+```
+
+- **X11**: el atajo se registra con pynput. Si no responde, comprueba que otra
+  app no esté capturando la misma combinación.
+- **Wayland**: el atajo se registra por el portal XDG GlobalShortcuts y requiere
+  `dbus-next` y un portal activo (`xdg-desktop-portal` + el backend de tu
+  escritorio, p. ej. `xdg-desktop-portal-gnome` o `-kde`). El compositor puede
+  pedir confirmación del atajo la primera vez: acéptala. En Wayland el modo es
+  siempre *toggle* (pulsar para iniciar, pulsar para parar), no *hold*.
+- Si no hay atajo disponible, el botón de grabar de la ventana sigue funcionando.
+
+### Auto-pegado no funciona en Wayland
+
+En Wayland la simulación de teclado necesita una herramienta externa que **no
+viene incluida en el `.deb`**:
+```bash
+# Opción A: ydotool (requiere el demonio ydotoold en marcha)
+sudo apt install ydotool
+
+# Opción B: xdotool (funciona vía XWayland)
+sudo apt install xdotool
+```
+Sin ninguna de las dos, el texto se copia al portapapeles y basta con pegarlo
+con `Ctrl+V`.
 
 ### Error "qt.qpa.plugin: Could not load the Qt platform plugin"
 ```bash

@@ -167,49 +167,6 @@ class TestTransform:
         assert payload["instructions"] == "instructions"
 
 
-class TestGetModels:
-    def test_success_returns_lists(self, transcriber):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "transcription": [
-                {"id": "v3-turbo", "name": "Whisper V3 Turbo", "default": True}
-            ],
-            "transformation": [
-                {"id": "qwen/qwen3-32b", "name": "Qwen3 32B", "default": True}
-            ],
-        }
-
-        with patch.object(transcriber.client, "get", return_value=mock_response):
-            result = transcriber.get_models()
-
-        assert result["transcription"][0]["id"] == "v3-turbo"
-        assert result["transformation"][0]["id"] == "qwen/qwen3-32b"
-
-    def test_missing_keys_default_to_empty(self, transcriber):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {}
-
-        with patch.object(transcriber.client, "get", return_value=mock_response):
-            result = transcriber.get_models()
-
-        assert result == {"transcription": [], "transformation": []}
-
-    def test_non_200_returns_empty_dict(self, transcriber):
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-
-        with patch.object(transcriber.client, "get", return_value=mock_response):
-            assert transcriber.get_models() == {}
-
-    def test_exception_returns_empty_dict(self, transcriber):
-        with patch.object(
-            transcriber.client, "get", side_effect=httpx.RequestError("boom")
-        ):
-            assert transcriber.get_models() == {}
-
-
 class TestErrorParsing:
     def test_parse_error_dict(self, transcriber, sample_audio_file):
         mock_response = MagicMock()

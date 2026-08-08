@@ -45,10 +45,11 @@ git push origin v2.2.0
 El workflow (`.github/workflows/build.yml`) ejecuta estos pasos:
 
 1. **version** — Lee la version de `pyproject.toml` y verifica si ya existe un tag `v{version}`
-2. **build** — Compila el ejecutable con PyInstaller en paralelo para:
+2. **test** — Ejecuta `pytest -m "not api"` bajo `xvfb-run`. **Bloquea la release**: esta en `release.needs`, asi que si la suite se pone roja no se publica nada
+3. **build** — Compila el ejecutable con PyInstaller en paralelo para:
    - **Windows** — instalador `.exe` (Inno Setup)
-   - **Linux** — bundle `.tar.gz` portable y paquete `.deb` instalable
-3. **release** — Si corresponde, crea un GitHub Release con tag `v{version}` y adjunta los binarios
+   - **Linux** — bundle `.tar.gz` portable y paquete `.deb` instalable. Antes de empaquetar corre unos smoke tests sobre el bundle (ver `.ctx/docs/release.md`)
+4. **release** — Si corresponde, crea un GitHub Release con tag `v{version}` y adjunta los binarios
 
 ## Artefactos generados
 
@@ -60,12 +61,13 @@ El workflow (`.github/workflows/build.yml`) ejecuta estos pasos:
 
 ## Build local
 
-Para generar el ejecutable localmente ver los comandos en `COMMANDS.md` (o usa el `Makefile`: `make exe` en Windows, `make deb` en Linux). En Windows el binario queda en `dist/Dicto.exe`; en Linux el paquete queda en `dist/dicto_<version>_amd64.deb`.
+Para generar el ejecutable localmente ver los comandos en `COMMANDS.md` (o usa el `Makefile`: `make exe` en Windows, `make deb` en Linux). Los builds son **onedir**, asi que en Windows el binario queda en `dist/Dicto/Dicto.exe` (dentro de su carpeta, no suelto en `dist/`); en Linux el paquete queda en `dist/dicto_<version>_amd64.deb`.
 
 ## Checklist pre-release
 
 - [ ] Version actualizada en `pyproject.toml`
-- [ ] Tests pasan (`pytest`)
+- [ ] Tests pasan (`uv run pytest -m "not api"`, o `make test`) — el marcador `api` excluye los tests que llaman a la API real, que necesitan credenciales y red
+
 - [ ] Linting limpio (`uvx ruff check`)
 - [ ] Formato correcto (`uvx ruff format`)
 - [ ] Cambios commiteados y pusheados a `main`

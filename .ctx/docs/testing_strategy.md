@@ -11,12 +11,14 @@ The test suite validates Dicto's core flows — recording, transcription, cancel
 - `tests/unit/test_recorder.py` - Audio recorder init, recording state, duration, cleanup
 - `tests/unit/test_hotkey.py` - Hotkey string parsing (special keys, modifiers, hold/press modes)
 - `tests/unit/test_clipboard.py` - Copy, paste, clear, wait-for-change with timeout
+- `tests/unit/test_keyboard_actions.py` - KeyboardService: auto-paste/auto-enter, Wayland key-injection fallbacks (wtype/ydotool) and the non-Wayland path
 - `tests/unit/test_i18n.py` - Translation retrieval, fallback to English, completeness checks
 - `tests/unit/test_platform.py` - Platform-specific behavior (Windows event filter, Wayland detection)
 - `tests/integration/test_recording_flow.py` - Full recording → transcription → clipboard flow
 - `tests/integration/test_edit_flow.py` - Edit selection flow (copy → record → transform via API)
 - `tests/integration/test_cancel_flow.py` - Cancel edge cases during recording and processing
 - `tests/integration/test_settings_sync.py` - Settings ↔ Controller hotkey synchronization
+- `tests/integration/test_clipboard_restore_flow.py` - Restoring the user's previous clipboard contents after an auto-paste
 - `tests/api/test_api_contracts.py` - Request format and response parsing for all API endpoints
 - `tests/ui/test_main_window.py` - Main window widget behavior
 - `tests/ui/test_overlay.py` - Overlay state display
@@ -32,7 +34,20 @@ The test suite validates Dicto's core flows — recording, transcription, cancel
 - All tests: `pytest tests/`
 - By category: `pytest tests/unit/`, `pytest tests/integration/`, `pytest tests/ui/`, `pytest tests/api/`
 - With coverage: `pytest --cov=src tests/`
-- Skip real-API tests: `pytest -m "not api"`
+- Skip real-API tests: `pytest -m "not api"` (this is what `make test` and CI run)
+
+## In CI
+The `test` job in `.github/workflows/build.yml` runs `pytest -m "not api"` under
+`xvfb-run` (the `tests/ui` suites need a display) on `ubuntu-22.04`. Until
+recently the tests were not executed by any workflow despite the dev extras being
+installed; now the job is **required** — it is listed in `release.needs`, so a red
+suite blocks the release instead of merely annotating it. The job carries
+`timeout-minutes: 15` because a hung test produces no failing exit code and would
+otherwise hold a runner for the default six hours.
+
+One harmless line can show up on stderr during the Qt tests:
+`_pythonToCppCopy: Cannot copy-convert ... (MagicMock) to C++`. It comes from
+handing a mock to Qt's C++ layer; it neither fails nor hangs the run.
 
 ## Key Patterns
 - **Shared fixtures** in `conftest.py` provide isolated temporary configs and a minimal valid WAV file

@@ -1,5 +1,22 @@
 # Dicto Desktop - Plan de soporte multiplataforma (Windows + Linux)
 
+> ⚠️ **DOCUMENTO HISTÓRICO — NO REFLEJA EL ESTADO ACTUAL**
+>
+> Este fue el documento de *planificación* previo a la implementación del
+> soporte Linux. Se conserva como registro de las decisiones de aquel momento,
+> pero varias de sus conclusiones ya están **obsoletas**:
+>
+> - **Wayland sí está soportado.** El documento concluye "soportar X11
+>   solamente" y da los hotkeys y el auto-pegado por imposibles en Wayland. Hoy
+>   el atajo global funciona vía el portal XDG GlobalShortcuts (modo *toggle*) y
+>   el auto-pegado vía `ydotool`/`xdotool`.
+> - **El audio del sistema funciona también en Linux** (monitor de
+>   PulseAudio/PipeWire vía `soundcard`), no solo en Windows.
+>
+> Para el estado real y actualizado, consulta **`FEATURES.md`** (funcionalidades
+> y diferencias por plataforma) e **`INSTALL_LINUX.md`** (instalación y
+> troubleshooting).
+
 Estado actual: la app es **~90% cross-platform**. Las dependencias (PySide6, pynput, sounddevice, pyperclip, httpx) son todas multiplataforma. El CI ya tiene build de Linux. Los cambios necesarios son menores.
 
 ---
@@ -106,6 +123,10 @@ Las ventanas sin marco (`FramelessWindowHint`) pueden comportarse distinto en al
 ---
 
 ## Limitación conocida: Wayland
+
+> ⚠️ **Sección obsoleta.** Esta limitación **ya se resolvió**: los hotkeys
+> globales funcionan por el portal XDG GlobalShortcuts y el auto-pegado por
+> `ydotool`/`xdotool`. La "decisión" de soportar solo X11 quedó descartada.
 
 Las siguientes funciones **no funcionan en Wayland** por restricciones de seguridad del protocolo:
 - Captura de hotkeys globales (pynput)

@@ -23,8 +23,10 @@ Estados de la app: `IDLE → RECORDING → PROCESSING → SUCCESS/ERROR → IDLE
   Wayland siempre es *toggle* (limitación del portal).
 - **Selección de micrófono** en Ajustes → Audio, con botón de prueba y forma de
   onda en vivo.
-- **Captura de audio del sistema** (solo Windows): mezcla el audio del sistema
-  con el micrófono vía WASAPI loopback, con *Stereo Mix* como alternativa.
+- **Captura de audio del sistema** (Windows y Linux): mezcla el audio del sistema
+  con el micrófono. En Windows vía WASAPI loopback (con *Stereo Mix* como
+  alternativa); en Linux capturando el *monitor* del altavoz por defecto
+  (PulseAudio/PipeWire). Ambos usan la librería `soundcard`.
 - **Visualización**: forma de onda en vivo y temporizador durante la grabación,
   tanto en la ventana principal como en el overlay flotante.
 
@@ -36,7 +38,7 @@ Config de audio (`config.yaml`):
 | `audio.max_duration` | `7200` | Duración máxima (s) — 2 horas |
 | `audio.channels` | `1` | Canales (mono) |
 | `audio.input_device` | `null` | Micrófono (null = predeterminado) |
-| `audio.include_system_audio` | `false` | Capturar audio del sistema (Windows) |
+| `audio.include_system_audio` | `false` | Capturar audio del sistema (Windows y Linux) |
 
 ## Transcripción
 
@@ -62,6 +64,21 @@ Config de audio (`config.yaml`):
   auto-paste).
 - Implementación por plataforma: pynput en Windows/X11; en Wayland se usa
   `ydotool` (requiere `ydotoold`) o `xdotool`.
+- Si el pegado automático no se puede entregar, se avisa como **advertencia**
+  (ámbar, texto completo), no como error: el texto sigue en el portapapeles y
+  se puede pegar con `Ctrl+V`. El aviso indica cómo habilitarlo
+  (ver [`INSTALL_LINUX.md`](INSTALL_LINUX.md)).
+
+## Restaurar el portapapeles
+
+- `behavior.restore_clipboard` (defecto `true`, con casilla en Ajustes):
+  devuelve al portapapeles lo que tuvieras copiado antes de dictar, poco
+  después de que el auto-pegado consuma la transcripción. Así dictar deja de
+  destruir la URL o contraseña que tenías copiada.
+- Solo actúa cuando `auto_paste` está activo: sin auto-pegado la transcripción
+  *es* el resultado y quitarla rompería el propósito de la app.
+- Nunca pisa nada: si copias algo mientras tanto, si el pegado falló, o si has
+  vuelto a dictar, la restauración se cancela y tu texto se queda donde está.
 
 ## Atajos de teclado
 
@@ -172,7 +189,11 @@ arranque.
 | Funcionalidad | Windows | Linux X11 | Linux Wayland |
 |---------------|---------|-----------|---------------|
 | Atajo global | pynput (hold/toggle) | pynput (hold/toggle) | portal XDG (toggle) |
-| Audio del sistema | ✅ WASAPI | ❌ | ❌ |
-| Auto-pegar | pynput | pynput | ydotool / xdotool |
+| Audio del sistema | ✅ WASAPI | ✅ monitor PulseAudio/PipeWire | ✅ monitor PulseAudio/PipeWire |
+| Auto-pegar | pynput | pynput | ydotool / xdotool [^1] |
 | Portapapeles | win32clipboard | pyperclip | pyperclip |
 | Auto-actualización | ✅ (setup.exe) | ✅ (.deb) | ✅ (.deb) |
+
+[^1]: `ydotool` (con `ydotoold` en marcha) o `xdotool` requieren **instalación
+manual**: no son dependencias del `.deb` y no vienen incluidos. Sin ellos el
+texto se copia igualmente al portapapeles, pero hay que pegarlo con `Ctrl+V`.
