@@ -18,10 +18,40 @@ BUNDLE_NAME = os.environ.get('DICTO_BUNDLE_NAME', 'Dicto')
 # en Depends (libportaudio2, libasound2, libpulse0).
 _SYSTEM_AUDIO_LIBS = ('libportaudio.so', 'libasound.so', 'libjack.so')
 
+# El runtime de C++/GCC también sale fuera, y es CONSECUENCIA de lo anterior.
+#
+# Al excluir las de audio, la app carga el `libportaudio.so.2` DEL SISTEMA, que
+# a su vez arrastra el `libjack.so.0` del sistema. En una distro moderna ese
+# libjack exige símbolos nuevos (`GLIBCXX_3.4.32`), pero el bundle iba primero
+# en la búsqueda del enlazador, así que ganaba el `libstdc++.so.6` copiado del
+# runner de build (ubuntu-22.04 → tope `GLIBCXX_3.4.30`). Resultado en v2.8.5:
+#
+#   OSError: cannot load library 'libportaudio.so.2': .../_internal/
+#   libstdc++.so.6: version `GLIBCXX_3.4.32' not found
+#   (required by /usr/lib/x86_64-linux-gnu/libjack.so.0)
+#
+# Es decir: una lib VIEJA del bundle eclipsando una lib NUEVA del sistema. No
+# basta con que el bundle sea autocontenido; en cuanto una dependencia se
+# resuelve contra el sistema, el runtime de C++ tiene que ser el del sistema
+# también, porque libstdc++ solo es compatible hacia ATRÁS.
+#
+# Sacarlas es seguro en las DOS direcciones, medido sobre el bundle:
+#   - lo que el bundle NECESITA: GLIBCXX_3.4.29 (libQt6Core/Gui/Widgets,
+#     libpyside6, libshiboken6) y GCC_4.8.0.
+#   - lo que la distro más VIEJA que soportamos APORTA (Ubuntu 22.04, el suelo
+#     declarado en Depends): GLIBCXX_3.4.30 y GCC_12.0.0.
+# 3.4.29 <= 3.4.30, así que Qt arranca con la libstdc++ de una 22.04 real; y en
+# una distro nueva se usa la suya, que es superset. Si algún día PySide6 pide
+# más de lo que da la distro del suelo, hay que revertir esto o subir el suelo:
+# el smoke test `scripts/check-bundle-abi.py` falla y lo dice.
+_SYSTEM_CXX_RUNTIME = ('libstdc++.so', 'libgcc_s.so')
+
+_SYSTEM_LIBS = _SYSTEM_AUDIO_LIBS + _SYSTEM_CXX_RUNTIME
+
 
 def _keep(entry):
     name = entry[0].split('/')[-1]
-    return not name.startswith(_SYSTEM_AUDIO_LIBS)
+    return not name.startswith(_SYSTEM_LIBS)
 
 
 a = Analysis(

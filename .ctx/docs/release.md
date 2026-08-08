@@ -155,6 +155,12 @@ SKIP_PYINSTALLER=1 bash scripts/build-deb.sh   # reusa dist/dicto/ existente
 `libjack.so*` para que la app enlace contra las del sistema (el `.deb` ya las
 exige en `Depends`: `libportaudio2`, `libasound2`, `libpulse0`).
 
+> Excluir estas obligó a excluir también el runtime de C++ (`libstdc++.so.6`,
+> `libgcc_s.so.1`): al cargar el PortAudio del sistema entra en juego el
+> `libjack` del sistema, y el `libstdc++` del bundle lo eclipsaba. Es el bug de
+> v2.8.5 — antes de tocar exclusiones aquí, lee
+> [Excluir libs del sistema corta en las DOS direcciones](#excluir-libs-del-sistema-corta-en-las-dos-direcciones-bug-de-v285).
+
 El `libportaudio.so.2` que acaba en el bundle es el **del sistema de build**
 (en Linux el wheel de `sounddevice` es `py3-none-any` y no trae ninguno:
 PyInstaller lo recoge como dependencia de la libreria del sistema). En los
@@ -178,6 +184,134 @@ Para comprobarlo tras un build, `PulseAudio` debe salir en la lista:
 LD_LIBRARY_PATH=dist/Dicto/_internal .venv/bin/python -c \
   "import sounddevice as sd; print([h['name'] for h in sd.query_hostapis()])"
 ```
+
+## Excluir libs del sistema corta en las DOS direcciones (bug de v2.8.5)
+
+Excluir una lib del bundle no es gratis: **cambia quién gana la resolución de
+símbolos**, y eso puede romper en los dos sentidos. La v2.8.5 se publicó sin
+arrancar en ninguna distro moderna por esto.
+
+### Qué pasó
+
+Cadena causal, encadenando dos cambios que por separado eran correctos:
+
+1. El spec excluye `libportaudio`/`libasound`/`libjack` (arreglo del micro).
+2. Por tanto la app carga el **`libportaudio.so.2` del sistema**, que enlaza
+   con el **`libjack.so.0` del sistema**.
+3. En una distro moderna ese `libjack` exige `GLIBCXX_3.4.32`.
+4. Pero PyInstaller **sí** empaquetaba `libstdc++.so.6`, y el bundle va
+   **primero** en la búsqueda del enlazador, así que ganaba el del build
+   (`ubuntu-22.04` → tope `GLIBCXX_3.4.30`).
+
+```
+OSError: cannot load library 'libportaudio.so.2': .../_internal/libstdc++.so.6:
+version `GLIBCXX_3.4.32' not found (required by /usr/lib/x86_64-linux-gnu/libjack.so.0)
+```
+
+Es una lib **vieja del bundle eclipsando una lib nueva del sistema**. El caso
+simétrico del suelo de glibc, que es lo contrario (binario nuevo contra sistema
+viejo). Las dos direcciones duelen:
+
+| Dirección | Síntoma | Defensa |
+|---|---|---|
+| Bundle **viejo** eclipsa sistema **nuevo** | `version GLIBCXX_… not found` al cargar una lib del sistema | no empaquetar el runtime de C++ (este apartado) |
+| Bundle **nuevo** contra sistema **viejo** | segfault / `GLIBC_… not found` al arrancar | compilar en `ubuntu-22.04` + `GLIBC_FLOOR` |
+
+Regla general: **en cuanto una dependencia se resuelve contra el sistema, todo
+lo que esa dependencia arrastre tiene que resolverse también contra el
+sistema.** Un bundle "medio autocontenido" es el caso peligroso; el
+autocontenido del todo y el que no lo es nada son ambos coherentes.
+
+### El arreglo: fuera también `libstdc++.so.6` y `libgcc_s.so.1`
+
+`dicto-linux.spec` los excluye (`_SYSTEM_CXX_RUNTIME`) y el `.deb` los declara
+en `Depends` (`libstdc++6`, `libgcc-s1`; ya venían por transitividad, pero
+ahora son requisito **directo**).
+
+Es seguro en las dos direcciones porque `libstdc++` es compatible **hacia
+atrás**, y los números salen (medido con `objdump -T` sobre los 200 `.so` del
+bundle):
+
+| | Bundle **necesita** | Ubuntu 22.04 **aporta** |
+|---|---|---|
+| GLIBCXX | 3.4.29 | 3.4.30 |
+| CXXABI  | 1.3.13 | 1.3.13 |
+| GCC     | 4.8.0  | 12.0.0 |
+
+Como 3.4.29 ≤ 3.4.30, Qt/PySide6 arranca con la `libstdc++` de una 22.04 real;
+y en una distro nueva se usa la suya, que es superset. **Si algún día PySide6
+pidiera más de lo que da la distro del suelo, esto habría que revertirlo o
+subir el suelo** — el check nuevo lo dice con nombres y números.
+
+Alternativas descartadas:
+
+- **Volver a empaquetar `libjack`** (cortar la cadena por el otro extremo). No
+  arregla la clase de bug: el `libportaudio` del sistema seguiría pudiendo
+  arrastrar cualquier otra lib del sistema (p. ej. `libpulse`) compilada contra
+  un runtime más nuevo. Sería tapar este síntoma concreto y esperar al
+  siguiente.
+- **Empaquetar un `libstdc++` más nuevo** (el de una distro moderna). Rompe el
+  suelo de 22.04, que es justo lo que el pin del runner protege.
+
+### Qué comprueba el smoke test nuevo
+
+El hueco era estructural: **el smoke test de arranque corría en el mismo runner
+donde se compila** (`ubuntu-22.04`). Allí el `libjack` del sistema es igual de
+viejo que el `libstdc++` del bundle, así que coinciden y la app arranca. El
+fallo solo aparece en distros **más nuevas que la de build**, o sea justo donde
+están los usuarios. Un smoke test confinado a la distro de build **no puede,
+por construcción, ver esta clase de bug**.
+
+Se cierra por los dos lados:
+
+1. **`scripts/check-bundle-abi.py`** (paso "the bundle does not shadow system
+   libraries"). Estático, solo lee tablas ELF con `objdump`: sin servidor de
+   audio, sin display, sin contenedor, no puede flakear. Hace dos cosas:
+   - **Asercion principal:** que no viaje ningún runtime de C++/GCC en el
+     bundle. Es **independiente de la distro del runner**, así que falla
+     también en 22.04, donde el bug no se reproduce. Ese es el punto: el guard
+     no depende de poder observar el fallo.
+   - **Diagnóstico:** para cada lib excluida (`libportaudio`, `libasound`,
+     `libjack`), compara lo que la copia del **sistema necesita** con lo que el
+     bundle **aporta**, y dice exactamente qué símbolo falta y por cuánto.
+
+   Dos trampas que costó calibrar, por si alguien lo toca:
+   - `objdump -T` mezcla símbolos **`*UND*` (que la lib necesita)** con los que
+     **define (aporta)**. Confundirlos invierte el sentido del check: un
+     `libQt6Core` que *necesita* `GLIBCXX_3.4.29` no lo *aporta*.
+   - `GLIBC_*` queda **fuera** de la comparación a propósito. La libc nunca
+     viaja en el bundle, así que es imposible de eclipsar; el único fichero que
+     dice aportar `GLIBC_*` es `libmvec.so.1` (la libm de glibc), el mismo
+     espejismo que ya documenta [Suelo de glibc](#suelo-de-glibc). Incluirlo
+     daba 4 falsos positivos.
+
+2. **Arranque real en una distro más nueva** (paso "the binary starts on a
+   NEWER distro"): el binario se ejecuta en un contenedor `ubuntu:24.04`, cuyo
+   `libjack` es de la generación que destapó el bug. Dentro solo se instalan
+   los `Depends` declarados, así que de paso valida que la lista esté
+   completa. Un fallo de `docker pull`/apt degrada a *warning* (es
+   infraestructura, no el bundle); el guard determinista es el punto 1.
+
+   Ojo con `libasound2`: en 24.04 se llama **`libasound2t64`** (transición a
+   time_t de 64 bits) y pedir el nombre viejo **aborta el `apt-get install`
+   entero**, lo que hacía fallar el paso con un engañoso `xvfb: No such file`.
+   El step elige el nombre según lo que ofrezca la release.
+
+### Verificado ejecutando (v2.8.6)
+
+Construyendo el bundle **dentro de un contenedor `ubuntu:22.04`** (equivalente
+al CI) y ejecutándolo:
+
+| Bundle | Ubuntu 22.04 | 24.04 | 25.10 | 26.04 |
+|---|---|---|---|---|
+| v2.8.5 (con `libstdc++` dentro) | arranca | **`GLIBCXX_3.4.32 not found`** | — | **`GLIBCXX_3.4.32 not found`** |
+| v2.8.6 (excluido) | arranca | arranca | arranca | carga `libportaudio` OK |
+
+La primera fila es exactamente por qué el CI estaba verde publicando una
+release rota. En 26.04 el `.deb` instala y el `libportaudio` del sistema carga
+sin error de símbolos; la app no llega al banner **solo** porque un contenedor
+pelado no tiene daemon de audio (`PaErrorCode -9999`, "Can't connect to
+server"), que es la condición ya conocida y no tiene que ver con este bug.
 
 ### Smoke tests en CI (lo que habría cazado el bug de v2.8.2)
 

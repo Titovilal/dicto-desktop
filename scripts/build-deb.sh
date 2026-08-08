@@ -126,6 +126,24 @@ GLIBC_FLOOR="2.35"   # = glibc de ubuntu-22.04, el runner de `build-linux`
 LIBC_DEP="libc6 (>= $GLIBC_FLOOR), "
 echo ">> suelo de glibc declarado: $GLIBC_FLOOR (runner de CI: ubuntu-22.04)"
 
+# --- runtime de C++ -----------------------------------------------------------
+# Desde v2.8.6 `dicto-linux.spec` NO empaqueta libstdc++.so.6 ni libgcc_s.so.1:
+# se usan las del sistema (ver el comentario largo del spec y release.md). El
+# motivo es que, al excluir las libs de audio, la app carga el libportaudio del
+# sistema -> libjack del sistema, y en una distro moderna ese libjack pide
+# GLIBCXX_3.4.32; el libstdc++ del bundle (copiado del runner 22.04, tope
+# 3.4.30) lo eclipsaba y la app no arrancaba (v2.8.5).
+#
+# En la practica ya venian instaladas por transitividad (comprobado en una
+# 22.04 limpia: instalar solo los Depends de abajo ya trae libstdc++6 12.3), pero
+# ahora son un requisito DIRECTO y se declara como tal: si el bundle depende de
+# algo del sistema, va en Depends. Sin version minima a proposito -- el bundle
+# necesita como mucho GLIBCXX_3.4.29 / GCC_4.8.0, y hasta la 22.04 (la distro
+# mas vieja que soportamos) aporta 3.4.30 / GCC_12, asi que cualquier
+# libstdc++6 que apt pueda instalar en un Ubuntu soportado vale.
+CXX_DEP="libstdc++6, libgcc-s1, "
+echo ">> runtime de C++ declarado en Depends (el bundle ya no lo lleva dentro)"
+
 # Aviso, no error: un build LOCAL en una distro más nueva produce binarios que
 # de verdad necesitan una glibc mayor que la declarada, así que ese .deb
 # instalará en 22.04 y reventará al arrancar. Sirve para probar en tu máquina;
@@ -148,7 +166,7 @@ Priority: optional
 Architecture: $ARCH
 Maintainer: $MAINTAINER
 Installed-Size: $INSTALLED_KB
-Depends: ${LIBC_DEP}libgl1, libegl1, libxkbcommon0, libxkbcommon-x11-0, libfontconfig1, libportaudio2, libasound2, libpulse0, libxcb-cursor0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-render-util0, libxcb-shape0, libxcb-util1, libxcb-xkb1
+Depends: ${LIBC_DEP}${CXX_DEP}libgl1, libegl1, libxkbcommon0, libxkbcommon-x11-0, libfontconfig1, libportaudio2, libasound2, libpulse0, libxcb-cursor0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-render-util0, libxcb-shape0, libxcb-util1, libxcb-xkb1
 Description: $DESC
  Dicto records voice via a global hotkey, transcribes it through the Dicto
  API and pastes the result into the focused application.

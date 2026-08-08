@@ -4,7 +4,7 @@
 ; `make installer` como el CI). Se habia quedado clavada en 2.5.1 con el
 ; proyecto en 2.8.4, y un build local escupia Dicto-2.5.1-setup.exe que el
 ; updater aceptaba como valido.
-#define MyAppVersion "2.8.5"
+#define MyAppVersion "2.8.6"
 #define MyAppPublisher "Titovilal"
 #define MyAppURL "https://github.com/Titovilal/dicto-desktop"
 #define MyAppExeName "Dicto.exe"
