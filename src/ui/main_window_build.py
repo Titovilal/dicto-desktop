@@ -713,6 +713,9 @@ class BuildMixin:
         self.auto_enter_checkbox = self._add_checkbox(
             layout, "press_enter_after_paste", self._on_auto_enter_changed
         )
+        self.restore_clipboard_checkbox = self._add_checkbox(
+            layout, "restore_clipboard_after_paste", self._on_restore_clipboard_changed
+        )
 
         # Edit selection
         self._add_section(layout, "edit_selection")

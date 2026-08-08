@@ -46,6 +46,36 @@ class TestClear:
         mock_write.assert_called_once_with("")
 
 
+class TestRestore:
+    @patch("src.services.clipboard._ClipboardBackend.write")
+    @patch("src.services.clipboard._ClipboardBackend.read", return_value="dictated")
+    def test_restores_previous_content(self, mock_read, mock_write):
+        assert ClipboardManager.restore("secret-password", "dictated") is True
+        mock_write.assert_called_once_with("secret-password")
+
+    @patch("src.services.clipboard._ClipboardBackend.write")
+    @patch("src.services.clipboard._ClipboardBackend.read", return_value="dictated")
+    def test_does_not_restore_empty_previous(self, mock_read, mock_write):
+        assert ClipboardManager.restore("", "dictated") is False
+        mock_write.assert_not_called()
+
+    @patch("src.services.clipboard._ClipboardBackend.write")
+    @patch(
+        "src.services.clipboard._ClipboardBackend.read",
+        return_value="user copied this after us",
+    )
+    def test_does_not_overwrite_a_manual_copy(self, mock_read, mock_write):
+        assert ClipboardManager.restore("secret-password", "dictated") is False
+        mock_write.assert_not_called()
+
+    @patch(
+        "src.services.clipboard._ClipboardBackend.write", side_effect=Exception("fail")
+    )
+    @patch("src.services.clipboard._ClipboardBackend.read", return_value="dictated")
+    def test_restore_exception_returns_false(self, mock_read, mock_write):
+        assert ClipboardManager.restore("previous", "dictated") is False
+
+
 class TestWaitForChange:
     @patch("src.services.clipboard._ClipboardBackend.read")
     def test_returns_new_content(self, mock_read):

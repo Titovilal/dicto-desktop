@@ -104,6 +104,7 @@ class Settings:
             "always_on_top": False,
             "persistent_overlay": False,
             "recording_mode": "hold",
+            "restore_clipboard": True,
         },
         "transformation": {"model": "qwen/qwen3-32b"},
         "edit_hotkey": {"modifiers": ["ctrl", "alt"], "key": "space"},
@@ -209,6 +210,9 @@ class Settings:
     # "hold": press-and-hold to record, release to stop.
     # "toggle": press once to start, press again to stop.
     recording_mode: str = _config_property("behavior", "recording_mode", "hold")
+    # After an auto-paste, put back whatever the user had on the clipboard
+    # before we hijacked it. Only applies when auto-paste actually ran.
+    restore_clipboard: bool = _config_property("behavior", "restore_clipboard", True)
     edit_auto_paste: bool = _config_property("behavior", "edit_auto_paste", False)
     edit_auto_enter: bool = _config_property("behavior", "edit_auto_enter", False)
 

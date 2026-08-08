@@ -6,11 +6,13 @@ from __future__ import annotations
 
 import traceback
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from enum import Enum
 
 from PySide6.QtCore import QObject, Signal, Slot, QTimer
 
 from src.config.settings import Settings
+from src.i18n import t
 from src.services.hotkey import HotkeyListener, create_hotkey_listener
 from src.services.keyboard_actions import KeyboardService
 from src.services.recorder import AudioRecorder
@@ -29,6 +31,22 @@ class AppState(Enum):
     ERROR = "error"
 
 
+@dataclass
+class _Delivery:
+    """Everything one transcription needs to undo its own clipboard hijack.
+
+    Grouping these per transcription is what makes overlapping dictations safe:
+    the restore timer closes over *its* delivery, so a second transcription
+    starting mid-flight can neither reset the first one's paste-failure flag nor
+    make the first one's timer act on the second one's text.
+    """
+
+    previous: str
+    copied_text: str
+    generation: int
+    paste_failed: bool = field(default=False)
+
+
 class Controller(QObject):
     state_changed = Signal(AppState)
     recording_started = Signal()
@@ -37,6 +55,10 @@ class Controller(QObject):
     transform_completed = Signal(str, str)  # (format_id, transformed_text)
     transform_failed = Signal(str, str)  # (format_id, error_message)
     error_occurred = Signal(str)
+    # Partial successes: the transcription landed, but something downstream
+    # (typically the auto-paste) could not be delivered. Kept separate from
+    # error_occurred so the UI can show it as advice instead of a failure.
+    warning_occurred = Signal(str)
     audio_level_changed = Signal(float)
 
     cancel_completed = Signal()
@@ -57,6 +79,17 @@ class Controller(QObject):
         self.keyboard = KeyboardService()
 
         self._cancelled: bool = False
+        # State for the transcription currently being delivered. Each one gets a
+        # fresh _Delivery, so nothing leaks between overlapping dictations.
+        self._delivery: _Delivery | None = None
+        self._delivery_generation: int = 0
+        # The single pending restore timer. Kept as a handle so a new
+        # transcription can cancel the previous one instead of letting stale
+        # timers pile up and revert text they know nothing about.
+        self._restore_timer: QTimer | None = None
+        # The delivery that timer owes a restore to, so a superseding
+        # transcription can inherit the clipboard snapshot it never put back.
+        self._pending_restore: _Delivery | None = None
 
         # Single persistent thread pool – no QThread lifecycle issues
         self._pool = ThreadPoolExecutor(max_workers=1)
@@ -273,13 +306,32 @@ class Controller(QObject):
             return
         if self.recorder:
             self.recorder.cleanup_temp_file()
+        # A new transcription supersedes the previous one: drop any restore it
+        # still had pending, or it would revert the text we are about to place.
+        superseded = self._cancel_pending_restore()
+        # Snapshot the clipboard before we overwrite it, so we can put it back
+        # once the auto-paste has consumed our text.
+        previous_clipboard = self._read_clipboard_for_restore()
+        if superseded is not None and previous_clipboard == superseded.copied_text:
+            # Dictating again before the previous restore fired: what we just
+            # read is the *previous transcription*, not the user's data. Carry
+            # the older snapshot forward, or the real clipboard is lost for good
+            # and we would "restore" our own text over it.
+            previous_clipboard = superseded.previous
+        self._delivery_generation += 1
+        delivery = _Delivery(
+            previous=previous_clipboard,
+            copied_text=text,
+            generation=self._delivery_generation,
+        )
+        self._delivery = delivery
         if ClipboardManager.copy(text):
             self._set_state(AppState.SUCCESS)
             self.transcription_completed.emit(text)
             logger.info(f"Transcription successful: {text}")
-            self._perform_auto_actions(
-                self.settings.auto_paste, self.settings.auto_enter
-            )
+            auto_paste = self.settings.auto_paste
+            self._perform_auto_actions(delivery, auto_paste, self.settings.auto_enter)
+            self._schedule_clipboard_restore(delivery, auto_paste)
         else:
             self._handle_error("Failed to copy to clipboard")
 
@@ -291,23 +343,157 @@ class Controller(QObject):
 
     # ── Auto-paste / auto-enter ──────────────────────────────
 
-    def _perform_auto_actions(self, auto_paste: bool, auto_enter: bool):
+    def _perform_auto_actions(
+        self, delivery: _Delivery, auto_paste: bool, auto_enter: bool
+    ):
         if auto_paste:
-            QTimer.singleShot(100, lambda: self._do_auto_paste(auto_enter))
+            QTimer.singleShot(100, lambda: self._do_auto_paste(delivery, auto_enter))
 
-    def _do_auto_paste(self, auto_enter: bool):
+    def _do_auto_paste(self, delivery: _Delivery, auto_enter: bool):
+        """Press Ctrl+V for `delivery`, recording on it whether that worked.
+
+        Both failure shapes — a False return (Wayland with no ydotool/xdotool)
+        and a raised exception (pynput failing on X11/Windows) — are partial
+        successes: the text is on the clipboard, so we warn the user and mark
+        the delivery so its restore leaves the transcription alone. Marking only
+        the False branch used to lose the transcription outright on X11.
+        """
         try:
-            self.keyboard.paste()
-            if auto_enter:
-                QTimer.singleShot(50, self._do_auto_enter)
+            pasted = self.keyboard.paste()
         except Exception as e:
             logger.error(f"Error performing auto-paste: {e}")
+            pasted = False
+        if not pasted:
+            delivery.paste_failed = True
+            self._warn_auto_paste_unavailable()
+            return
+        if auto_enter:
+            QTimer.singleShot(50, self._do_auto_enter)
+
+    def _warn_auto_paste_unavailable(self):
+        """Tell the user the text is on the clipboard and how to enable pasting."""
+        message = t("auto_paste_failed")
+        logger.warning(message)
+        self.warning_occurred.emit(message)
 
     def _do_auto_enter(self):
         try:
             self.keyboard.enter()
         except Exception as e:
             logger.error(f"Error performing auto-enter: {e}")
+
+    # ── Clipboard restore ────────────────────────────────────
+
+    # How long to wait, after the transcription lands on the clipboard, before
+    # putting the user's previous content back.
+    #
+    # The auto-paste chain is: +100ms QTimer -> keyboard.paste() (Ctrl+V, which
+    # on Wayland goes out through a ydotool subprocess) -> the focused app reads
+    # the clipboard, which on Linux means a round-trip to whichever process owns
+    # the selection (xclip/wl-copy, spawned by pyperclip). Every step is
+    # asynchronous and out of our control, so restoring too early makes the app
+    # paste the *old* content — the exact bug this feature must not introduce.
+    # 1.2s leaves ~1.1s of slack after the paste is triggered, which is far more
+    # than a local clipboard round-trip needs while still being short enough
+    # that a user reaching for Ctrl+V themselves gets their own data back.
+    # Being late is harmless; being early breaks the paste, so we err late.
+    CLIPBOARD_RESTORE_DELAY_MS = 1200
+
+    def _read_clipboard_for_restore(self) -> str:
+        """Read the current clipboard so it can be restored later.
+
+        Returns an empty string when the feature is disabled, so no restore is
+        scheduled and we never pay the clipboard read cost.
+
+        Unlike the restore, this read stays on the GUI thread: its result is
+        needed *before* we overwrite the clipboard on the very next line, so
+        offloading it would only add a blocking wait for the same work.
+        """
+        if not self.settings.restore_clipboard:
+            return ""
+        return ClipboardManager.paste()
+
+    def _cancel_pending_restore(self) -> _Delivery | None:
+        """Drop the restore still owed by the previous transcription, if any.
+
+        Returns the delivery whose restore was cancelled, so the caller can
+        inherit the clipboard snapshot it never got to put back.
+        """
+        if self._restore_timer is None:
+            return None
+        self._restore_timer.stop()
+        self._restore_timer = None
+        cancelled, self._pending_restore = self._pending_restore, None
+        return cancelled
+
+    def _schedule_clipboard_restore(self, delivery: _Delivery, auto_paste: bool):
+        """Queue restoring the previous clipboard once the paste consumed ours.
+
+        Only makes sense when auto-paste ran: without it, the transcription on
+        the clipboard *is* the deliverable — the user's next action is pasting
+        it by hand — so taking it away would break the app's main purpose.
+
+        The timer is kept on `self._restore_timer` so the next transcription can
+        cancel it, and `delivery.generation` is re-checked when it fires: the
+        handle alone is not enough, because a timer can already be in the event
+        queue by the time we try to stop it.
+        """
+        if (
+            not auto_paste
+            or not self.settings.restore_clipboard
+            or not delivery.previous
+        ):
+            return
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+        timer.timeout.connect(lambda: self._restore_clipboard(delivery))
+        self._restore_timer = timer
+        self._pending_restore = delivery
+        timer.start(self.CLIPBOARD_RESTORE_DELAY_MS)
+
+    def _run_clipboard_io(self, fn):
+        """Run blocking clipboard work off the GUI thread.
+
+        On Linux pyperclip shells out to xclip/wl-copy, and a restore is a read
+        plus a write — up to two subprocesses. A hung selection owner (a classic
+        X11 failure) would otherwise freeze the whole UI, so this goes to the
+        worker pool. Nothing downstream touches Qt widgets, so no marshalling
+        back to the main thread is needed.
+        """
+        try:
+            self._pool.submit(fn)
+        except RuntimeError:
+            # Pool already shut down (app quitting): the restore no longer
+            # matters, and running it inline could block the exit path.
+            logger.debug("Skipping clipboard restore: worker pool is shut down")
+
+    def _restore_clipboard(self, delivery: _Delivery):
+        self._restore_timer = None
+        self._pending_restore = None
+        # A newer transcription owns the clipboard now; this timer is stale and
+        # restoring would revert text the user just dictated.
+        if delivery.generation != self._delivery_generation:
+            logger.info(
+                "Skipping clipboard restore: a newer transcription superseded it"
+            )
+            return
+        # When the auto-paste never landed, the transcription on the clipboard is
+        # all the user has left (we told them to press Ctrl+V), so keep it.
+        # Read from the delivery, not from self: the flag belongs to *this*
+        # transcription, and self would already have been reset by a newer one.
+        if delivery.paste_failed:
+            logger.info("Skipping clipboard restore: auto-paste did not run")
+            return
+
+        previous, copied_text = delivery.previous, delivery.copied_text
+
+        def _do_restore():
+            try:
+                ClipboardManager.restore(previous, copied_text)
+            except Exception as e:
+                logger.error(f"Error restoring clipboard: {e}")
+
+        self._run_clipboard_io(_do_restore)
 
     # ── Audio level callback ────────────────────────────────
 

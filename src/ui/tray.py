@@ -172,6 +172,10 @@ class TrayManager(QObject):
             f"Dicto — {t('error')}", message, QSystemTrayIcon.MessageIcon.Critical
         )
 
+    def show_warning(self, message: str):
+        """A partial success: shown with the Warning icon, never as Critical."""
+        self.show_message("Dicto", message, QSystemTrayIcon.MessageIcon.Warning)
+
     def show_success(self, message: str):
         self.show_message("Dicto", message, QSystemTrayIcon.MessageIcon.Information)
 

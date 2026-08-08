@@ -57,6 +57,14 @@ def _wayland_key(action: str) -> bool:
             return True
         logger.warning(f"xdotool failed for {action}: {result.stderr.decode().strip()}")
 
+    if not ydotool and not xdotool:
+        logger.warning(
+            f"Cannot simulate '{action}' on Wayland: neither ydotool nor xdotool "
+            "was found. Install one of them (e.g. 'sudo apt install ydotool' and "
+            "run the ydotoold daemon, or 'sudo apt install xdotool') to enable "
+            "auto-paste. The transcription is still copied to the clipboard."
+        )
+
     return False
 
 
@@ -76,10 +84,12 @@ class KeyboardService:
         KeyboardService._keyboard = _kb
         self._controller = _kb.Controller()
 
-    def paste(self):
-        """Simulate Ctrl+V."""
-        if _is_wayland() and _wayland_key("paste"):
-            return
+    def paste(self) -> bool:
+        """Simulate Ctrl+V. True if the keystroke was actually delivered."""
+        if _is_wayland():
+            # No pynput fallback here: under Wayland it silently targets
+            # XWayland and the events never reach the focused window.
+            return _wayland_key("paste")
         try:
             self._ensure_controller()
             keyboard = self._keyboard
@@ -87,27 +97,29 @@ class KeyboardService:
             self._controller.press("v")
             self._controller.release("v")
             self._controller.release(keyboard.Key.ctrl)
+            return True
         except Exception as e:
             logger.error(f"Error simulating paste: {e}")
             raise
 
-    def enter(self):
-        """Simulate Enter key press."""
-        if _is_wayland() and _wayland_key("enter"):
-            return
+    def enter(self) -> bool:
+        """Simulate Enter key press. True if the keystroke was delivered."""
+        if _is_wayland():
+            return _wayland_key("enter")
         try:
             self._ensure_controller()
             keyboard = self._keyboard
             self._controller.press(keyboard.Key.enter)
             self._controller.release(keyboard.Key.enter)
+            return True
         except Exception as e:
             logger.error(f"Error simulating enter: {e}")
             raise
 
-    def copy(self):
-        """Simulate Ctrl+C."""
-        if _is_wayland() and _wayland_key("copy"):
-            return
+    def copy(self) -> bool:
+        """Simulate Ctrl+C. True if the keystroke was delivered."""
+        if _is_wayland():
+            return _wayland_key("copy")
         try:
             self._ensure_controller()
             keyboard = self._keyboard
@@ -115,6 +127,7 @@ class KeyboardService:
             self._controller.press("c")
             self._controller.release("c")
             self._controller.release(keyboard.Key.ctrl)
+            return True
         except Exception as e:
             logger.error(f"Error simulating copy: {e}")
             raise

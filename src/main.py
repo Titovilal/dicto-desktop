@@ -189,6 +189,7 @@ class DictoApp:
             self._on_transcription_completed
         )
         self.controller.error_occurred.connect(self._on_error)
+        self.controller.warning_occurred.connect(self._on_warning)
 
         # Controller events -> Update main window
         # recording_started -> main window is handled in _on_recording_started_overlay
@@ -320,6 +321,22 @@ class DictoApp:
 
         # Return to idle after overlay hides
         QTimer.singleShot(1500, self.controller.return_to_idle)
+
+    @Slot(str)
+    def _on_warning(self, message: str):
+        """Handle a partial success (e.g. the auto-paste could not be delivered).
+
+        Deliberately not routed through _on_error: these messages are advice,
+        not failures, so they get no "Error:" prefix, no red, and — crucially —
+        no truncation, since the actionable part sits at the end of the text.
+        The app also stays where it is instead of being bounced back to IDLE.
+        """
+        assert self.tray_manager is not None
+        assert self.overlay is not None
+
+        logger.warning(message)
+        self.overlay.show_warning(message)
+        self.tray_manager.show_warning(message)
 
     @Slot(str)
     def _on_error(self, error_message: str):

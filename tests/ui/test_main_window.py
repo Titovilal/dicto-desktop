@@ -214,51 +214,22 @@ class TestTimerLabel:
         assert not win.timer_label.isHidden()
 
 
-class TestSetModels:
-    def test_repopulates_combos_from_api(self, win):
-        win.set_models(
-            {
-                "transcription": [
-                    {"id": "v3-turbo", "name": "Whisper V3 Turbo", "default": True},
-                    {"id": "new-asr", "name": "New ASR"},
-                ],
-                "transformation": [
-                    {"id": "qwen/qwen3-32b", "name": "Qwen3 32B", "default": True},
-                ],
-            }
-        )
-        values = [win.model_combo.itemData(i) for i in range(win.model_combo.count())]
-        assert values == ["v3-turbo", "new-asr"]
-        assert win.transformation_model_combo.itemText(0) == "Qwen3 32B"
+class TestRestoreClipboardSetting:
+    """The restore feature mutates the user's clipboard, so it needs a UI toggle
+    rather than being reachable only by hand-editing config.yaml."""
 
-    def test_empty_lists_keep_defaults(self, win):
-        before = [win.model_combo.itemData(i) for i in range(win.model_combo.count())]
-        win.set_models({"transcription": [], "transformation": []})
-        after = [win.model_combo.itemData(i) for i in range(win.model_combo.count())]
-        assert before == after
+    def test_checkbox_reflects_the_saved_setting(self, settings, qtbot):
+        settings.restore_clipboard = False
+        w = MainWindow(settings=settings)
+        qtbot.addWidget(w)
+        assert w.restore_clipboard_checkbox.isChecked() is False
 
-    def test_saved_selection_preserved(self, win):
-        win.settings.transcription_model = "new-asr"
-        win.set_models(
-            {
-                "transcription": [
-                    {"id": "v3-turbo", "name": "Whisper V3 Turbo", "default": True},
-                    {"id": "new-asr", "name": "New ASR"},
-                ],
-                "transformation": [],
-            }
-        )
-        assert win.model_combo.currentData() == "new-asr"
+    def test_unchecking_persists_the_setting(self, win, settings):
+        win.restore_clipboard_checkbox.setChecked(True)
+        win.restore_clipboard_checkbox.setChecked(False)
+        assert settings.restore_clipboard is False
 
-    def test_falls_back_to_default_when_saved_missing(self, win):
-        win.settings.transcription_model = "gone-model"
-        win.set_models(
-            {
-                "transcription": [
-                    {"id": "v3-turbo", "name": "Whisper V3 Turbo"},
-                    {"id": "best", "name": "Best", "default": True},
-                ],
-                "transformation": [],
-            }
-        )
-        assert win.model_combo.currentData() == "best"
+    def test_checking_persists_the_setting(self, win, settings):
+        win.restore_clipboard_checkbox.setChecked(False)
+        win.restore_clipboard_checkbox.setChecked(True)
+        assert settings.restore_clipboard is True

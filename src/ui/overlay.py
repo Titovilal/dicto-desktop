@@ -502,6 +502,32 @@ class OverlayWindow(QWidget):
         else:
             QTimer.singleShot(auto_hide_delay, self.show_idle)
 
+    def show_warning(self, message: str, auto_hide_delay: int = 6000):
+        """Advice about a partial success — not a failure.
+
+        Rendered in amber with no "Error:" prefix, and left up longer than an
+        error because the message tells the user to do something (press Ctrl+V)
+        rather than just reporting that something broke. The full text goes into
+        the tooltip, since the card is far too narrow for an actionable message.
+        """
+        self.current_state = "warning"
+        self._stop_animations()
+        self.status_label.setText(message)
+        self.status_label.setStyleSheet(
+            f"color: {AMBER}; font-size: 12px; font-weight: 600; {LABEL_BASE}"
+        )
+        self.status_label.setToolTip(message)
+        self.sub_label.hide()
+        self.status_dot.setStyleSheet(f"background-color: {AMBER}; border-radius: 3px;")
+        self._set_card_style()
+        self._hide_icon()
+        self._set_action_mode("settings")
+
+        if not self._persistent:
+            QTimer.singleShot(auto_hide_delay, self._auto_hide)
+        else:
+            QTimer.singleShot(auto_hide_delay, self.show_idle)
+
     def show_error(self, message: str = "Error", auto_hide_delay: int = 3000):
         self.current_state = "error"
         self._stop_animations()

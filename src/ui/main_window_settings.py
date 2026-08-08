@@ -198,6 +198,7 @@ class SettingsMixin:
 
         self.auto_paste_checkbox.setChecked(self.settings.auto_paste)
         self.auto_enter_checkbox.setChecked(self.settings.auto_enter)
+        self.restore_clipboard_checkbox.setChecked(self.settings.restore_clipboard)
 
         self.always_on_top_checkbox.setChecked(self.settings.always_on_top)
         self.always_on_top_button.blockSignals(True)
@@ -287,6 +288,9 @@ class SettingsMixin:
 
     def _on_auto_enter_changed(self, state: int):
         self._save_setting("auto_enter", state == Qt.CheckState.Checked.value)
+
+    def _on_restore_clipboard_changed(self, state: int):
+        self._save_setting("restore_clipboard", state == Qt.CheckState.Checked.value)
 
     def _on_always_on_top_changed(self, state: int):
         checked = state == Qt.CheckState.Checked.value
@@ -426,6 +430,7 @@ class SettingsMixin:
         # Settings page checkboxes
         self.auto_paste_checkbox.setText(t("auto_paste_after_transcribe"))
         self.auto_enter_checkbox.setText(t("press_enter_after_paste"))
+        self.restore_clipboard_checkbox.setText(t("restore_clipboard_after_paste"))
         self.always_on_top_checkbox.setText(t("always_on_top"))
         self.persistent_overlay_checkbox.setText(t("persistent_overlay"))
         self.edit_auto_paste_checkbox.setText(t("auto_paste_after_edit"))

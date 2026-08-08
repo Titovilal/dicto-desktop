@@ -102,6 +102,43 @@ class ClipboardManager:
             logger.error(f"Error clearing clipboard: {e}")
 
     @staticmethod
+    def restore(previous: str, expected_current: str) -> bool:
+        """Restore `previous` onto the clipboard, but only if it is safe.
+
+        Used to undo the clipboard hijack that auto-paste requires: we copy the
+        transcription, let the paste happen, and then put back whatever the user
+        had there before.
+
+        It is skipped (returning False) when:
+          - `previous` is empty: there is nothing meaningful to put back, and
+            clearing the clipboard would be worse than leaving the text.
+          - the clipboard no longer holds `expected_current`: the user (or
+            another app) copied something after us, and overwriting that would
+            be exactly the bug we are trying to fix.
+
+        Returns True if the previous content was written back.
+        """
+        if not previous:
+            logger.debug("Not restoring clipboard: previous content was empty")
+            return False
+
+        current = ClipboardManager.paste()
+        if current != expected_current:
+            logger.debug(
+                "Not restoring clipboard: content changed since we copied "
+                "(the user probably copied something else)"
+            )
+            return False
+
+        try:
+            _ClipboardBackend.write(previous)
+            logger.info("Restored previous clipboard content")
+            return True
+        except Exception as e:
+            logger.error(f"Error restoring clipboard: {e}")
+            return False
+
+    @staticmethod
     def wait_for_change(
         old_content: str, timeout_ms: int = 500, poll_ms: int = 20
     ) -> str:
