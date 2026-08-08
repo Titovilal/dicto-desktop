@@ -1,6 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+
 from PyInstaller.utils.hooks import copy_metadata
+
+# CI empaqueta el .tar.gz portable esperando dist/dicto/dicto (minúscula); en
+# local el bundle se llama Dicto. build-deb.sh acepta las dos grafías.
+BUNDLE_NAME = os.environ.get('DICTO_BUNDLE_NAME', 'Dicto')
 
 # El PortAudio que PyInstaller recoge del wheel de sounddevice viene compilado
 # sin backend de PulseAudio, y el libasound.so.2 que arrastra viaja sin sus
@@ -23,7 +29,13 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[('assets', 'assets'), ('src/ui/assets', 'src/ui/assets')] + copy_metadata('dicto'),
-    hiddenimports=['dbus_next'],
+    hiddenimports=[
+        'dbus_next',
+        'pynput.keyboard',
+        'pynput.mouse',
+        'pynput.keyboard._xorg',
+        'pynput.mouse._xorg',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -40,7 +52,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='Dicto',
+    name=BUNDLE_NAME,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -58,5 +70,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='Dicto',
+    name=BUNDLE_NAME,
 )

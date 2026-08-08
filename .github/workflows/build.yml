@@ -101,7 +101,9 @@ jobs:
 
       - name: Build with PyInstaller (onedir)
         run: |
-          pyinstaller --name "dicto" --onedir --windowed --noconfirm --copy-metadata dicto --add-data "assets:assets" --add-data "src/ui/assets:src/ui/assets" --hidden-import dbus_next --hidden-import pynput.keyboard --hidden-import pynput.mouse --hidden-import pynput.keyboard._xorg --hidden-import pynput.mouse._xorg src/main.py
+          # Use the committed spec: it also drops the bundled PortAudio/ALSA so
+          # the app links against the system ones (see .ctx/docs/release.md).
+          DICTO_BUNDLE_NAME=dicto pyinstaller --noconfirm dicto-linux.spec
           tar -czf dist/dicto-linux-amd64.tar.gz -C dist dicto
 
       - name: Package .deb

@@ -117,6 +117,13 @@ y `default`: solo quedan los `hw:` en acceso exclusivo, PipeWire ya tiene el
 micro cogido y grabar falla con `Invalid sample rate [PaErrorCode -9997]`. En
 `uv run` no se nota porque ahí se usa el PortAudio del sistema.
 
+El CI (`.github/workflows/build.yml`) **también usa el spec**, con
+`DICTO_BUNDLE_NAME=dicto` para que el bundle salga en `dist/dicto/dicto` (que es
+lo que espera el `.tar.gz` portable). Antes invocaba PyInstaller con flags
+sueltos y se saltaba el spec, así que el arreglo solo llegaba al build local y
+el `.deb` publicado seguía roto: si añades algo al spec, no lo dupliques en el
+workflow.
+
 Para comprobarlo tras un build, `PulseAudio` debe salir en la lista:
 
 ```bash
