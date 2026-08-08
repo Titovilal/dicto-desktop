@@ -35,8 +35,20 @@ if [[ "${SKIP_PYINSTALLER:-0}" != "1" ]]; then
   uv run pyinstaller --noconfirm dicto-linux.spec
 fi
 
-if [[ ! -x "dist/Dicto/Dicto" ]]; then
-  echo "ERROR: no existe dist/Dicto/Dicto. Ejecuta sin SKIP_PYINSTALLER." >&2
+# El bundle se llama "Dicto" con dicto-linux.spec (build local) pero "dicto" en
+# CI, que invoca PyInstaller con --name dicto para que el .tar.gz portable
+# conserve ese nombre. Acepta ambos en vez de imponer una sola grafía.
+BUNDLE=""
+for candidate in "dist/Dicto/Dicto" "dist/dicto/dicto"; do
+  if [[ -x "$candidate" ]]; then
+    BUNDLE="$(dirname "$candidate")"
+    BIN="$(basename "$candidate")"
+    break
+  fi
+done
+
+if [[ -z "$BUNDLE" ]]; then
+  echo "ERROR: no existe dist/Dicto/Dicto ni dist/dicto/dicto. Ejecuta sin SKIP_PYINSTALLER." >&2
   exit 1
 fi
 
@@ -45,10 +57,10 @@ STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
 install -d "$STAGE/opt"
-cp -a "dist/Dicto" "$STAGE/opt/dicto"
+cp -a "$BUNDLE" "$STAGE/opt/dicto"
 
 install -d "$STAGE/usr/bin"
-ln -sf "/opt/dicto/Dicto" "$STAGE/usr/bin/dicto"
+ln -sf "/opt/dicto/$BIN" "$STAGE/usr/bin/dicto"
 
 install -d "$STAGE/usr/share/icons/hicolor/256x256/apps"
 cp "assets/icons/icon.png" "$STAGE/usr/share/icons/hicolor/256x256/apps/dicto.png"
