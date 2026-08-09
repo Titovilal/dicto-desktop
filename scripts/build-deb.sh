@@ -76,6 +76,12 @@ Icon=dicto
 Terminal=false
 Categories=AudioVideo;Audio;Utility;
 StartupNotify=true
+# Lets the shell match our window to this launcher when the startup token
+# alone doesn't (frameless windows on Wayland). Without it GNOME keeps the
+# loading cursor spinning until its own ~20s timeout and shows a second,
+# generic icon in the dock. Qt reports the WM_CLASS from the desktop file
+# name set via QGuiApplication.setDesktopFileName("dicto") in src/main.py.
+StartupWMClass=dicto
 EOF
 
 # --- 3. metadatos DEBIAN/control --------------------------------------------

@@ -69,6 +69,11 @@ class DictoApp:
         # is unreadable. Fusion honors our dark stylesheet everywhere.
         self.app.setStyle("Fusion")
         self.app.setApplicationName("Dicto")
+        # Ties the process to /usr/share/applications/dicto.desktop. On Wayland
+        # this is what lets the compositor match our surfaces to the launcher
+        # (icon in the dock) and, together with the startup token consumed in
+        # _finish_startup_notification, stop the "loading" cursor.
+        self.app.setDesktopFileName("dicto")
         self.app.setQuitOnLastWindowClosed(False)  # Keep running in tray
 
         # Load bundled fonts
@@ -121,6 +126,9 @@ class DictoApp:
         self.splash.close()
         self.splash = None
 
+        # Tell the desktop we finished launching (kills the "loading" cursor)
+        self._finish_startup_notification()
+
         # Setup signal handlers for clean exit
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -129,6 +137,38 @@ class DictoApp:
         self.timer = QTimer()
         self.timer.timeout.connect(lambda: None)
         self.timer.start(500)
+
+    def _finish_startup_notification(self):
+        """Close the desktop's startup notification ("loading" cursor / spinner).
+
+        With StartupNotify=true the launcher spins until the app maps a window
+        carrying the startup token. Both of Dicto's startup windows fail to do
+        that on their own: the splash is a Qt.Tool (desktops ignore utility
+        windows) and the main window is frameless, so GNOME never matches it.
+        The notification then only ends on the compositor's own timeout —
+        ~20s of a loading cursor over an app that is already usable.
+
+        So we consume the token ourselves once the main window is up. The
+        environment variable is also unset afterwards: it is a single-use
+        token, and leaving it set makes any child process we spawn inherit a
+        spent token, which some compositors treat as a focus-stealing attempt.
+        """
+        assert self.main_window is not None
+
+        # Wayland: hand the activation token back through the window handle.
+        token = os.environ.pop("XDG_ACTIVATION_TOKEN", None)
+        if token:
+            try:
+                handle = self.main_window.windowHandle()
+                if handle is not None:
+                    handle.setProperty("_q_xdg_activation_token", token)
+                logger.debug("Consumed XDG activation token")
+            except Exception as e:  # never block startup over a cosmetic fix
+                logger.debug(f"Could not consume XDG activation token: {e}")
+
+        # X11 (and XWayland fallback): libnotify-style startup id.
+        if os.environ.pop("DESKTOP_STARTUP_ID", None):
+            logger.debug("Cleared DESKTOP_STARTUP_ID")
 
     def _load_fonts(self):
         """Load bundled JetBrains Mono font files."""
