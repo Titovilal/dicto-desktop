@@ -242,12 +242,18 @@ class Controller(QObject):
             return
         try:
             self._cancelled = False
-            self._set_state(AppState.RECORDING)
-            self.recording_started.emit()
+            # Start first, announce after: flipping the UI to RECORDING before
+            # knowing the recorder accepted leaves a phantom "recording" frame
+            # on screen whenever the start fails.
             if not self.recorder.start_recording():
                 self._handle_error(
-                    "Failed to start recording. Check microphone permissions."
+                    self.recorder.get_last_error()
+                    or "Could not start recording — the audio device is busy. "
+                    "Try again in a moment."
                 )
+                return
+            self._set_state(AppState.RECORDING)
+            self.recording_started.emit()
         except Exception as e:
             self._handle_error(f"Error starting recording: {e}")
 

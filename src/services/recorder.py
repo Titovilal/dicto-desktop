@@ -243,6 +243,16 @@ class AudioRecorder:
         self.frames = []
         self.is_recording = False
         self.recording_thread = None
+        # Guards start/stop against a previous recording thread that outlived
+        # its join() and is still winding down (see stop_recording).
+        self._state_lock = threading.RLock()
+        # Incremented per recording. A thread compares it against the value it
+        # captured at start; a mismatch means it belongs to a finished session
+        # and must not touch shared state.
+        self._session_id = 0
+        # Threads disowned after a join() timeout, reaped opportunistically so
+        # a wedged audio backend cannot leak threads for the process lifetime.
+        self._stale_threads: list[threading.Thread] = []
         self.temp_file_path = None
         self._audio_level_callback = None
         self._loopback_frames: list[np.ndarray] = []
@@ -278,38 +288,66 @@ class AudioRecorder:
 
     # ── Recording lifecycle ──────────────────────────────────
 
+    def _reap_stale_threads(self):
+        """Drop references to disowned threads that have since finished."""
+        self._stale_threads = [t for t in self._stale_threads if t.is_alive()]
+
     def start_recording(self) -> bool:
-        if self.is_recording:
-            logger.warning("Recording already in progress")
-            return False
-        try:
-            self.frames = []
-            self._loopback_frames = []
-            self._record_error = None
-            self._last_duration = 0.0
-            self.is_recording = True
-            self.recording_thread = threading.Thread(
-                target=self._record_audio, daemon=True
-            )
-            self.recording_thread.start()
-            logger.info(
-                f"Recording started (device={self.input_device}, "
-                f"system_audio={self.include_system_audio}, max {self.max_duration}s)"
-            )
-            return True
-        except Exception as e:
-            logger.error(f"Error starting recording: {e}")
-            self.is_recording = False
-            return False
+        with self._state_lock:
+            if self.is_recording:
+                logger.warning("Recording already in progress")
+                return False
+            try:
+                self._reap_stale_threads()
+                self.frames = []
+                self._loopback_frames = []
+                self._record_error = None
+                self._last_duration = 0.0
+                self._session_id += 1
+                session = self._session_id
+                self.is_recording = True
+                self.recording_thread = threading.Thread(
+                    target=self._record_audio, args=(session,), daemon=True
+                )
+                self.recording_thread.start()
+                logger.info(
+                    f"Recording started (device={self.input_device}, "
+                    f"system_audio={self.include_system_audio}, max {self.max_duration}s)"
+                )
+                return True
+            except Exception as e:
+                logger.error(f"Error starting recording: {e}")
+                self.is_recording = False
+                return False
 
     def stop_recording(self) -> Optional[str]:
-        if not self.is_recording:
-            logger.warning("No recording in progress")
-            return None
+        # Only the state transition is locked; the WAV encoding below is slow
+        # and holding the lock across it would block the UI thread.
+        with self._state_lock:
+            if not self.is_recording:
+                logger.warning("No recording in progress")
+                return None
+            self.is_recording = False
 
-        self.is_recording = False
         if self.recording_thread:
             self.recording_thread.join(timeout=2.0)
+            if self.recording_thread.is_alive():
+                # The thread outlived the join: PortAudio can block for a while
+                # closing a stream (seen with PipeWire after several back-to-back
+                # recordings). It will still run its finally block later and set
+                # is_recording = False -- and if the user has already started the
+                # NEXT recording by then, that stale write lands on the new
+                # session, or the new start_recording() sees a flag this thread
+                # has not cleared yet and refuses with "already in progress",
+                # leaving the recorder wedged for the rest of the process.
+                # Disowning it makes the flag owned solely by the live session.
+                logger.warning(
+                    "Recording thread did not stop within 2s; disowning it "
+                    "so the next recording can start"
+                )
+                self._stale_threads.append(self.recording_thread)
+                self._reap_stale_threads()
+        self.recording_thread = None
 
         if len(self.frames) == 0:
             logger.warning("No audio data recorded")
@@ -458,9 +496,18 @@ class AudioRecorder:
         resampled = np.interp(x_new, x_old, flat).astype(np.int16)
         return resampled.reshape(-1, 1) if self.channels == 1 else resampled
 
-    def _record_audio(self):
-        """Records audio in a loop until stopped or max duration reached."""
+    def _record_audio(self, session: int = 0):
+        """Records audio in a loop until stopped or max duration reached.
+
+        `session` identifies the recording this thread belongs to. Everything
+        this thread writes to shared state is gated on it still being current,
+        so a thread that outlived its stop (see stop_recording) cannot corrupt
+        the recording that replaced it.
+        """
         start_time = time.time()
+
+        def is_current() -> bool:
+            return self._session_id == session
 
         def emit_level():
             if self._audio_level_callback is not None:
@@ -469,7 +516,7 @@ class AudioRecorder:
         def mic_callback(indata, frames, time_info, status):
             if status:
                 logger.warning(f"Audio stream status: {status}")
-            if self.is_recording:
+            if self.is_recording and is_current():
                 self.frames.append(indata.copy())
                 rms = np.sqrt(np.mean(indata.astype(np.float32) ** 2))
                 self._mic_level = min(1.0, rms / 400.0)
@@ -478,7 +525,7 @@ class AudioRecorder:
         def loopback_callback(indata, frames, time_info, status):
             if status:
                 logger.debug(f"Loopback stream status: {status}")
-            if self.is_recording:
+            if self.is_recording and is_current():
                 with self._loopback_lock:
                     self._loopback_frames.append(indata.copy())
                 rms = np.sqrt(np.mean(indata.astype(np.float32) ** 2))
@@ -509,7 +556,7 @@ class AudioRecorder:
             with mic_stream:
                 if loopback_stream is not None:
                     loopback_stream.start()
-                while self.is_recording:
+                while self.is_recording and is_current():
                     elapsed = time.time() - start_time
                     if elapsed > self.max_duration:
                         logger.info(
@@ -519,7 +566,8 @@ class AudioRecorder:
                     time.sleep(0.1)
         except Exception as e:
             logger.error(f"Error in recording thread: {e}")
-            self._record_error = str(e)
+            if is_current():
+                self._record_error = str(e)
         finally:
             if loopback_stream is not None:
                 try:
@@ -527,16 +575,24 @@ class AudioRecorder:
                     loopback_stream.close()
                 except Exception as e:
                     logger.debug(f"Error closing loopback stream: {e}")
-            # Always clean up loopback buffer on abnormal exit to prevent leaks
-            if not self.is_recording:
-                # Recording was already stopped normally — frames were cleaned in stop_recording
-                pass
+            # A thread whose session has been superseded owns none of this
+            # state any more: clearing the buffers or the flag here would wipe
+            # the recording that is running right now. Written as if/else
+            # rather than an early return because a `return` inside `finally`
+            # swallows any exception still propagating out of the try block.
+            if not is_current():
+                logger.debug(
+                    "Stale recording thread finished; leaving current session untouched"
+                )
             else:
-                # Abnormal exit (max duration or exception): clear buffers
-                self.frames.clear()
-                with self._loopback_lock:
-                    self._loopback_frames.clear()
-            self.is_recording = False
+                # Always clean up loopback buffer on abnormal exit to prevent leaks
+                if self.is_recording:
+                    # Abnormal exit (max duration or exception): clear buffers
+                    self.frames.clear()
+                    with self._loopback_lock:
+                        self._loopback_frames.clear()
+                # else: stopped normally — frames were cleaned in stop_recording
+                self.is_recording = False
 
     def _open_loopback_stream(self, callback):
         result = _open_loopback_input_stream(callback, self.chunk_size)

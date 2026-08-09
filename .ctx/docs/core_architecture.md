@@ -13,9 +13,9 @@ Defines the application entry point, central state machine, and configuration sy
 - `src/i18n/translations.py` - Multi-language UI string translations
 
 ## Flow
-1. `main()` sets up logging, creates `DictoApp` which initializes the Qt application, loads settings, shows a splash screen, and creates the controller, overlay, tray, and main window
+1. `main()` sets up logging, creates `DictoApp` which initializes the Qt application, loads settings, shows a splash screen, and creates the controller, overlay, tray, and main window. Once the main window is up it consumes the desktop's startup token (`XDG_ACTIVATION_TOKEN` on Wayland, `DESKTOP_STARTUP_ID` on X11) so the launcher stops showing a loading cursor; the variables are unset afterwards because the token is single-use and an inherited spent token makes some compositors reject a child process's window activation
 2. `DictoApp._connect_signals()` wires Qt signals between the controller and all UI components (overlay, tray, main window, waveform widgets) so state changes propagate automatically
-3. `Controller.start()` activates hotkey listeners and sets the app to idle; from there the state machine drives transitions: hotkey press → recording → release → processing → success/error → idle
+3. `Controller.start()` activates hotkey listeners and sets the app to idle; from there the state machine drives transitions: hotkey press → recording → release → processing → success/error → idle. The move to RECORDING happens only after the recorder confirms it started, so a failed start no longer flashes a phantom recording state; the message shown is the recorder's own error rather than a blanket "check microphone permissions", which misattributed a busy audio device to a permissions problem
 4. On shutdown, `DictoApp.quit()` cancels active operations, stops the controller (hotkeys, thread pool, recorder, transcriber), and closes all windows
 
 ---
