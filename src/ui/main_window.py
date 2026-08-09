@@ -71,6 +71,7 @@ class MainWindow(BuildMixin, SettingsMixin, StateMixin, UpdatesMixin, QMainWindo
     input_device_changed = Signal(object)  # int or None
     include_system_audio_changed = Signal(bool)
     update_available = Signal(str)  # latest version, from the startup check
+    warning_requested = Signal(str)  # user-facing warning raised from settings
     _test_audio_level = Signal(float)
 
     FULL_SIZE = (420, 370)

@@ -28,6 +28,56 @@ if sys.platform == "linux" and os.environ.get("XDG_SESSION_TYPE") == "wayland":
         "Wayland session detected — using XDG GlobalShortcuts portal for hotkeys"
     )
 
+
+def _force_xwayland_if_pinned() -> None:
+    """Run through XWayland when the user wants a window kept above others.
+
+    Wayland gives a regular app no way to raise itself above other windows, so
+    `WindowStaysOnTopHint` is silently dropped there: the app asks, the
+    compositor ignores it, and the "always on top" / "persistent overlay"
+    toggles do nothing. XWayland still honors the hint, so when either toggle
+    is on we ask Qt for the xcb platform before QApplication reads it.
+
+    Only done when a toggle is actually enabled — xcb is blurry under
+    fractional scaling, which users who never pin a window shouldn't pay for.
+    Never overrides an explicit QT_QPA_PLATFORM set by the user.
+    """
+    if sys.platform != "linux" or os.environ.get("XDG_SESSION_TYPE") != "wayland":
+        return
+    if os.environ.get("QT_QPA_PLATFORM"):
+        return
+
+    import logging as _logging
+
+    log = _logging.getLogger(__name__)
+    try:
+        import yaml
+
+        from src.config.settings import get_config_dir
+
+        # Read the YAML directly instead of get_settings(): building the
+        # Settings singleton here would freeze it before load_dotenv() runs,
+        # and its env overrides (DICTO_API_KEY) are applied only at construction.
+        config_file = get_config_dir() / "config.yaml"
+        if not config_file.exists():
+            return
+        with open(config_file, "r", encoding="utf-8") as f:
+            behavior = (yaml.safe_load(f) or {}).get("behavior") or {}
+        pinned = bool(behavior.get("always_on_top")) or bool(
+            behavior.get("persistent_overlay")
+        )
+    except Exception as e:  # a broken config must not stop the app from starting
+        log.warning(f"Could not read pin settings to pick a Qt platform: {e}")
+        return
+
+    if pinned:
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
+        log.info(
+            "always-on-top/persistent overlay is enabled — forcing the xcb "
+            "(XWayland) platform, since Wayland ignores WindowStaysOnTopHint"
+        )
+
+
 from dotenv import load_dotenv
 
 # Load .env file before importing other modules that use settings
@@ -269,6 +319,9 @@ class DictoApp:
             self.controller.update_recording_mode
         )
 
+        # Settings warnings reuse the controller's warning presentation
+        self.main_window.warning_requested.connect(self._on_warning)
+
         # Audio device / system audio -> Controller
         self.main_window.input_device_changed.connect(
             self.controller.update_input_device
@@ -481,6 +534,10 @@ class DictoApp:
 def main():
     """Main entry point."""
     setup_logging()
+    # Must run before DictoApp builds the QApplication, which reads the
+    # platform plugin from the environment. Called here rather than at import
+    # time so that importing this module has no side effects.
+    _force_xwayland_if_pinned()
     try:
         app = DictoApp()
         app.run()

@@ -228,6 +228,12 @@ class OverlayWindow(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
+            # Prefer the compositor's native move loop: Wayland ignores move()
+            # on a mapped window, so the manual drag below never budges it there.
+            handle = self.windowHandle()
+            if handle is not None and handle.startSystemMove():
+                event.accept()
+                return
             self._drag_active = True
             self._drag_offset = (
                 event.globalPosition().toPoint() - self.frameGeometry().topLeft()
@@ -237,14 +243,18 @@ class OverlayWindow(QWidget):
     def mouseMoveEvent(self, event):
         if self._drag_active and event.buttons() & Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self._drag_offset)
-            # Reposition popover if visible
-            if self._popover.isVisible():
-                self._show_popover_at_button()
             event.accept()
 
     def mouseReleaseEvent(self, event):
         self._drag_active = False
         event.accept()
+
+    def moveEvent(self, event):
+        # A native system move delivers no mouseMoveEvent, so keep the popover
+        # glued to the card from here — covers both drag paths.
+        super().moveEvent(event)
+        if self._popover.isVisible():
+            self._show_popover_at_button()
 
     # ── UI ───────────────────────────────────────────────────
 

@@ -128,14 +128,30 @@ echo $XDG_SESSION_TYPE   # "x11" o "wayland"
 En Wayland la simulación de teclado necesita una herramienta externa que **no
 viene incluida en el `.deb`**:
 ```bash
-# Opción A: ydotool (requiere el demonio ydotoold en marcha)
+# Opción A: ydotool (funciona en Wayland nativo)
 sudo apt install ydotool
+sudo systemctl enable --now ydotoold   # el demonio debe estar en marcha
+sudo usermod -aG input $USER           # acceso a /dev/uinput; requiere volver a iniciar sesión
 
-# Opción B: xdotool (funciona vía XWayland)
+# Opción B: xdotool (más simple, pero solo llega a ventanas XWayland)
 sudo apt install xdotool
 ```
 Sin ninguna de las dos, el texto se copia al portapapeles y basta con pegarlo
-con `Ctrl+V`.
+con `Ctrl+V`. La app avisa cuando falta la herramienta en lugar de fallar en
+silencio.
+
+### "App siempre visible" / "Overlay siempre visible" no hacen nada
+
+Wayland no permite que una aplicación normal se coloque por encima de las
+demás: la petición sale de la app y el compositor la descarta. Para que
+funcione, Dicto arranca a través de **XWayland** (`QT_QPA_PLATFORM=xcb`)
+automáticamente cuando alguno de los dos ajustes está activado.
+
+Como la plataforma se elige al arrancar, hay que **reiniciar la app** después de
+activar el ajuste por primera vez. Contrapartida: con escalado fraccional
+(125 %, 150 %) XWayland puede verse algo menos nítido; con escalado entero
+(100 %, 200 %) no hay diferencia. Para forzar Wayland nativo pese al ajuste,
+arranca con `QT_QPA_PLATFORM=wayland dicto` — la app respeta esa variable.
 
 ### Error "qt.qpa.plugin: Could not load the Qt platform plugin"
 ```bash

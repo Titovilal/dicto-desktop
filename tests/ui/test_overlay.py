@@ -108,3 +108,59 @@ class TestOverlayPersistent:
         overlay.set_persistent(False)
         overlay.hide()
         assert not overlay.isVisible()
+
+
+class TestOverlayDragging:
+    """The overlay must move on Wayland, where move() is ignored and only the
+    compositor's own move loop works."""
+
+    def _press(self, overlay):
+        from PySide6.QtCore import QPoint, QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+
+        return QMouseEvent(
+            QMouseEvent.Type.MouseButtonPress,
+            QPointF(10, 10),
+            overlay.mapToGlobal(QPoint(10, 10)).toPointF(),
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+
+    def test_press_asks_the_compositor_to_move_the_window(self, overlay, monkeypatch):
+        overlay.show()
+        called = []
+        handle = overlay.windowHandle()
+        assert handle is not None
+        monkeypatch.setattr(
+            handle, "startSystemMove", lambda: (called.append(True), True)[1]
+        )
+
+        overlay.mousePressEvent(self._press(overlay))
+
+        assert called, "startSystemMove() was never attempted"
+        # The compositor owns the drag now; no manual fallback should engage.
+        assert not overlay._drag_active
+
+    def test_falls_back_to_manual_drag_when_compositor_refuses(
+        self, overlay, monkeypatch
+    ):
+        overlay.show()
+        handle = overlay.windowHandle()
+        assert handle is not None
+        monkeypatch.setattr(handle, "startSystemMove", lambda: False)
+
+        overlay.mousePressEvent(self._press(overlay))
+
+        assert overlay._drag_active
+
+    def test_popover_follows_the_window_when_it_moves(self, overlay):
+        from PySide6.QtCore import QPoint
+
+        overlay.show()
+        overlay._show_popover_at_button()
+        before = overlay._popover.pos()
+
+        overlay.move(overlay.pos() + QPoint(120, 90))
+
+        assert overlay._popover.pos() != before

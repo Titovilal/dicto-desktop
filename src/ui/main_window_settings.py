@@ -292,6 +292,24 @@ class SettingsMixin:
     def _on_restore_clipboard_changed(self, state: int):
         self._save_setting("restore_clipboard", state == Qt.CheckState.Checked.value)
 
+    def _warn_pin_needs_restart_on_wayland(self, checked: bool):
+        """Tell the user a pin toggle only takes effect after a restart.
+
+        Wayland drops WindowStaysOnTopHint, so pinning only works once the app
+        has been relaunched onto XWayland (picked at startup from the saved
+        setting). Without this the toggle looks broken: the window flickers as
+        Qt recreates it, then still sinks behind other windows.
+        """
+        if not checked or sys.platform != "linux":
+            return
+        if os.environ.get("XDG_SESSION_TYPE") != "wayland":
+            return
+        # Already on XWayland: the hint works right now, no restart needed.
+        app = QApplication.instance()
+        if app is not None and app.platformName() != "wayland":
+            return
+        self.warning_requested.emit(t("pin_needs_restart"))
+
     def _on_always_on_top_changed(self, state: int):
         checked = state == Qt.CheckState.Checked.value
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, checked)
@@ -302,6 +320,7 @@ class SettingsMixin:
         self.always_on_top_button.setChecked(checked)
         self._update_always_on_top_icon(checked)
         self.always_on_top_button.blockSignals(False)
+        self._warn_pin_needs_restart_on_wayland(checked)
 
     def _on_language_changed(self, index: int):
         self._save_setting(
@@ -312,6 +331,7 @@ class SettingsMixin:
         checked = state == Qt.CheckState.Checked.value
         self._save_setting("persistent_overlay", checked)
         self.persistent_overlay_changed.emit(checked)
+        self._warn_pin_needs_restart_on_wayland(checked)
 
     def sync_persistent_overlay_checkbox(self, checked: bool):
         """Update the checkbox without re-triggering the save/emit cycle."""
@@ -353,6 +373,7 @@ class SettingsMixin:
         self.always_on_top_checkbox.blockSignals(True)
         self.always_on_top_checkbox.setChecked(checked)
         self.always_on_top_checkbox.blockSignals(False)
+        self._warn_pin_needs_restart_on_wayland(checked)
 
     def _on_include_system_audio_changed(self, checked: bool):
         self._save_setting("audio_include_system_audio", checked)
